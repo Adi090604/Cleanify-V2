@@ -23,7 +23,6 @@ class CommunityReportController extends Controller
         return view('community-reports', [
             'activePage' => 'reports',
             'reports' => $reports,
-            'zones' => config('routes.surigao_city', []),
         ]);
     }
 
@@ -41,7 +40,10 @@ class CommunityReportController extends Controller
 
         $user = Auth::user();
         $isFollowing = $user ? $report->followers->contains('id', $user->id) : false;
-        $coordinate = $this->matchCoordinate($report->location);
+        $coordinate = $report->latitude !== null && $report->longitude !== null ? [
+            'lat' => (float) $report->latitude,
+            'lng' => (float) $report->longitude,
+        ] : null;
         $timeline = $this->buildTimeline($report);
 
         return response()->json([
@@ -58,7 +60,9 @@ class CommunityReportController extends Controller
             'status_badge' => $report->getStatusBadgeBgClass(),
             'admin_notes' => $report->admin_notes,
             'rejection_reason' => $report->rejection_reason,
-            'image' => $report->image_path ? asset('storage/' . $report->image_path) : null,
+            'image' => $report->image_path && \Illuminate\Support\Facades\Storage::disk('public')->exists($report->image_path)
+                ? \Illuminate\Support\Facades\Storage::disk('public')->url($report->image_path)
+                : null,
             'likes_count' => $report->likes_count,
             'comments_count' => $report->comments_count,
             'followers_count' => $report->followers_count,
@@ -116,24 +120,6 @@ class CommunityReportController extends Controller
         return $timeline;
     }
 
-    private function matchCoordinate(?string $location): ?array
-    {
-        if (!$location) {
-            return null;
-        }
-
-        $zones = collect(config('routes.surigao_city', []));
-        $match = $zones->first(function ($coords, $name) use ($location) {
-            return stripos($location, $name) !== false;
-        });
-
-        if (!$match) {
-            return null;
-        }
-
-        return $match;
-    }
-
     private function relatedReports(Report $report)
     {
         return Report::where('id', '!=', $report->id)
@@ -151,4 +137,3 @@ class CommunityReportController extends Controller
             });
     }
 }
-

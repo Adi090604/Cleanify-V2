@@ -13,9 +13,9 @@ $headerClass = $colorClasses[$color] ?? 'bg-green-600';
 @endphp
 
 <div id="{{ $id }}" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
-  <div class="bg-white rounded-xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
-    <div class="{{ $headerClass }} text-white p-4 flex justify-between items-center">
-      <h5 class="font-semibold text-lg">
+  <div class="bg-white rounded-xl border border-gray-200 shadow-xl w-full max-w-2xl max-h-[80vh] overflow-hidden">
+    <div class="{{ $headerClass }} text-white px-4 py-3 flex justify-between items-center">
+      <h5 class="font-semibold text-base">
         @if($icon)
           <i class="{{ $icon }} mr-2"></i>
         @endif
@@ -25,7 +25,7 @@ $headerClass = $colorClasses[$color] ?? 'bg-green-600';
         <i class="fas fa-times text-xl"></i>
       </button>
     </div>
-    <div class="p-6 overflow-y-auto max-h-96">
+    <div class="p-4 overflow-y-auto max-h-96">
       {{ $slot }}
     </div>
     @if(isset($footer))

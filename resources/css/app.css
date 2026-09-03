@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "@fortawesome/fontawesome-free/css/all.min.css";
 
 @tailwind base;
@@ -7,9 +7,126 @@
 
 @layer base {
   body {
-    font-family: 'Poppins', sans-serif;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: #27302a;
   }
 }
+
+/* Cleanify application design system: visual-only overrides for existing Blade views. */
+:root {
+  --cleanify-green: #2e7d32;
+  --cleanify-green-dark: #246529;
+  --cleanify-green-soft: #eaf5ec;
+  --cleanify-surface: #ffffff;
+  --cleanify-border: #e3e9e4;
+  --cleanify-text-muted: #66736b;
+  --cleanify-shadow: 0 1px 2px rgba(24, 48, 32, .045);
+}
+
+body.bg-gray-50 { background: #f7f9f7; }
+
+.cleanify-sidebar {
+  width: 13.25rem;
+  background: var(--cleanify-surface) !important;
+  color: #334039 !important;
+  border-right: 1px solid var(--cleanify-border);
+  box-shadow: 1px 0 12px rgba(24, 48, 32, .035);
+}
+.cleanify-sidebar > div:first-child,
+.cleanify-sidebar > div:last-child { border-color: #edf1ed !important; }
+.cleanify-sidebar h5, .cleanify-sidebar small { color: #27302a !important; }
+.cleanify-sidebar img.w-16 { width: 3rem; height: 3rem; margin-bottom: .4rem; }
+.cleanify-sidebar nav { padding: .8rem .65rem; gap: .2rem; }
+.cleanify-sidebar nav a {
+  min-height: 2.25rem;
+  padding: .45rem .65rem;
+  border-radius: .5rem;
+  color: #5f6c64 !important;
+  font-size: .8125rem;
+  font-weight: 500;
+}
+.cleanify-sidebar nav a i { width: 1.1rem; margin-right: .65rem; font-size: .875rem; color: #7a877f; }
+.cleanify-sidebar nav a.bg-green-700, .cleanify-sidebar nav a:hover {
+  background: var(--cleanify-green-soft) !important;
+  color: #226b31 !important;
+}
+.cleanify-sidebar nav a.bg-green-700 i, .cleanify-sidebar nav a:hover i { color: var(--cleanify-green); }
+.cleanify-sidebar button:not(.bg-red-600) { color: #526158 !important; }
+.cleanify-sidebar button:not(.bg-red-600):hover { background: #edf5ee !important; }
+.cleanify-sidebar button.bg-red-600 { padding: .55rem .7rem; border-radius: .5rem; background: #c2413a !important; font-size: .8125rem; }
+
+.cleanify-main { min-height: 100vh; background: #f7f9f7; }
+.bg-white.rounded-xl.shadow-sm, .bg-white.rounded-2xl.shadow, .bg-white.rounded-2xl.shadow-xl, .bg-white.rounded-lg.shadow-sm {
+  border: 1px solid var(--cleanify-border);
+  box-shadow: var(--cleanify-shadow) !important;
+}
+.bg-white.rounded-xl.shadow-sm.p-6, .bg-white.rounded-2xl.shadow.p-6, .bg-white.rounded-2xl.shadow-xl.p-6 { padding: 1.25rem !important; }
+.bg-white.rounded-xl.shadow-sm.p-12 { padding: 2rem !important; }
+
+input:not([type="checkbox"]):not([type="radio"]), select, textarea {
+  border-color: #d9e1dc !important;
+  border-radius: .5rem !important;
+  font-size: .875rem;
+}
+input:not([type="checkbox"]):not([type="radio"]):focus, select:focus, textarea:focus {
+  border-color: #43a047 !important;
+  box-shadow: 0 0 0 3px rgba(67, 160, 71, .14) !important;
+}
+button, a[class*="bg-green"], a[class*="border-green"] { transition-duration: 160ms !important; }
+button.bg-green-600, button.bg-green-500, a.bg-green-600, a.bg-green-500 { background-color: var(--cleanify-green) !important; }
+button.bg-green-600:hover, button.bg-green-500:hover, a.bg-green-600:hover, a.bg-green-500:hover { background-color: var(--cleanify-green-dark) !important; }
+button:disabled, input:disabled, select:disabled, textarea:disabled { opacity: .55; cursor: not-allowed; }
+button[class*="px-4"][class*="py-2"], a[class*="px-4"][class*="py-2"] { padding: .48rem .78rem; border-radius: .5rem; font-size: .825rem; }
+button[class*="px-6"][class*="py-2"], a[class*="px-6"][class*="py-2"] { padding: .48rem 1rem; border-radius: .5rem; font-size: .825rem; }
+
+table { font-size: .825rem; }
+table thead tr.bg-green-600 { background: #f1f7f2 !important; color: #526158 !important; }
+table th { font-size: .7rem; font-weight: 600; letter-spacing: .035em; text-transform: uppercase; }
+table td, table th { padding-top: .68rem !important; padding-bottom: .68rem !important; }
+table tbody tr:hover { background: #f7faf7 !important; }
+.rounded-full[class*="bg-yellow"], .rounded-full[class*="bg-green"], .rounded-full[class*="bg-red"], .rounded-full[class*="bg-gray"] { font-size: .7rem; font-weight: 600; }
+
+.dashboard-toolbar { min-height: 4.5rem; padding: .85rem 1rem !important; border-radius: .75rem !important; }
+.dashboard-toolbar h4 { font-size: 1rem; letter-spacing: -.015em; }
+.dashboard-toolbar input.w-72 { width: 14rem; height: 2.2rem; padding: .4rem .75rem; background: #f8faf8; }
+.chart-card .h-80 { height: 16rem; }
+
+@media (min-width: 1024px) { .lg\:ml-64 { margin-left: 13.25rem !important; } }
+@media (max-width: 1023px) { .cleanify-sidebar { width: 16rem; } }
+@media (max-width: 640px) {
+  .bg-white.rounded-xl.shadow-sm.p-6, .bg-white.rounded-2xl.shadow.p-6, .bg-white.rounded-2xl.shadow-xl.p-6 { padding: 1rem !important; }
+  input.w-72, .dashboard-toolbar input.w-72 { width: 100%; }
+}
+
+/* Shared authentication presentation, reusing the existing forms and controls. */
+.auth-card {
+  padding: 2rem !important;
+  background: #fff !important;
+  color: #27302a !important;
+  border: 1px solid var(--cleanify-border) !important;
+  border-radius: 1rem !important;
+  box-shadow: 0 16px 40px rgba(30, 58, 38, .10) !important;
+}
+.auth-logo { display: block; width: 2.75rem; height: 2.75rem; object-fit: contain; margin: 0 auto .7rem; }
+.auth-card > .text-3xl { color: #27302a !important; font-size: 1.25rem !important; letter-spacing: -.02em; }
+.auth-card .text-gray-300, .auth-card :not(button).text-white { color: #66736b !important; }
+.auth-card h5.text-white { color: #27302a !important; font-size: 1.125rem; }
+.auth-card .auth-form { margin-top: 1.5rem; gap: 1rem !important; }
+.auth-card label { color: #3f4b43 !important; font-size: .8125rem; font-weight: 500; margin-bottom: .35rem !important; }
+.auth-card input:not([type="checkbox"]) {
+  background: #fff !important;
+  color: #27302a !important;
+  border: 1px solid #d9e1dc !important;
+  border-radius: .5rem !important;
+  padding: .6rem .75rem .6rem 2.5rem !important;
+}
+.auth-card input[type="checkbox"] { background: #fff !important; }
+.auth-card button[type="submit"] { background: var(--cleanify-green) !important; border-radius: .5rem !important; font-size: .875rem; }
+.auth-card button[type="submit"]:hover { background: var(--cleanify-green-dark) !important; }
+.auth-card button[type="submit"].text-white { color: #fff !important; }
+.auth-card .text-green-500 { color: #2e7d32 !important; }
+.auth-card .text-red-400 { color: #c2413a !important; }
+@media (max-width: 640px) { .auth-card { padding: 1.5rem !important; } }
 
 @layer utilities {
   @keyframes fadeIn {

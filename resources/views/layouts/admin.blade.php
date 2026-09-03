@@ -7,17 +7,17 @@
   @vite(['resources/css/app.css', 'resources/js/app.js'])
   @stack('styles')
 </head>
-<body class="bg-gray-50 overflow-x-hidden" style="font-family: 'Poppins', sans-serif;">
+<body class="bg-gray-50 overflow-x-hidden">
   <!-- Mobile Menu -->
   <x-admin.mobile-menu :active="$activePage ?? 'dashboard'" />
   
   <div class="flex h-screen">
     <x-admin.sidebar :active="$activePage ?? 'dashboard'" />
 
-    <div class="lg:ml-64 flex-1 overflow-y-auto">
-      <div class="p-4 lg:p-8">
+    <div class="cleanify-main lg:ml-64 flex-1 overflow-y-auto">
+      <main class="p-3 sm:p-4 lg:p-4">
         @yield('content')
-      </div>
+      </main>
     </div>
   </div>
 
@@ -47,4 +47,3 @@
   @vite(['resources/js/app.js'])
 </body>
 </html>
-

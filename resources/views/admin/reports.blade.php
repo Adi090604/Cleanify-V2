@@ -2,11 +2,18 @@
 
 @section('title', 'Reports')
 
+@push('styles')
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+@endpush
+
 @section('content')
   @if(session('success'))
     <x-alert type="success" dismissible class="mb-4">
       {{ session('success') }}
     </x-alert>
+  @endif
+  @if(session('error') || $errors->any())
+    <x-alert type="error" dismissible class="mb-4">{{ session('error') ?? $errors->first() }}</x-alert>
   @endif
 
   <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
@@ -50,6 +57,8 @@
               'reporter' => $report->user?->name ?? 'Unknown User',
               'email' => $report->user?->email ?? 'N/A',
               'location' => $report->location,
+              'latitude' => $report->latitude,
+              'longitude' => $report->longitude,
               'description' => $report->description,
               'image_path' => $report->image_path,
               'status' => $report->status,
@@ -145,7 +154,10 @@
 @push('modals')
   <x-modal id="viewReportModal" title="Report Details" icon="fas fa-eye" color="green">
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <div><img id="viewReportImage" src="" class="w-full h-64 object-cover rounded-lg" alt="Report preview"></div>
+      <div>
+        <a id="viewReportImageLink" target="_blank" class="hidden"><img id="viewReportImage" src="" class="w-full h-64 object-cover rounded-lg" alt="Report preview"></a>
+        <p id="viewReportImageEmpty" class="h-64 flex items-center justify-center bg-gray-50 rounded-lg text-gray-500">No photo attached</p>
+      </div>
       <div class="space-y-4">
         <div>
           <label class="block text-sm font-medium text-gray-700">Reporter</label>
@@ -155,6 +167,7 @@
           <label class="block text-sm font-medium text-gray-700">Location</label>
           <p id="viewReportLocation" class="mt-1 text-gray-900"></p>
         </div>
+        <div><label class="block text-sm font-medium text-gray-700">Coordinates</label><p id="viewReportCoordinates" class="mt-1 text-gray-900"></p></div>
         <div>
           <label class="block text-sm font-medium text-gray-700">Status</label>
           <span id="viewReportStatus" class="mt-1 font-semibold"></span>
@@ -169,6 +182,7 @@
       <label class="block text-sm font-medium text-gray-700">Description</label>
       <p id="viewReportDescription" class="mt-2 text-gray-900 bg-gray-50 p-4 rounded-lg"></p>
     </div>
+    <div id="viewReportMapSection" class="mt-6 hidden"><label class="block text-sm font-medium text-gray-700 mb-2">Reported map location</label><div id="viewReportMap" class="h-56 rounded-lg border border-gray-200"></div></div>
     @slot('footer')
       <div class="flex justify-end space-x-3">
         <button onclick="closeModal('viewReportModal')" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-300">
@@ -228,7 +242,7 @@
         <label class="block text-sm font-medium text-gray-700 mb-2">
           <i class="fas fa-comment mr-2 text-red-600"></i>Rejection Reason (Required)
         </label>
-        <textarea name="rejection_reason" id="rejectReason" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none" rows="3" placeholder="Please provide a reason for rejecting this report..." required></textarea>
+        <textarea name="rejection_reason" id="rejectReason" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none" rows="3" minlength="10" placeholder="Please provide a reason for rejecting this report..." required></textarea>
         @error('rejection_reason', 'rejectReport')
           <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
         @enderror
@@ -254,9 +268,13 @@
 @endpush
 
 @push('scripts')
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const adminReports = @json($reports->items());
     let currentReportId = null;
+    let viewReportMap;
+    let viewReportMarker;
+    const selectedReportId = @json($selectedReportId ?? null);
 
     function getReportFromTable(id) {
       const row = document.querySelector(`tr[data-report*='"id":${id}']`);
@@ -277,17 +295,19 @@
       currentReportId = id;
       
       const imageElement = document.getElementById('viewReportImage');
+      const imageLink = document.getElementById('viewReportImageLink');
+      const imageEmpty = document.getElementById('viewReportImageEmpty');
       if (report.image_path) {
-        imageElement.src = `/storage/${report.image_path}`;
-        imageElement.onerror = function() {
-          this.src = 'https://via.placeholder.com/400?text=No+Image';
-        };
-      } else {
-        imageElement.src = 'https://via.placeholder.com/400?text=No+Image';
-      }
+        const imageUrl = `/storage/${report.image_path}`;
+        imageElement.src = imageUrl;
+        imageLink.href = imageUrl; imageLink.classList.remove('hidden'); imageEmpty.classList.add('hidden');
+        imageElement.onerror = () => { imageLink.classList.add('hidden'); imageEmpty.textContent = 'Photo unavailable'; imageEmpty.classList.remove('hidden'); };
+      } else { imageLink.classList.add('hidden'); imageEmpty.textContent = 'No photo attached'; imageEmpty.classList.remove('hidden'); }
       
       document.getElementById('viewReportReporter').textContent = `${report.reporter} (${report.email})`;
       document.getElementById('viewReportLocation').textContent = report.location;
+      const hasCoordinates = report.latitude !== null && report.latitude !== undefined && report.longitude !== null && report.longitude !== undefined;
+      document.getElementById('viewReportCoordinates').textContent = hasCoordinates ? `${Number(report.latitude).toFixed(8)}, ${Number(report.longitude).toFixed(8)}` : 'Location not available';
       
       const statusElement = document.getElementById('viewReportStatus');
       const statusClass = report.status === 'pending' ? 'text-yellow-600' : 
@@ -305,6 +325,22 @@
       }
       
       openModal('viewReportModal');
+      const mapSection = document.getElementById('viewReportMapSection');
+      if (hasCoordinates) {
+        mapSection.classList.remove('hidden');
+        setTimeout(() => renderAdminReportMap(report.latitude, report.longitude), 150);
+      } else mapSection.classList.add('hidden');
+    }
+
+    function renderAdminReportMap(latitude, longitude) {
+      const point = [Number(latitude), Number(longitude)];
+      if (!viewReportMap) {
+        viewReportMap = L.map('viewReportMap');
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap contributors' }).addTo(viewReportMap);
+      }
+      if (viewReportMarker) viewReportMarker.setLatLng(point);
+      else viewReportMarker = L.marker(point).addTo(viewReportMap);
+      viewReportMap.setView(point, 15); viewReportMap.invalidateSize();
     }
 
     function openResolveModal(id) {
@@ -328,6 +364,15 @@
       setTimeout(() => openResolveModal(currentReportId), 300);
     }
 
+    if (selectedReportId) {
+      const openSelectedReport = () => openReportView(selectedReportId);
+      if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', openSelectedReport, { once: true });
+      } else {
+        openSelectedReport();
+      }
+    }
+
     // Search functionality (now handled by controller, but keeping for client-side if needed)
     document.getElementById('reportSearchInput')?.addEventListener('keypress', function(e) {
       if (e.key === 'Enter') {
@@ -337,4 +382,3 @@
     });
   </script>
 @endpush
-

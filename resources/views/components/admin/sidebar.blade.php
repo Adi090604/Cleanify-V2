@@ -1,6 +1,6 @@
 @props(['active' => 'dashboard'])
 
-<div class="hidden lg:block w-64 bg-green-600 text-white flex flex-col fixed h-full">
+<div class="cleanify-sidebar hidden lg:block w-64 bg-green-600 text-white flex flex-col fixed h-full">
   <div class="p-4 border-b border-green-500 text-center">
     <img src="/assets/icons/cleanifyicon.png" alt="Cleanify Logo" class="w-16 h-16 mx-auto mb-2">
     <h5 class="font-semibold text-lg">Cleanify Admin</h5>
@@ -31,6 +31,10 @@
       <i class="fas fa-map-marker-alt mr-3 text-lg"></i>
       <span>Tracker</span>
     </a>
+    <a href="{{ route('admin.service-zones') }}" class="flex items-center px-4 py-3 rounded-lg text-white transition-colors duration-300 {{ $active === 'service-zones' ? 'bg-green-700' : 'hover:bg-green-700' }}">
+      <i class="fas fa-draw-polygon mr-3 text-lg"></i>
+      <span>Service Zones</span>
+    </a>
     <a href="{{ route('admin.settings') }}" class="flex items-center px-4 py-3 rounded-lg text-white transition-colors duration-300 {{ $active === 'settings' ? 'bg-green-700' : 'hover:bg-green-700' }}">
       <i class="fas fa-cog mr-3 text-lg"></i>
       <span>Settings</span>
@@ -44,4 +48,3 @@
     </button>
   </div>
 </div>
-

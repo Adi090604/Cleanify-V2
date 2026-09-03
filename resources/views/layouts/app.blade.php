@@ -10,7 +10,7 @@
   
   @stack('styles')
 </head>
-<body class="bg-gray-50 overflow-hidden" style="font-family: 'Poppins', sans-serif;">
+<body class="bg-gray-50 overflow-hidden">
   <!-- Mobile Menu -->
   <x-mobile-menu :active="$activePage ?? 'home'" />
   
@@ -19,10 +19,10 @@
     <x-sidebar :active="$activePage ?? 'home'" />
     
     <!-- Main Content -->
-    <div class="lg:ml-64 flex-1 overflow-y-auto">
-      <div class="p-4 lg:p-6">
+    <div class="cleanify-main lg:ml-64 flex-1 overflow-y-auto">
+      <main class="p-3 sm:p-4 lg:p-4">
         @yield('content')
-      </div>
+      </main>
     </div>
   </div>
   

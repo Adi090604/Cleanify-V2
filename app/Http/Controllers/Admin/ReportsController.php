@@ -16,9 +16,10 @@ class ReportsController extends Controller
     public function index(Request $request): View
     {
         $query = Report::with(['user', 'resolver']);
+        $selectedReportId = $request->integer('report');
 
         // Search functionality
-        if ($request->has('search') && $request->search) {
+        if (!$selectedReportId && $request->has('search') && $request->search) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('location', 'like', "%{$search}%")
@@ -34,16 +35,20 @@ class ReportsController extends Controller
         // $query->whereHas('user');
 
         // Filter by status
-        if ($request->has('status') && $request->status && in_array($request->status, ['pending', 'resolved', 'rejected'])) {
+        if (!$selectedReportId && $request->has('status') && $request->status && in_array($request->status, ['pending', 'resolved', 'rejected'])) {
             $query->where('status', $request->status);
         }
 
         // Filter by priority
-        if ($request->has('priority') && $request->priority && in_array($request->priority, ['low', 'medium', 'high', 'critical'])) {
+        if (!$selectedReportId && $request->has('priority') && $request->priority && in_array($request->priority, ['low', 'medium', 'high', 'critical'])) {
             $query->where('priority', $request->priority);
         }
 
         // Order by priority (critical first) then by created_at
+        if ($selectedReportId) {
+            $query->orderByRaw('id = ? desc', [$selectedReportId]);
+        }
+
         $reports = $query->orderByRaw("FIELD(priority, 'critical', 'high', 'medium', 'low')")
             ->orderBy('created_at', 'desc')
             ->paginate(10);
@@ -66,6 +71,7 @@ class ReportsController extends Controller
             'search' => $request->search ?? '',
             'statusFilter' => $request->status ?? '',
             'priorityFilter' => $request->priority ?? '',
+            'selectedReportId' => $selectedReportId && Report::whereKey($selectedReportId)->exists() ? $selectedReportId : null,
         ]);
     }
 
@@ -159,6 +165,10 @@ class ReportsController extends Controller
     {
         $report = Report::findOrFail($id);
 
+        if ($report->status !== 'pending') {
+            return redirect()->route('admin.reports')->with('error', 'Only pending reports can be resolved.');
+        }
+
         $report->update([
             'status' => 'resolved',
             'admin_notes' => $request->admin_notes,
@@ -179,6 +189,10 @@ class ReportsController extends Controller
     public function reject(RejectReportRequest $request, string $id): RedirectResponse
     {
         $report = Report::findOrFail($id);
+
+        if ($report->status !== 'pending') {
+            return redirect()->route('admin.reports')->with('error', 'Only pending reports can be rejected.');
+        }
 
         $report->update([
             'status' => 'rejected',

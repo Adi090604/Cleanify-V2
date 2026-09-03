@@ -10,7 +10,7 @@
   @endif
 
   <!-- Topbar -->
-  <div class="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-wrap items-center justify-between gap-4">
+  <div class="dashboard-toolbar bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-wrap items-center justify-between gap-4">
     <div>
       <h4 class="font-semibold text-gray-800">Welcome back, <strong>{{ $user->name }}</strong> 👋</h4>
       <p class="text-gray-500 text-sm">See the latest updates from your community.</p>
@@ -24,7 +24,7 @@
   </div>
 
   <!-- Create Post Box -->
-  <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+  <div class="dashboard-card bg-white rounded-xl shadow-sm p-6 mb-6">
     <form method="POST" action="{{ route('reports.store') }}" enctype="multipart/form-data" class="space-y-4" id="dashboardReportForm">
       @csrf
       <div class="flex items-start">
@@ -58,7 +58,7 @@
   </div>
 
   <!-- Feeds -->
-  <div class="space-y-6">
+  <div class="space-y-4">
     @forelse($recentReports as $report)
       @php
         $reportUser = $report->user;
@@ -67,7 +67,7 @@
         $authorName = $reportUser->name ?? 'Cleanify User';
         $userLiked = $report->likes->contains('user_id', $user->id);
       @endphp
-      <div class="bg-white rounded-xl shadow-sm p-6">
+      <article class="dashboard-card bg-white rounded-xl shadow-sm p-6">
         <div class="flex items-center mb-4">
           <div class="w-12 h-12 rounded-full {{ $avatarClasses }} flex items-center justify-center text-white font-bold mr-4">
             {{ $avatarInitial }}
@@ -132,7 +132,7 @@
             </div>
           </div>
         </form>
-      </div>
+      </article>
     @empty
       <div class="bg-white rounded-xl shadow-sm p-12 text-center">
         <i class="fas fa-inbox text-gray-300 text-6xl mb-4"></i>

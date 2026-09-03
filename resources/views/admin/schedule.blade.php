@@ -357,7 +357,15 @@
       document.getElementById('editScheduleTimeEnd').value = schedule.time_end;
       document.getElementById('editScheduleTruck').value = schedule.truck;
       document.getElementById('editScheduleStatus').value = schedule.status;
-      document.getElementById('editScheduleArea').value = schedule.area;
+      const areaSelect = document.getElementById('editScheduleArea');
+      areaSelect.querySelectorAll('[data-legacy-schedule-area]').forEach(option => option.remove());
+      if (schedule.area && !Array.from(areaSelect.options).some(option => option.value === schedule.area)) {
+        // Preserve a legacy schedule's stored area when editing without offering it for new schedules.
+        const legacyOption = new Option(schedule.area, schedule.area, true, true);
+        legacyOption.dataset.legacyScheduleArea = 'true';
+        areaSelect.add(legacyOption);
+      }
+      areaSelect.value = schedule.area;
       
       // Handle schedule type fields
       toggleScheduleTypeFields('edit', schedule.schedule_type || 'recurring');
@@ -431,4 +439,3 @@
     });
   </script>
 @endpush
-

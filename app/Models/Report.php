@@ -12,6 +12,8 @@ class Report extends Model
     protected $fillable = [
         'user_id',
         'location',
+        'latitude',
+        'longitude',
         'description',
         'image_path',
         'status',
@@ -23,6 +25,8 @@ class Report extends Model
     ];
 
     protected $casts = [
+        'latitude' => 'decimal:8',
+        'longitude' => 'decimal:8',
         'resolved_at' => 'datetime',
     ];
 

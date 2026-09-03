@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreScheduleRequest;
 use App\Http\Requests\Admin\UpdateScheduleRequest;
 use App\Models\Schedule;
+use App\Models\ServiceZone;
 use App\Models\Truck;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -45,8 +46,9 @@ class ScheduleController extends Controller
         $inactiveSchedules = Schedule::where('status', 'inactive')->count();
         $trucksAssigned = Schedule::where('status', 'active')->distinct('truck')->count('truck');
 
-        // Get zones from config
-        $zones = array_keys(config('routes.surigao_city', []));
+        // New schedule assignments use active Service Zone database records only.
+        $zones = ServiceZone::where('status', 'active')->orderBy('name')->get()->map->display_name
+            ->values()->all();
 
         // Get trucks from database
         $trucks = Truck::orderBy('code', 'asc')->get();

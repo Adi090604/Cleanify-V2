@@ -199,7 +199,7 @@
       <div>
         <label class="block text-gray-700 mb-2"><i class="fas fa-route mr-2 text-green-600"></i>Route</label>
         <select name="route" id="addTruckRoute" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" required>
-          @foreach ($routes ?? array_keys(config('routes.surigao_city', [])) as $route)
+          @foreach ($routes ?? [] as $route)
             <option value="{{ $route }}">{{ $route }}</option>
           @endforeach
         </select>
@@ -267,7 +267,7 @@
       <div>
         <label class="block text-gray-700 mb-2"><i class="fas fa-route mr-2 text-yellow-600"></i>Route</label>
         <select name="route" id="editTruckRoute" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent" required>
-          @foreach ($routes ?? array_keys(config('routes.surigao_city', [])) as $route)
+          @foreach ($routes ?? [] as $route)
             <option value="{{ $route }}">{{ $route }}</option>
           @endforeach
         </select>
@@ -390,7 +390,7 @@
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script>
     const trackerDataUrl = '/admin/tracker/data';
-    const routesWithCoordinates = @json($routesWithCoordinates ?? []);
+    const serviceZoneCoordinates = @json($serviceZoneCoordinates ?? []);
     let truckData = @json($trucks);
     let currentTruckId = null;
     let map = null;
@@ -616,6 +616,16 @@
     // Initialize map for Add Truck modal
     let addTruckMap = null;
     let addTruckMapMarker = null;
+    let pendingServiceZoneLocation = null;
+
+    function applyServiceZoneLocationToTruckMap() {
+      if (!pendingServiceZoneLocation || !addTruckMap || typeof L === 'undefined') return;
+
+      const { lat, lng } = pendingServiceZoneLocation;
+      addTruckMap.setView([lat, lng], 15);
+      // Reuse the existing Truck-map click handler to set its marker and coordinate fields.
+      addTruckMap.fire('click', { latlng: L.latLng(lat, lng) });
+    }
     
     function initializeAddTruckMap() {
       const mapElement = document.getElementById('addTruckMap');
@@ -723,6 +733,7 @@
             }).addTo(addTruckMap).bindPopup(`Selected Location<br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`).openPopup();
           }
         });
+        applyServiceZoneLocationToTruckMap();
         
         return true;
       } catch (error) {
@@ -748,17 +759,6 @@
       if (latInput) latInput.value = '';
       if (lngInput) lngInput.value = '';
       
-      // Re-attach route change listener after modal is shown
-      setTimeout(function() {
-        attachRouteChangeListeners();
-        
-        // If a route is already selected, update coordinates
-        const addTruckRouteSelect = document.getElementById('addTruckRoute');
-        if (addTruckRouteSelect && addTruckRouteSelect.value) {
-          updateCoordinatesFromRoute(addTruckRouteSelect.value, 'addTruckLatitude', 'addTruckLongitude', addTruckMap, addTruckMapMarker);
-        }
-      }, 100);
-      
       // Initialize map after modal is visible
       setTimeout(function() {
         if (!addTruckMap) {
@@ -774,107 +774,22 @@
       }, 500);
     }
     
-    // Function to update coordinates and map when route is selected
-    function updateCoordinatesFromRoute(routeName, latInputId, lngInputId, mapInstance, markerInstance) {
-      if (!routesWithCoordinates || !routeName) {
-        return;
-      }
-      
-      const coordinates = routesWithCoordinates[routeName];
-      
-      if (!coordinates || coordinates.lat === undefined || coordinates.lng === undefined) {
-        if (typeof showToast === 'function') {
-          showToast('warning', `Coordinates not found for route: ${routeName}`);
-        }
-        return;
-      }
-      
-      const latInput = document.getElementById(latInputId);
-      const lngInput = document.getElementById(lngInputId);
-      
-      if (!latInput || !lngInput) {
-        return;
-      }
-      
-      const lat = parseFloat(coordinates.lat);
-      const lng = parseFloat(coordinates.lng);
-      
-      // Validate coordinates
-      if (isNaN(lat) || isNaN(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-        console.error(`Invalid coordinates for route: ${routeName}`, coordinates);
-        if (typeof showToast === 'function') {
-          showToast('error', `Invalid coordinates for route: ${routeName}`);
-        }
-        return;
-      }
-      
-      // Update input fields
-      latInput.value = lat.toFixed(8);
-      lngInput.value = lng.toFixed(8);
-      
-      // Trigger input event to update map if listeners exist
-      latInput.dispatchEvent(new Event('change', { bubbles: true }));
-      lngInput.dispatchEvent(new Event('change', { bubbles: true }));
-      
-      // Update map if it exists
-      if (mapInstance && typeof mapInstance.setView === 'function') {
-        mapInstance.setView([lat, lng], 15);
-        
-        // Update or create marker
-        if (markerInstance) {
-          markerInstance.setLatLng([lat, lng]);
-          markerInstance.setPopupContent(`Zone Location: ${routeName}<br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`).openPopup();
-        } else if (mapInstance && typeof L !== 'undefined' && L.marker) {
-          // Create marker if it doesn't exist
-          const newMarker = L.marker([lat, lng], {
-            icon: L.icon({
-              iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
-              iconSize: [25, 41],
-              iconAnchor: [12, 41],
-            })
-          }).addTo(mapInstance).bindPopup(`Zone Location: ${routeName}<br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`).openPopup();
-          
-          // Store marker reference if we're in add modal
-          if (latInputId === 'addTruckLatitude') {
-            addTruckMapMarker = newMarker;
-          } else if (latInputId === 'editTruckLatitude') {
-            editTruckMapMarker = newMarker;
-          }
-        }
-      }
-    }
-    
-    // Function to attach route change listeners
     function attachRouteChangeListeners() {
-      // Listen for route selection in Add Truck modal
       const addTruckRouteSelect = document.getElementById('addTruckRoute');
-      if (addTruckRouteSelect) {
-        // Remove existing listener by cloning the element
-        const newAddSelect = addTruckRouteSelect.cloneNode(true);
-        addTruckRouteSelect.parentNode.replaceChild(newAddSelect, addTruckRouteSelect);
-        
-        newAddSelect.addEventListener('change', function() {
-          const selectedRoute = this.value;
-          if (selectedRoute && routesWithCoordinates && routesWithCoordinates[selectedRoute]) {
-            updateCoordinatesFromRoute(selectedRoute, 'addTruckLatitude', 'addTruckLongitude', addTruckMap, addTruckMapMarker);
-          }
-        });
-      }
-      
-      // Listen for route selection in Edit Truck modal
-      const editTruckRouteSelect = document.getElementById('editTruckRoute');
-      if (editTruckRouteSelect) {
-        // Remove existing listener by cloning the element
-        const newEditSelect = editTruckRouteSelect.cloneNode(true);
-        editTruckRouteSelect.parentNode.replaceChild(newEditSelect, editTruckRouteSelect);
-        
-        newEditSelect.addEventListener('change', function() {
-          const selectedRoute = this.value;
-          if (selectedRoute && routesWithCoordinates && routesWithCoordinates[selectedRoute]) {
-            updateCoordinatesFromRoute(selectedRoute, 'editTruckLatitude', 'editTruckLongitude', editTruckMap, editTruckMapMarker);
-          }
-        });
-      }
+      if (!addTruckRouteSelect || addTruckRouteSelect.dataset.serviceZoneLocationBound) return;
+
+      addTruckRouteSelect.dataset.serviceZoneLocationBound = 'true';
+      addTruckRouteSelect.addEventListener('change', function() {
+        const coordinates = serviceZoneCoordinates[this.value];
+        if (!coordinates) return;
+
+        const lat = Number(coordinates.lat);
+        const lng = Number(coordinates.lng);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+        pendingServiceZoneLocation = { lat, lng };
+        applyServiceZoneLocationToTruckMap();
+      });
     }
     
     // Listen for route selection and manual coordinate input
@@ -1270,23 +1185,6 @@
       document.getElementById('editTruckLatitude').value = truck.latitude || '';
       document.getElementById('editTruckLongitude').value = truck.longitude || '';
       
-      // Re-attach route change listener after modal is shown
-      setTimeout(function() {
-        attachRouteChangeListeners();
-        
-        // If route changed or coordinates are empty, update from route
-        const editTruckRouteSelect = document.getElementById('editTruckRoute');
-        const editLatInput = document.getElementById('editTruckLatitude');
-        const editLngInput = document.getElementById('editTruckLongitude');
-        
-        if (editTruckRouteSelect && editTruckRouteSelect.value) {
-          // Only auto-update if coordinates are empty
-          if ((!editLatInput || !editLatInput.value) && (!editLngInput || !editLngInput.value)) {
-            updateCoordinatesFromRoute(editTruckRouteSelect.value, 'editTruckLatitude', 'editTruckLongitude', editTruckMap, editTruckMapMarker);
-          }
-        }
-      }, 100);
-      
       openModal('editTruckModal');
     }
 
@@ -1343,4 +1241,3 @@
     }
   </script>
 @endpush
-

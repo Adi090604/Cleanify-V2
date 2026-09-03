@@ -1,6 +1,46 @@
 @extends('layouts.guest')
 
+@section('landing-page', 'true')
+
 @section('content')
+  <header class="max-w-6xl mx-auto flex items-center justify-between">
+    <a href="{{ url('/') }}" class="inline-flex items-center gap-2">
+      <img src="/assets/icons/cleanifyicon.png" alt="Cleanify Logo" class="w-9 h-9 object-contain">
+      <span class="font-semibold tracking-tight text-gray-800">Cleanify</span>
+    </a>
+    <div class="flex items-center gap-3 text-sm">
+      <a href="{{ route('login') }}" class="text-gray-600 hover:text-green-700 transition-colors">Sign in</a>
+      <a href="{{ route('register') }}" class="rounded-lg bg-green-700 px-3.5 py-2 font-medium text-white hover:bg-green-800 transition-colors">Create account</a>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto min-h-[calc(100vh-84px)] grid items-center py-12 lg:grid-cols-[1.1fr_.9fr] gap-10">
+    <div class="max-w-xl">
+      <div class="inline-flex items-center gap-2 rounded-full border border-green-100 bg-white px-3 py-1.5 text-xs font-medium text-green-800">
+        <i class="fas fa-leaf"></i> Smarter community waste management
+      </div>
+      <h1 class="mt-5 text-4xl sm:text-5xl font-bold tracking-tight text-gray-900 leading-[1.08]">A cleaner community starts with clear action.</h1>
+      <p class="mt-5 max-w-lg text-base leading-7 text-gray-600">Cleanify helps residents report concerns, follow collection schedules, and stay connected with their community.</p>
+      <div class="mt-7">
+        <a href="{{ route('login') }}" class="rounded-lg bg-green-700 px-4 py-2.5 text-sm font-medium text-white shadow-sm hover:bg-green-800 transition-colors">Get started</a>
+      </div>
+    </div>
+
+    <div class="justify-self-center w-full max-w-sm rounded-2xl border border-green-100 bg-white p-5 shadow-[0_12px_30px_rgba(32,75,42,0.08)]">
+      <div class="flex items-center justify-between border-b border-gray-100 pb-4">
+        <div class="flex items-center gap-3"><span class="flex h-9 w-9 items-center justify-center rounded-lg bg-green-50 text-green-700"><i class="fas fa-recycle"></i></span><div><p class="text-sm font-semibold">Community overview</p><p class="text-xs text-gray-500">Cleanify at a glance</p></div></div>
+        <span class="h-2.5 w-2.5 rounded-full bg-green-500"></span>
+      </div>
+      <div class="grid grid-cols-3 gap-3 py-5 text-center">
+        <div class="rounded-lg bg-[#f7f9f7] p-3"><i class="fas fa-calendar-check text-green-700"></i><p class="mt-2 text-xs font-medium text-gray-700">Schedules</p></div>
+        <div class="rounded-lg bg-[#f7f9f7] p-3"><i class="fas fa-bullhorn text-green-700"></i><p class="mt-2 text-xs font-medium text-gray-700">Reports</p></div>
+        <div class="rounded-lg bg-[#f7f9f7] p-3"><i class="fas fa-truck text-green-700"></i><p class="mt-2 text-xs font-medium text-gray-700">Tracking</p></div>
+      </div>
+      <div class="rounded-lg border border-green-100 bg-green-50 px-3 py-2.5 text-xs text-green-900"><i class="fas fa-check-circle mr-1.5 text-green-700"></i> One place for cleaner, more coordinated communities.</div>
+    </div>
+  </main>
+
+  <div class="hidden">
   <div class="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
     <!-- Left Side - Text Content -->
     <div class="text-center md:text-left">
@@ -54,5 +94,5 @@
       </div>
     </div>
   </div>
+  </div>
 @endsection
-

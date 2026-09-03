@@ -1,9 +1,9 @@
 @props(['active' => 'home'])
 
-<div class="hidden lg:block w-64 bg-green-600 text-white flex flex-col justify-between fixed h-full">
+<div class="cleanify-sidebar hidden lg:block w-64 bg-green-600 text-white flex flex-col justify-between fixed h-full">
   <div>
     <!-- Logo Section -->
-    <div class="text-center py-6 border-b border-green-500">
+    <div class="text-center py-5 border-b border-green-500">
       <img src="/assets/icons/cleanifyicon.png" alt="Cleanify Logo" class="w-16 mx-auto mb-2">
       <h5 class="font-bold text-lg">Cleanify</h5>
     </div>
@@ -48,7 +48,7 @@
   </div>
 
   <!-- Footer -->
-  <div class="p-4 border-t border-green-500">
+  <div class="p-3 border-t border-green-500">
     <button onclick="openModal('logoutModal')" class="w-full flex items-center justify-center px-4 py-3 rounded-lg text-white bg-red-600 hover:bg-red-700 transition-colors duration-300 mb-3">
       <i class="fas fa-sign-out-alt mr-2"></i>
       <span>Logout</span>

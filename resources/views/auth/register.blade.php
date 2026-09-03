@@ -1,12 +1,15 @@
 @extends('layouts.guest')
 
+@section('auth-page', 'true')
+
 @section('content')
-  <div class="bg-black bg-opacity-30 p-10 rounded-xl w-full max-w-md mx-auto text-left text-white">
+  <div class="auth-card bg-black bg-opacity-30 p-10 rounded-xl w-full max-w-md mx-auto text-left text-white">
+    <img src="/assets/icons/cleanifyicon.png" alt="Cleanify Logo" class="auth-logo">
     <div class="text-3xl font-extrabold text-green-500 text-center tracking-wide mb-1">CLEANIFY</div>
     <p class="text-gray-300 italic text-center text-sm mb-6">One Click. One Report. One Clean Community.</p>
 
 
-    <form method="POST" action="{{ route('register') }}" class="space-y-6">
+    <form method="POST" action="{{ route('register') }}" class="auth-form space-y-6">
       @csrf
       <div>
         <label for="name" class="block text-white mb-2">Full Name</label>

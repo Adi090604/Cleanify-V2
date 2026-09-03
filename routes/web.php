@@ -91,6 +91,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('/tracker/data', [App\Http\Controllers\Admin\TrackerController::class, 'getData'])->name('tracker.data');
     Route::get('/tracker/{id}/route-history', [App\Http\Controllers\Admin\TrackerController::class, 'getRouteHistory'])->name('tracker.route-history');
 
+    // Service Zone Management
+    Route::get('/service-zones', [App\Http\Controllers\Admin\ServiceZoneController::class, 'index'])->name('service-zones');
+    Route::post('/service-zones', [App\Http\Controllers\Admin\ServiceZoneController::class, 'store'])->name('service-zones.store');
+    Route::put('/service-zones/{id}', [App\Http\Controllers\Admin\ServiceZoneController::class, 'update'])->name('service-zones.update');
+    Route::delete('/service-zones/{id}', [App\Http\Controllers\Admin\ServiceZoneController::class, 'destroy'])->name('service-zones.destroy');
+
     // Settings Management
     Route::get('/settings', [App\Http\Controllers\Admin\SettingsController::class, 'index'])->name('settings');
     Route::post('/settings/profile', [App\Http\Controllers\Admin\SettingsController::class, 'updateProfile'])->name('settings.profile');

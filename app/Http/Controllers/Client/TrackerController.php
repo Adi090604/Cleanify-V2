@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Models\Truck;
+use App\Models\ServiceZone;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -17,7 +18,15 @@ class TrackerController extends Controller
     {
         $trucks = Truck::orderBy('code')->get();
         $activeTrucks = $trucks->whereNotNull('latitude')->whereNotNull('longitude');
-        $zones = config('routes.surigao_city', []);
+        // Highlighting is sourced exclusively from active Service Zone database records.
+        $zones = ServiceZone::query()->where('status', 'active')->whereNotNull('latitude')->whereNotNull('longitude')->get()
+            ->mapWithKeys(fn (ServiceZone $zone) => [$zone->display_name => [
+                'name' => $zone->name,
+                'barangay' => $zone->barangay,
+                'status' => $zone->status,
+                'lat' => (float) $zone->latitude,
+                'lng' => (float) $zone->longitude,
+            ]])->all();
 
         $centerLat = $activeTrucks->avg('latitude') ?? 9.7870;
         $centerLng = $activeTrucks->avg('longitude') ?? 125.4928;
@@ -80,4 +89,3 @@ class TrackerController extends Controller
         ]);
     }
 }
-

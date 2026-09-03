@@ -53,8 +53,20 @@
             {{ strtoupper(substr(auth()->user()->name ?? 'C', 0, 1)) }}
           </div>
           <div class="flex-1 space-y-3">
-            <input type="text" name="location" value="{{ old('location') }}" class="w-full border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 @error('location') border-red-500 @enderror" placeholder="Where is this happening?" required>
-            @error('location') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
+            <div>
+              <p class="text-sm font-medium text-gray-700 mb-2">Report location</p>
+              <div id="reportLocationMap" class="h-56 w-full rounded-lg border border-gray-200"></div>
+              <p class="text-xs text-gray-500 mt-2">Click the map to select where the issue is located. You can drag the marker to refine it.</p>
+              <input type="hidden" name="latitude" id="reportLatitude" value="{{ old('latitude') }}">
+              <input type="hidden" name="longitude" id="reportLongitude" value="{{ old('longitude') }}">
+              @error('latitude') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
+              @error('longitude') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2" for="reportLocationText">Location / Barangay <span class="text-gray-400 font-normal">(optional)</span></label>
+              <input id="reportLocationText" type="text" name="location" value="{{ old('location') }}" class="w-full border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 @error('location') border-red-500 @enderror" placeholder="e.g. Barangay Luna">
+              @error('location') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
+            </div>
             <textarea name="description" rows="3" class="w-full border border-gray-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 resize-none @error('description') border-red-500 @enderror" placeholder="Describe the issue..." required>{{ old('description') }}</textarea>
             @error('description') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
             <label class="inline-flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
@@ -223,6 +235,35 @@
     let detailMap;
     let detailMarker;
     let activeReportId = null;
+    let reportLocationMap;
+    let reportLocationMarker;
+
+    function initializeReportLocationMap() {
+      if (reportLocationMap || typeof L === 'undefined') return;
+      const latitudeInput = document.getElementById('reportLatitude');
+      const longitudeInput = document.getElementById('reportLongitude');
+      reportLocationMap = L.map('reportLocationMap').setView([9.7870, 125.4928], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors', maxZoom: 19,
+      }).addTo(reportLocationMap);
+      const setLocation = (lat, lng, center = true) => {
+        latitudeInput.value = Number(lat).toFixed(8);
+        longitudeInput.value = Number(lng).toFixed(8);
+        if (reportLocationMarker) reportLocationMarker.setLatLng([lat, lng]);
+        else {
+          reportLocationMarker = L.marker([lat, lng], { draggable: true }).addTo(reportLocationMap);
+          reportLocationMarker.on('dragend', event => {
+            const point = event.target.getLatLng();
+            setLocation(point.lat, point.lng, false);
+          });
+        }
+        if (center) reportLocationMap.setView([lat, lng], 15);
+      };
+      reportLocationMap.on('click', event => setLocation(event.latlng.lat, event.latlng.lng, false));
+      if (latitudeInput.value && longitudeInput.value) setLocation(latitudeInput.value, longitudeInput.value);
+    }
+
+    initializeReportLocationMap();
 
     function openReportUserModal(userId, userName) {
       document.getElementById('reportedUserId').value = userId;

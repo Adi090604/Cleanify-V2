@@ -7,6 +7,7 @@ use App\Http\Requests\Admin\StoreTruckRequest;
 use App\Http\Requests\Admin\UpdateTruckRequest;
 use App\Models\Truck;
 use App\Models\TruckLocation;
+use App\Models\ServiceZone;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,41 +22,21 @@ class TrackerController extends Controller
     {
         $trucks = Truck::orderBy('code', 'asc')->get();
         
-        // Get Surigao City routes from config (this is the source of truth)
-        $surigaoRoutesConfig = config('routes.surigao_city', []);
-        
-        // Extract route names (keys) from config
-        $surigaoRoutes = array_keys($surigaoRoutesConfig);
-        
-        // Get unique routes from existing trucks that match Surigao City format
-        $existingRoutes = Truck::distinct()->pluck('route')->filter()->toArray();
-        
-        // Filter to only include routes that are in the Surigao City config
-        // This removes old routes like "Lakandula", "Purok 3", etc.
-        $validRoutes = array_filter($existingRoutes, function($route) use ($surigaoRoutes) {
-            return in_array($route, $surigaoRoutes);
-        });
-        
-        // Merge config routes with valid existing routes, ensuring all config routes are included
-        $allRoutes = array_unique(array_merge($surigaoRoutes, $validRoutes));
+        // Service-zone assignments are sourced exclusively from active database records.
+        $serviceZones = ServiceZone::where('status', 'active')->orderBy('name')->get();
+        $managedRoutes = $serviceZones->map->display_name->all();
+        $allRoutes = array_unique($managedRoutes);
         sort($allRoutes);
-        
-        // Prepare routes with coordinates for JavaScript
-        $routesWithCoordinates = [];
-        foreach ($allRoutes as $route) {
-            if (isset($surigaoRoutesConfig[$route])) {
-                $routesWithCoordinates[$route] = $surigaoRoutesConfig[$route];
-            } else {
-                // For routes not in config, use default Surigao City center
-                $routesWithCoordinates[$route] = ['lat' => 9.7870, 'lng' => 125.4928];
-            }
-        }
+        $serviceZoneCoordinates = $serviceZones->filter->hasCoordinates()->mapWithKeys(fn (ServiceZone $zone) => [$zone->display_name => [
+            'lat' => (float) $zone->latitude,
+            'lng' => (float) $zone->longitude,
+        ]])->all();
 
         return view('admin.tracker', [
             'activePage' => 'tracker',
             'trucks' => $trucks,
             'routes' => $allRoutes,
-            'routesWithCoordinates' => $routesWithCoordinates,
+            'serviceZoneCoordinates' => $serviceZoneCoordinates,
         ]);
     }
 

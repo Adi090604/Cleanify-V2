@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Client;
 use App\Http\Controllers\Controller;
 use App\Models\Report;
 use App\Models\Schedule;
+use App\Models\ServiceZone;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -25,11 +26,9 @@ class SettingsController extends Controller
         $user = Auth::user();
         
         // Get available service areas
-        $availableAreas = Schedule::where('status', 'active')
-            ->orderBy('area')
-            ->pluck('area')
-            ->unique()
-            ->values();
+        $availableAreas = ServiceZone::where('status', 'active')->orderBy('name')->get()->map->display_name
+            ->merge(Schedule::where('status', 'active')->orderBy('area')->pluck('area'))
+            ->unique()->values();
         
         // Get user statistics for deletion confirmation
         $userStats = [
@@ -372,4 +371,3 @@ class SettingsController extends Controller
         ]);
     }
 }
-

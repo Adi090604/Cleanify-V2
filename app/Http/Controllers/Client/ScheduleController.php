@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Models\Schedule;
+use App\Models\ServiceZone;
 use App\Models\User;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
@@ -23,7 +24,8 @@ class ScheduleController extends Controller
             ->get();
 
         $user = $this->currentUser();
-        $availableAreas = $schedules->pluck('area')->unique()->values();
+        $availableAreas = ServiceZone::where('status', 'active')->orderBy('name')->get()->map->display_name
+            ->merge($schedules->pluck('area'))->unique()->values();
         $userArea = $user->service_area ?: ($availableAreas->first() ?? null);
 
         // Generate zone colors

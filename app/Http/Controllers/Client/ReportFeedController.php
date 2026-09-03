@@ -17,7 +17,9 @@ class ReportFeedController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'location' => ['required', 'string', 'max:255'],
+            'location' => ['nullable', 'string', 'max:255'],
+            'latitude' => ['nullable', 'numeric', 'between:-90,90', 'required_with:longitude'],
+            'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
             'description' => ['required', 'string', 'max:1000'],
             'image' => ['nullable', 'image', 'mimes:jpeg,jpg,png,gif,webp', 'max:4096'],
         ]);
@@ -34,14 +36,17 @@ class ReportFeedController extends Controller
                     ->withInput();
             }
 
-            // Generate unique filename
-            $filename = uniqid() . '_' . time() . '.' . $file->getClientOriginalExtension();
-            $imagePath = $file->storeAs('reports', $filename, 'public');
+            $imagePath = $file->store('reports', 'public');
+            if (!$imagePath) {
+                return back()->withErrors(['image' => 'The image could not be saved. Please try another file.'])->withInput();
+            }
         }
 
         Report::create([
             'user_id' => Auth::id(),
-            'location' => $validated['location'],
+            'location' => $validated['location'] ?? null,
+            'latitude' => $validated['latitude'] ?? null,
+            'longitude' => $validated['longitude'] ?? null,
             'description' => $validated['description'],
             'image_path' => $imagePath,
             'status' => 'pending',
@@ -154,4 +159,3 @@ class ReportFeedController extends Controller
         ]);
     }
 }
-
