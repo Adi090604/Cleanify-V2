@@ -26,4 +26,5 @@ class ServiceZone extends Model
 
         return "{$this->name} - {$this->barangay}";
     }
+
 }

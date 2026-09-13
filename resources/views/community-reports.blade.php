@@ -69,9 +69,9 @@
             </div>
             <textarea name="description" rows="3" class="w-full border border-gray-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 resize-none @error('description') border-red-500 @enderror" placeholder="Describe the issue..." required>{{ old('description') }}</textarea>
             @error('description') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
-            <label class="inline-flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
-              <i class="fas fa-image text-green-600"></i>
-              <span id="reportImageLabel">Attach photo (optional)</span>
+            <label class="inline-flex items-center px-4 py-2 border border-green-600 text-green-600 rounded-lg hover:bg-green-600 hover:text-white transition-colors duration-300 cursor-pointer text-sm">
+              <i class="fas fa-image mr-2"></i>
+              <span id="reportImageLabel">Add Photo</span>
               <input type="file" name="image" accept="image/*" class="hidden" id="reportImageInput">
             </label>
             @error('image') <p class="text-sm text-red-600">{{ $message }}</p> @enderror

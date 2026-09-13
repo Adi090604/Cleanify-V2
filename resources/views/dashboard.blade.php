@@ -23,40 +23,6 @@
     </div>
   </div>
 
-  <!-- Create Post Box -->
-  <div class="dashboard-card bg-white rounded-xl shadow-sm p-6 mb-6">
-    <form method="POST" action="{{ route('reports.store') }}" enctype="multipart/form-data" class="space-y-4" id="dashboardReportForm">
-      @csrf
-      <div class="flex items-start">
-        <div class="w-12 h-12 rounded-full {{ $user->getAvatarBgClasses() }} flex items-center justify-center text-white font-bold mr-4">
-          {{ $user->getAvatarInitial() }}
-        </div>
-        <div class="flex-1 space-y-3">
-          <input type="text" name="location" value="{{ old('location') }}" class="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 @error('location') border-red-500 @enderror" placeholder="Where did this happen?" required>
-          @error('location')
-            <p class="text-sm text-red-600">{{ $message }}</p>
-          @enderror
-          <textarea name="description" rows="3" class="w-full border border-gray-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 resize-none @error('description') border-red-500 @enderror" placeholder="Share what's happening..." required>{{ old('description') }}</textarea>
-          @error('description')
-            <p class="text-sm text-red-600">{{ $message }}</p>
-          @enderror
-        </div>
-      </div>
-      <div class="flex flex-wrap gap-3 items-center justify-between">
-        <label class="px-4 py-2 border border-green-600 text-green-600 rounded-lg hover:bg-green-600 hover:text-white transition-colors duration-300 cursor-pointer text-sm">
-          <i class="fas fa-image mr-2"></i>Add Photo
-          <input type="file" name="image" accept="image/*" class="hidden">
-        </label>
-        @error('image')
-          <p class="text-sm text-red-600 w-full text-right">{{ $message }}</p>
-        @enderror
-        <button type="submit" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-300">
-          Post Update
-        </button>
-      </div>
-    </form>
-  </div>
-
   <!-- Feeds -->
   <div class="space-y-4">
     @forelse($recentReports as $report)

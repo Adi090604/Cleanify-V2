@@ -111,11 +111,10 @@
             <div>
               <label for="sms_notifications" class="text-gray-700 cursor-pointer">SMS Notifications</label>
               <p class="text-sm text-gray-500">Receive notifications via SMS</p>
-              <span class="inline-block mt-1 text-xs px-2 py-0.5 bg-yellow-100 text-yellow-800 rounded">Coming Soon</span>
             </div>
             <div class="relative inline-block w-12 h-6">
-              <input type="checkbox" name="sms_notifications" id="sms_notifications" value="1" class="sr-only peer" {{ $user->sms_notifications ? 'checked' : '' }} disabled>
-              <div class="w-12 h-6 bg-gray-300 peer-checked:bg-green-600 rounded-full transition-colors duration-300 opacity-50"></div>
+              <input type="checkbox" name="sms_notifications" id="sms_notifications" value="1" class="sr-only peer" {{ $user->sms_notifications ? 'checked' : '' }}>
+              <div class="w-12 h-6 bg-gray-300 peer-checked:bg-green-600 rounded-full transition-colors duration-300"></div>
               <div class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 peer-checked:translate-x-6"></div>
             </div>
           </div>

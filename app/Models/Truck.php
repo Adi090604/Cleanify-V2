@@ -78,4 +78,5 @@ class Truck extends Model
             ->where('recorded_at', '>=', now()->subDay())
             ->orderBy('recorded_at', 'asc');
     }
+
 }
