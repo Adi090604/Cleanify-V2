@@ -4,6 +4,8 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Models\Report;
+use App\Http\Requests\StoreReportRequest;
+use App\Services\ReportCreator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -14,44 +16,9 @@ class ReportFeedController extends Controller
     /**
      * Store a newly created report/update from the feed.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(StoreReportRequest $request, ReportCreator $creator): RedirectResponse
     {
-        $validated = $request->validate([
-            'location' => ['nullable', 'string', 'max:255'],
-            'latitude' => ['nullable', 'numeric', 'between:-90,90', 'required_with:longitude'],
-            'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
-            'description' => ['required', 'string', 'max:1000'],
-            'image' => ['nullable', 'image', 'mimes:jpeg,jpg,png,gif,webp', 'max:4096'],
-        ]);
-
-        $imagePath = null;
-        if ($request->hasFile('image')) {
-            $file = $request->file('image');
-            
-            // Additional MIME type validation
-            $allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-            if (!in_array($file->getMimeType(), $allowedMimes)) {
-                return redirect()->back()
-                    ->withErrors(['image' => 'Invalid image type. Only JPEG, PNG, GIF, and WebP are allowed.'])
-                    ->withInput();
-            }
-
-            $imagePath = $file->store('reports', 'public');
-            if (!$imagePath) {
-                return back()->withErrors(['image' => 'The image could not be saved. Please try another file.'])->withInput();
-            }
-        }
-
-        Report::create([
-            'user_id' => Auth::id(),
-            'location' => $validated['location'] ?? null,
-            'latitude' => $validated['latitude'] ?? null,
-            'longitude' => $validated['longitude'] ?? null,
-            'description' => $validated['description'],
-            'image_path' => $imagePath,
-            'status' => 'pending',
-            'priority' => 'medium', // Default priority
-        ]);
+        $creator->create($request->user(), $request->validated(), $request->file('image'));
 
         return redirect()->route('dashboard')
             ->with('success', 'Your update has been shared! Our team will take a look soon.');

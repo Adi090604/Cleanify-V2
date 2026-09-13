@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\User;
+use App\Http\Resources\Api\V1\UserResource;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -36,7 +37,7 @@ class AuthController extends Controller
         return response()->json([
             'token' => $token,
             'token_type' => 'Bearer',
-            'user' => $this->userPayload($user),
+            'user' => $this->userPayload($user, $request),
         ]);
     }
 
@@ -52,17 +53,12 @@ class AuthController extends Controller
     public function me(Request $request): JsonResponse
     {
         return response()->json([
-            'user' => $this->userPayload($request->user()),
+            'user' => $this->userPayload($request->user(), $request),
         ]);
     }
 
-    private function userPayload(User $user): array
+    private function userPayload(User $user, Request $request): array
     {
-        return [
-            'id' => $user->id,
-            'name' => $user->name,
-            'email' => $user->email,
-            'is_admin' => $user->is_admin,
-        ];
+        return UserResource::make($user)->resolve($request);
     }
 }

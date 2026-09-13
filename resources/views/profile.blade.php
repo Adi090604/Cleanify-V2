@@ -5,9 +5,13 @@
 @section('content')
   <!-- Profile Card -->
   <div class="bg-white rounded-xl shadow-sm p-6 mb-6 flex flex-col md:flex-row items-center md:items-start gap-6">
-    <div class="w-28 h-28 rounded-full {{ $user->getAvatarBgClasses() }} flex items-center justify-center text-white font-bold text-4xl">
-      {{ $user->getAvatarInitial() }}
-    </div>
+    @if($user->profile_photo_url)
+      <img src="{{ $user->profile_photo_url }}" alt="{{ $user->name }}'s profile photo" class="w-28 h-28 rounded-full object-cover">
+    @else
+      <div class="w-28 h-28 rounded-full {{ $user->getAvatarBgClasses() }} flex items-center justify-center text-white font-bold text-4xl">
+        {{ $user->getAvatarInitial() }}
+      </div>
+    @endif
     <div class="flex-1 text-center md:text-left">
       <h5 class="text-green-600 font-bold text-xl mb-2">{{ $user->name }}</h5>
       <p class="text-gray-600 mb-1">
@@ -54,9 +58,13 @@
 
       <!-- Post Header -->
       <div class="flex items-center mb-4">
-        <div class="w-12 h-12 rounded-full {{ $user->getAvatarBgClasses() }} flex items-center justify-center text-white font-bold mr-4">
-          {{ $user->getAvatarInitial() }}
-        </div>
+        @if($user->profile_photo_url)
+          <img src="{{ $user->profile_photo_url }}" alt="{{ $user->name }}'s profile photo" class="w-12 h-12 rounded-full object-cover mr-4">
+        @else
+          <div class="w-12 h-12 rounded-full {{ $user->getAvatarBgClasses() }} flex items-center justify-center text-white font-bold mr-4">
+            {{ $user->getAvatarInitial() }}
+          </div>
+        @endif
         <div class="flex-1">
           <h6 class="font-semibold text-green-600 mb-0">{{ $user->name }}</h6>
           <small class="text-gray-500">{{ $report->created_at?->diffForHumans() ?? 'Recently' }}</small>
@@ -105,7 +113,7 @@
 @push('modals')
   <!-- Edit Profile Modal -->
   <x-modal id="editProfileModal" title="Edit Profile" icon="fas fa-edit" color="green">
-    <form id="editProfileForm" method="POST" action="{{ route('profile.update') }}">
+    <form id="editProfileForm" method="POST" action="{{ route('profile.update') }}" enctype="multipart/form-data">
       @csrf
       @method('PATCH')
       <div class="mb-4">
@@ -128,6 +136,18 @@
         <input type="text" name="address" id="editProfileAddress" value="{{ $user->address ?? '' }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Barangay, City">
         <div id="error-address" class="text-red-500 text-sm mt-1 hidden"></div>
       </div>
+      <div class="mb-4">
+        <label class="block text-gray-700 mb-2">Profile Photo</label>
+        <input type="file" name="profile_photo" id="editProfilePhoto" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
+        <p class="mt-1 text-sm text-gray-500">JPG, PNG, or WebP up to 4 MB.</p>
+        <div id="error-profile_photo" class="text-red-500 text-sm mt-1 hidden"></div>
+      </div>
+      @if($user->profile_photo_url)
+        <label class="flex items-center gap-2 text-sm text-gray-700">
+          <input type="checkbox" name="remove_profile_photo" value="1" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
+          Remove current profile photo
+        </label>
+      @endif
     </form>
     
     @slot('footer')
@@ -545,26 +565,23 @@
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || 
                      form.querySelector('input[name="_token"]')?.value;
     
-    // Prepare JSON data
-    const jsonData = {
-      name: nameInput.value.trim(),
-      email: emailInput.value.trim(),
-      phone: phoneInput && phoneInput.value ? phoneInput.value.trim() : null,
-      address: addressInput && addressInput.value ? addressInput.value.trim() : null,
-    };
+    const formData = new FormData(form);
+    formData.set('name', nameInput.value.trim());
+    formData.set('email', emailInput.value.trim());
+    formData.set('phone', phoneInput && phoneInput.value ? phoneInput.value.trim() : '');
+    formData.set('address', addressInput && addressInput.value ? addressInput.value.trim() : '');
     
     // Debug: Log form data (remove in production)
-    console.log('Submitting profile form with data:', jsonData);
+    console.log('Submitting profile form');
 
     fetch(form.action, {
-      method: 'PATCH',
+      method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
         'X-CSRF-TOKEN': csrfToken || '',
         'Accept': 'application/json',
         'X-Requested-With': 'XMLHttpRequest',
       },
-      body: JSON.stringify(jsonData),
+      body: formData,
       redirect: 'manual', // Prevent automatic redirect following
     })
     .then(async response => {

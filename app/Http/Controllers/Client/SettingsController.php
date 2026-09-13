@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Report;
 use App\Models\Schedule;
 use App\Models\ServiceZone;
+use App\Services\ProfilePhotoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -201,7 +202,7 @@ class SettingsController extends Controller
     /**
      * Delete user account with all associated data.
      */
-    public function deleteAccount(Request $request)
+    public function deleteAccount(Request $request, ProfilePhotoService $profilePhotos)
     {
         $validated = $request->validate([
             'password' => ['required', 'current_password'],
@@ -209,6 +210,7 @@ class SettingsController extends Controller
         ]);
 
         $user = Auth::user();
+        $profilePhotoPath = $user->profile_photo_path;
         
         // Delete all user's reports and associated images
         $reports = Report::where('user_id', $user->id)->get();
@@ -243,6 +245,7 @@ class SettingsController extends Controller
         
         // Delete the user account
         $user->delete();
+        $profilePhotos->delete($profilePhotoPath);
         
         if ($request->expectsJson()) {
             return response()->json([

@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Client;
 
 use App\Http\Controllers\Controller;
 use App\Models\Report;
+use App\Services\ProfilePhotoService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -40,7 +41,7 @@ class ProfileController extends Controller
     /**
      * Update the user's profile information.
      */
-    public function update(Request $request): JsonResponse|RedirectResponse
+    public function update(Request $request, ProfilePhotoService $profilePhotos): JsonResponse|RedirectResponse
     {
         // Check if request wants JSON (AJAX request) - check early
         $wantsJson = $request->expectsJson() 
@@ -56,14 +57,28 @@ class ProfileController extends Controller
                 'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . Auth::id()],
                 'phone' => ['nullable', 'string', 'max:20'],
                 'address' => ['nullable', 'string', 'max:255'],
+                'profile_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+                'remove_profile_photo' => ['nullable', 'boolean'],
             ]);
 
             $user = Auth::user();
+            $oldPhotoPath = $user->profile_photo_path;
             $user->name = $validated['name'];
             $user->email = $validated['email'];
             $user->phone = $validated['phone'] ?? null;
             $user->address = $validated['address'] ?? null;
+
+            if ($request->hasFile('profile_photo')) {
+                $user->profile_photo_path = $profilePhotos->store($request->file('profile_photo'));
+            } elseif ($request->boolean('remove_profile_photo')) {
+                $user->profile_photo_path = null;
+            }
+
             $user->save();
+
+            if ($oldPhotoPath !== $user->profile_photo_path) {
+                $profilePhotos->delete($oldPhotoPath);
+            }
 
             if ($wantsJson) {
                 return response()->json([
@@ -74,6 +89,7 @@ class ProfileController extends Controller
                         'email' => $user->email,
                         'phone' => $user->phone,
                         'address' => $user->address,
+                        'profile_photo_url' => $user->profile_photo_url,
                     ],
                 ]);
             }
@@ -180,4 +196,3 @@ class ProfileController extends Controller
         ]);
     }
 }
-

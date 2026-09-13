@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Services\ProfilePhotoService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -25,21 +26,37 @@ class SettingsController extends Controller
     /**
      * Update the admin's profile information.
      */
-    public function updateProfile(Request $request): RedirectResponse
+    public function updateProfile(Request $request, ProfilePhotoService $profilePhotos): RedirectResponse
     {
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . auth()->id()],
+            'profile_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
+            'remove_profile_photo' => ['nullable', 'boolean'],
         ]);
 
         $user = auth()->user();
-        $user->fill($validated);
+        $oldPhotoPath = $user->profile_photo_path;
+        $user->fill([
+            'name' => $validated['name'],
+            'email' => $validated['email'],
+        ]);
+
+        if ($request->hasFile('profile_photo')) {
+            $user->profile_photo_path = $profilePhotos->store($request->file('profile_photo'));
+        } elseif ($request->boolean('remove_profile_photo')) {
+            $user->profile_photo_path = null;
+        }
 
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;
         }
 
         $user->save();
+
+        if ($oldPhotoPath !== $user->profile_photo_path) {
+            $profilePhotos->delete($oldPhotoPath);
+        }
 
         return redirect()->route('admin.settings')
             ->with('success', 'Profile updated successfully!');
@@ -88,4 +105,3 @@ class SettingsController extends Controller
     }
 
 }
-

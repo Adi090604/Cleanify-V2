@@ -27,8 +27,31 @@
       <i class="fas fa-user-circle text-green-600 text-xl mr-3"></i>
       <h3 class="text-xl font-semibold text-gray-800">Profile Settings</h3>
     </div>
-    <form method="POST" action="{{ route('admin.settings.profile') }}" class="space-y-4">
+    <form method="POST" action="{{ route('admin.settings.profile') }}" class="space-y-4" enctype="multipart/form-data">
       @csrf
+      <div class="flex items-center gap-4">
+        @if($user->profile_photo_url)
+          <img src="{{ $user->profile_photo_url }}" alt="{{ $user->name }}'s profile photo" class="w-16 h-16 rounded-full object-cover">
+        @else
+          <div class="w-16 h-16 rounded-full {{ $user->getAvatarBgClasses() }} flex items-center justify-center text-white text-xl font-bold">
+            {{ $user->getAvatarInitial() }}
+          </div>
+        @endif
+        <div class="flex-1">
+          <label class="block text-gray-700 mb-2 font-medium">Profile Photo</label>
+          <input type="file" name="profile_photo" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent @error('profile_photo') border-red-500 @enderror">
+          <p class="mt-1 text-sm text-gray-500">JPG, PNG, or WebP up to 4 MB.</p>
+          @error('profile_photo')
+            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+          @enderror
+          @if($user->profile_photo_url)
+            <label class="mt-2 inline-flex items-center gap-2 text-sm text-gray-700">
+              <input type="checkbox" name="remove_profile_photo" value="1" class="rounded border-gray-300 text-green-600 focus:ring-green-500">
+              Remove current profile photo
+            </label>
+          @endif
+        </div>
+      </div>
       <div>
         <label class="block text-gray-700 mb-2 font-medium">
           <i class="fas fa-user mr-2 text-green-600"></i>Admin Name
@@ -219,4 +242,3 @@
     }
   </script>
 @endpush
-
