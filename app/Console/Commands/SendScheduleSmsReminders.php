@@ -90,7 +90,7 @@ class SendScheduleSmsReminders extends Command
                     }
 
                     $subject = 'Cleanify Garbage Collection Reminder';
-                    $message = "Hello {$user->name},\n\nThis is a reminder that your garbage collection is scheduled for tomorrow in {$schedule->area}.\n\nPlease prepare your waste for collection.\n\nThank you,\nCleanify";
+                    $message = "Hello {$user->name},\n\nThis is a reminder that your garbage collection is scheduled for tomorrow in {$schedule->area}.\n\nCollection Time: {$schedule->time_range}\n\nPlease prepare your waste for collection.\n\nThank you,\nCleanify";
                     ++$eligibleEmail;
                     if ($dryRun) {
                         $this->line("Would email user {$user->id} for schedule {$schedule->id} at {$email}.");

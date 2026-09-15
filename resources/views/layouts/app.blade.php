@@ -11,12 +11,18 @@
   @stack('styles')
 </head>
 <body class="bg-gray-50 overflow-hidden">
+  @php
+    $navigationUnreadCount = auth()->check()
+      ? auth()->user()->unreadNotifications()->count()
+      : 0;
+  @endphp
+
   <!-- Mobile Menu -->
-  <x-mobile-menu :active="$activePage ?? 'home'" />
+  <x-mobile-menu :active="$activePage ?? 'home'" :unread-count="$navigationUnreadCount" />
   
   <div class="flex h-screen">
     <!-- Sidebar -->
-    <x-sidebar :active="$activePage ?? 'home'" />
+    <x-sidebar :active="$activePage ?? 'home'" :unread-count="$navigationUnreadCount" />
     
     <!-- Main Content -->
     <div class="cleanify-main lg:ml-64 flex-1 overflow-y-auto">

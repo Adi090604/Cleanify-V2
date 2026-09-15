@@ -119,6 +119,13 @@
                   <button onclick="openReportView({{ $report->id }})" class="w-8 h-8 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors duration-300" title="View">
                     <i class="fas fa-eye text-xs"></i>
                   </button>
+                  <form method="POST" action="{{ route('admin.reports.destroy', $report) }}" onsubmit="return confirm('Permanently delete this report? This action cannot be undone.');">
+                    @csrf
+                    @method('DELETE')
+                                        <button type="submit" class="w-8 h-8 bg-red-500 text-white rounded hover:bg-red-600 transition-colors duration-300" title="Delete permanently">
+                      <i class="fas fa-trash-alt text-xs"></i>
+                    </button>
+                  </form>
                 </div>
               </td>
             </tr>

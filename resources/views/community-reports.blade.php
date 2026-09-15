@@ -54,9 +54,16 @@
           </div>
           <div class="flex-1 space-y-3">
             <div>
-              <p class="text-sm font-medium text-gray-700 mb-2">Report location</p>
+              <div class="flex items-center justify-between gap-3 mb-2">
+                <p class="text-sm font-medium text-gray-700">Report location</p>
+                <button type="button" id="useMyLocationButton" class="inline-flex items-center gap-2 px-3 py-1.5 border border-green-600 text-green-600 rounded-lg hover:bg-green-50 transition text-xs font-medium">
+                  <i class="fas fa-location-crosshairs" aria-hidden="true"></i>
+                  <span>Use My Location</span>
+                </button>
+              </div>
               <div id="reportLocationMap" class="h-56 w-full rounded-lg border border-gray-200"></div>
               <p class="text-xs text-gray-500 mt-2">Click the map to select where the issue is located. You can drag the marker to refine it.</p>
+              <p id="locationStatus" class="text-xs mt-1 hidden" role="status" aria-live="polite"></p>
               <input type="hidden" name="latitude" id="reportLatitude" value="{{ old('latitude') }}">
               <input type="hidden" name="longitude" id="reportLongitude" value="{{ old('longitude') }}">
               @error('latitude') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
@@ -242,23 +249,70 @@
       if (reportLocationMap || typeof L === 'undefined') return;
       const latitudeInput = document.getElementById('reportLatitude');
       const longitudeInput = document.getElementById('reportLongitude');
+      const useMyLocationButton = document.getElementById('useMyLocationButton');
+      const locationStatus = document.getElementById('locationStatus');
       reportLocationMap = L.map('reportLocationMap').setView([9.7870, 125.4928], 13);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; OpenStreetMap contributors', maxZoom: 19,
       }).addTo(reportLocationMap);
       const setLocation = (lat, lng, center = true) => {
-        latitudeInput.value = Number(lat).toFixed(8);
-        longitudeInput.value = Number(lng).toFixed(8);
-        if (reportLocationMarker) reportLocationMarker.setLatLng([lat, lng]);
+        const latitude = Number(lat);
+        const longitude = Number(lng);
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)
+          || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return false;
+
+        latitudeInput.value = latitude.toFixed(8);
+        longitudeInput.value = longitude.toFixed(8);
+        if (reportLocationMarker) reportLocationMarker.setLatLng([latitude, longitude]);
         else {
-          reportLocationMarker = L.marker([lat, lng], { draggable: true }).addTo(reportLocationMap);
+          reportLocationMarker = L.marker([latitude, longitude], { draggable: true }).addTo(reportLocationMap);
           reportLocationMarker.on('dragend', event => {
             const point = event.target.getLatLng();
             setLocation(point.lat, point.lng, false);
           });
         }
-        if (center) reportLocationMap.setView([lat, lng], 15);
+        if (center) reportLocationMap.setView([latitude, longitude], 15);
+        return true;
       };
+
+      const showLocationStatus = (message, isError = false) => {
+        locationStatus.textContent = message;
+        locationStatus.classList.remove('hidden', 'text-green-600', 'text-red-600');
+        locationStatus.classList.add(isError ? 'text-red-600' : 'text-green-600');
+      };
+
+      useMyLocationButton?.addEventListener('click', () => {
+        if (!navigator.geolocation) {
+          showLocationStatus('Your browser does not support location lookup.', true);
+          return;
+        }
+
+        useMyLocationButton.disabled = true;
+        useMyLocationButton.classList.add('opacity-60', 'cursor-wait');
+        showLocationStatus('Finding your location...');
+
+        navigator.geolocation.getCurrentPosition(
+          position => {
+            const updated = setLocation(position.coords.latitude, position.coords.longitude);
+            showLocationStatus(
+              updated ? 'Your current location is selected.' : 'Your browser returned an invalid location.',
+              !updated,
+            );
+            useMyLocationButton.disabled = false;
+            useMyLocationButton.classList.remove('opacity-60', 'cursor-wait');
+          },
+          error => {
+            const message = error.code === error.PERMISSION_DENIED
+              ? 'Location permission was denied. Your selected location was not changed.'
+              : 'Unable to find your location. Your selected location was not changed.';
+            showLocationStatus(message, true);
+            useMyLocationButton.disabled = false;
+            useMyLocationButton.classList.remove('opacity-60', 'cursor-wait');
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
+        );
+      });
+
       reportLocationMap.on('click', event => setLocation(event.latlng.lat, event.latlng.lng, false));
       if (latitudeInput.value && longitudeInput.value) setLocation(latitudeInput.value, longitudeInput.value);
     }

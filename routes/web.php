@@ -75,6 +75,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('/reports/bulk-resolve', [App\Http\Controllers\Admin\ReportsController::class, 'bulkResolve'])->name('reports.bulk-resolve');
     Route::post('/reports/bulk-reject', [App\Http\Controllers\Admin\ReportsController::class, 'bulkReject'])->name('reports.bulk-reject');
     Route::patch('/reports/{id}/priority', [App\Http\Controllers\Admin\ReportsController::class, 'updatePriority'])->name('reports.update-priority');
+    Route::delete('/reports/{report}', [App\Http\Controllers\Admin\ReportsController::class, 'destroy'])->name('reports.destroy');
 
     // Schedule Management
     Route::get('/schedule', [App\Http\Controllers\Admin\ScheduleController::class, 'index'])->name('schedule');

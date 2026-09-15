@@ -98,6 +98,41 @@ table tbody tr:hover { background: #f7faf7 !important; }
   input.w-72, .dashboard-toolbar input.w-72 { width: 100%; }
 }
 
+/* Shared live-truck marker treatment for user and admin Leaflet trackers. */
+.truck-map-marker {
+  background: transparent;
+  border: 0;
+}
+.truck-map-marker__body {
+  --truck-status-color: #64748b;
+  position: relative;
+  display: flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--truck-status-color);
+  border-radius: 9999px;
+  background: #fff;
+  color: #237a36;
+  box-shadow: 0 2px 7px rgba(15, 23, 42, .24);
+  font-size: .9rem;
+}
+.truck-map-marker__status {
+  position: absolute;
+  right: -1px;
+  bottom: -1px;
+  width: .55rem;
+  height: .55rem;
+  border: 2px solid #fff;
+  border-radius: 9999px;
+  background: var(--truck-status-color);
+}
+.truck-map-marker--active { --truck-status-color: #22c55e; }
+.truck-map-marker--on-break { --truck-status-color: #eab308; }
+.truck-map-marker--offline { --truck-status-color: #ef4444; }
+.truck-map-marker--maintenance { --truck-status-color: #3b82f6; }
+
 /* Shared authentication presentation, reusing the existing forms and controls. */
 .auth-card {
   padding: 2rem !important;

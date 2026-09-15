@@ -1,4 +1,4 @@
-@props(['active' => 'dashboard'])
+@props(['active' => 'dashboard', 'pendingReportCount' => 0])
 
 <div class="cleanify-sidebar hidden lg:block w-64 bg-green-600 text-white flex flex-col fixed h-full">
   <div class="p-4 border-b border-green-500 text-center">
@@ -18,6 +18,11 @@
     <a href="{{ route('admin.reports') }}" class="flex items-center px-4 py-3 rounded-lg text-white transition-colors duration-300 {{ $active === 'reports' ? 'bg-green-700' : 'hover:bg-green-700' }}">
       <i class="fas fa-flag mr-3 text-lg"></i>
       <span>Reports</span>
+      @if($pendingReportCount > 0)
+        <span class="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[10px] font-bold leading-none text-white" aria-label="{{ $pendingReportCount }} pending reports">
+          {{ $pendingReportCount > 99 ? '99+' : $pendingReportCount }}
+        </span>
+      @endif
     </a>
     <a href="{{ route('admin.user-reports') }}" class="flex items-center px-4 py-3 rounded-lg text-white transition-colors duration-300 {{ $active === 'user-reports' ? 'bg-green-700' : 'hover:bg-green-700' }}">
       <i class="fas fa-user-shield mr-3 text-lg"></i>

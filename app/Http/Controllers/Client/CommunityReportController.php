@@ -15,7 +15,8 @@ class CommunityReportController extends Controller
      */
     public function index(): View
     {
-        $reports = Report::with(['user'])
+        $reports = Report::publiclyVisible()
+            ->with(['user'])
             ->withCount(['likes', 'comments', 'followers'])
             ->latest()
             ->paginate(6);
@@ -122,7 +123,8 @@ class CommunityReportController extends Controller
 
     private function relatedReports(Report $report)
     {
-        return Report::where('id', '!=', $report->id)
+        return Report::publiclyVisible()
+            ->where('id', '!=', $report->id)
             ->where('location', $report->location)
             ->latest()
             ->take(3)

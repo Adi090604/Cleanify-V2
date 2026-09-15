@@ -5,10 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\RejectReportRequest;
 use App\Http\Requests\Admin\ResolveReportRequest;
+use App\Models\ActivityLog;
 use App\Models\Report;
 use App\Services\ActivityLogService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class ReportsController extends Controller
@@ -94,7 +98,6 @@ class ReportsController extends Controller
                 'status' => 'resolved',
                 'admin_notes' => $request->admin_notes,
                 'resolved_by' => auth()->id(),
-                'resolved_at' => now(),
             ]);
 
             ActivityLogService::logReportResolved($report, $request->admin_notes);
@@ -125,7 +128,6 @@ class ReportsController extends Controller
                 'status' => 'rejected',
                 'rejection_reason' => $request->rejection_reason,
                 'resolved_by' => auth()->id(),
-                'resolved_at' => now(),
             ]);
 
             ActivityLogService::logReportRejected($report, $request->rejection_reason);
@@ -173,7 +175,6 @@ class ReportsController extends Controller
             'status' => 'resolved',
             'admin_notes' => $request->admin_notes,
             'resolved_by' => auth()->id(),
-            'resolved_at' => now(),
         ]);
 
         // Log activity
@@ -198,7 +199,6 @@ class ReportsController extends Controller
             'status' => 'rejected',
             'rejection_reason' => $request->rejection_reason,
             'resolved_by' => auth()->id(),
-            'resolved_at' => now(),
         ]);
 
         // Log activity
@@ -209,6 +209,36 @@ class ReportsController extends Controller
 
         return redirect()->route('admin.reports')
             ->with('success', 'Report rejected successfully!');
+    }
+
+    public function destroy(Report $report): RedirectResponse
+    {
+        $imagePath = $report->image_path;
+        $hasSafeImagePath = $imagePath
+            && preg_match('/\Areports\/[^\/\\\\]+\z/', $imagePath) === 1;
+
+        if ($hasSafeImagePath
+            && Storage::disk('public')->exists($imagePath)
+            && ! Storage::disk('public')->delete($imagePath)) {
+            return redirect()->route('admin.reports')
+                ->with('error', 'The report image could not be removed, so the report was not deleted.');
+        }
+
+        DB::transaction(function () use ($report) {
+            DatabaseNotification::query()
+                ->where('data->report_id', $report->id)
+                ->delete();
+
+            ActivityLog::query()
+                ->where('model_type', Report::class)
+                ->where('model_id', $report->id)
+                ->delete();
+
+            $report->delete();
+        });
+
+        return redirect()->route('admin.reports')
+            ->with('success', 'Report permanently deleted successfully.');
     }
 
     protected function notifyReportOwner(Report $report, string $type): void

@@ -9,10 +9,10 @@
 </head>
 <body class="bg-gray-50 overflow-x-hidden">
   <!-- Mobile Menu -->
-  <x-admin.mobile-menu :active="$activePage ?? 'dashboard'" />
+  <x-admin.mobile-menu :active="$activePage ?? 'dashboard'" :pending-report-count="$pendingReportCount" />
   
   <div class="flex h-screen">
-    <x-admin.sidebar :active="$activePage ?? 'dashboard'" />
+    <x-admin.sidebar :active="$activePage ?? 'dashboard'" :pending-report-count="$pendingReportCount" />
 
     <div class="cleanify-main lg:ml-64 flex-1 overflow-y-auto">
       <main class="p-3 sm:p-4 lg:p-4">

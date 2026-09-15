@@ -206,21 +206,24 @@
       attribution: '&copy; OpenStreetMap contributors',
     }).addTo(map);
 
-    // Function to get truck icon based on status
     const getTruckIcon = (status) => {
-      const statusColors = {
-        'active': 'green',
-        'on_break': 'yellow',
-        'offline': 'red',
-        'maintenance': 'blue',
+      const statusClasses = {
+        'active': 'active',
+        'on_break': 'on-break',
+        'offline': 'offline',
+        'maintenance': 'maintenance',
       };
-      const color = statusColors[status] || 'gray';
-      
-      return L.icon({
-        iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-${color}.png`,
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [0, -41],
+      const statusClass = statusClasses[status] || 'unknown';
+
+      return L.divIcon({
+        className: 'truck-map-marker',
+        html: `<span class="truck-map-marker__body truck-map-marker--${statusClass}">
+          <i class="fas fa-truck" aria-hidden="true"></i>
+          <span class="truck-map-marker__status" aria-hidden="true"></span>
+        </span>`,
+        iconSize: [36, 36],
+        iconAnchor: [18, 18],
+        popupAnchor: [0, -20],
       });
     };
 
@@ -588,4 +591,3 @@
     filterList();
   </script>
 @endpush
-

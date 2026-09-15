@@ -15,7 +15,7 @@ class ReportController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        $reports = Report::query()
+        $reports = Report::publiclyVisible()
             ->with([
                 'user:id,name',
                 'likes' => fn ($query) => $query->where('user_id', $request->user()->id),

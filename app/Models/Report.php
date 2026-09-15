@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
@@ -9,6 +10,8 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Report extends Model
 {
+    public const PUBLIC_RESOLVED_RETENTION_HOURS = 72;
+
     protected $fillable = [
         'user_id',
         'location',
@@ -29,6 +32,31 @@ class Report extends Model
         'longitude' => 'decimal:8',
         'resolved_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (Report $report) {
+            if (! $report->isDirty('status')) {
+                return;
+            }
+
+            $report->resolved_at = $report->status === 'resolved' ? now() : null;
+        });
+    }
+
+    /**
+     * Reports visible in the public community feed.
+     */
+    public function scopePubliclyVisible(Builder $query): Builder
+    {
+        return $query->where(function (Builder $query) {
+            $query->where('status', '!=', 'resolved')
+                ->orWhere(function (Builder $query) {
+                    $query->where('status', 'resolved')
+                        ->where('resolved_at', '>', now()->subHours(self::PUBLIC_RESOLVED_RETENTION_HOURS));
+                });
+        });
+    }
 
     /**
      * Get the user who created the report.

@@ -1,4 +1,4 @@
-@props(['active' => 'home'])
+@props(['active' => 'home', 'unreadCount' => 0])
 
 <!-- Mobile Menu Button -->
 <button id="mobileMenuButton" class="lg:hidden fixed top-4 left-4 z-50 p-2 bg-green-600 text-white rounded-lg shadow-lg hover:bg-green-700 transition-colors duration-300">
@@ -39,6 +39,11 @@
     <a href="{{ route('notifications') }}" class="flex items-center px-4 py-3 rounded-lg text-white transition-colors duration-300 {{ $active === 'notifications' ? 'bg-green-700' : 'hover:bg-green-700' }}" onclick="closeMobileMenu()">
       <i class="fas fa-bell mr-3 text-lg"></i>
       <span>Notifications</span>
+      @if($unreadCount > 0)
+        <span class="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[10px] font-bold leading-none text-white" aria-label="{{ $unreadCount }} unread notifications">
+          {{ $unreadCount > 99 ? '99+' : $unreadCount }}
+        </span>
+      @endif
     </a>
     
     <a href="{{ route('community-reports') }}" class="flex items-center px-4 py-3 rounded-lg text-white transition-colors duration-300 {{ $active === 'reports' ? 'bg-green-700' : 'hover:bg-green-700' }}" onclick="closeMobileMenu()">
