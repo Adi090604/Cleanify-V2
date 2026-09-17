@@ -17,7 +17,7 @@
     <x-alert type="error" dismissible class="mb-4">{{ session('error') }}</x-alert>
   @endif
 
-  <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+  <div class="admin-page-header flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
     <div>
       <h2 class="text-3xl font-bold text-gray-800"><i class="fas fa-map-marked-alt text-green-600 mr-3"></i>Service Zones</h2>
       <p class="text-gray-600 mt-1">Manage service-zone names and map locations.</p>
@@ -27,7 +27,7 @@
     </button>
   </div>
 
-  <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+  <div class="admin-table-card bg-white rounded-xl shadow-sm overflow-hidden">
     <div class="overflow-x-auto">
       <table class="w-full">
         <thead><tr class="bg-green-600 text-white">
@@ -78,17 +78,24 @@
       @csrf
       <div>
         <label class="block text-gray-700 mb-2">Zone name</label>
-        <input name="name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" placeholder="e.g. Zone 16">
+        <input id="createServiceZoneName" name="name" value="{{ old('name', $suggestedZoneName) }}" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" placeholder="e.g. Zone 16">
       </div>
       <div><label class="block text-gray-700 mb-2">Location / Barangay</label><input name="barangay" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" placeholder="e.g. Barangay Example"></div>
       <div>
         <label class="block text-gray-700 mb-2">Location <span class="text-sm text-gray-500">(optional)</span></label>
         <div id="createServiceZoneMap" class="service-zone-map"></div>
-        <p class="text-xs text-gray-500 mt-2"><i class="fas fa-info-circle mr-1"></i>Click the map to select or move the location.</p>
-        <div class="grid grid-cols-2 gap-2 mt-3">
-          <input name="latitude" id="createServiceZoneLatitude" type="number" step="any" readonly class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" placeholder="Latitude">
-          <input name="longitude" id="createServiceZoneLongitude" type="number" step="any" readonly class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" placeholder="Longitude">
+        <p class="text-xs text-gray-500 mt-2"><i class="fas fa-info-circle mr-1"></i>Enter coordinates manually or click the map.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+          <div>
+            <label for="createServiceZoneLatitude" class="block text-xs font-medium text-gray-600 mb-1">Latitude</label>
+            <input name="latitude" id="createServiceZoneLatitude" type="number" step="any" min="-90" max="90" inputmode="decimal" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" placeholder="9.76740151" aria-describedby="createServiceZoneCoordinateError">
+          </div>
+          <div>
+            <label for="createServiceZoneLongitude" class="block text-xs font-medium text-gray-600 mb-1">Longitude</label>
+            <input name="longitude" id="createServiceZoneLongitude" type="number" step="any" min="-180" max="180" inputmode="decimal" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" placeholder="125.45395093" aria-describedby="createServiceZoneCoordinateError">
+          </div>
         </div>
+        <p id="createServiceZoneCoordinateError" class="hidden mt-2 text-xs font-medium text-red-600" role="alert"></p>
       </div>
       <div><label class="block text-gray-700 mb-2">Status</label><select name="status" class="w-full px-4 py-2 border border-gray-300 rounded-lg"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
     </form>
@@ -103,11 +110,18 @@
       <div>
         <label class="block text-gray-700 mb-2">Location <span class="text-sm text-gray-500">(optional)</span></label>
         <div id="editServiceZoneMap" class="service-zone-map"></div>
-        <p class="text-xs text-gray-500 mt-2"><i class="fas fa-info-circle mr-1"></i>Click the map to select or move the location.</p>
-        <div class="grid grid-cols-2 gap-2 mt-3">
-          <input name="latitude" id="editServiceZoneLatitude" type="number" step="any" readonly class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" placeholder="Latitude">
-          <input name="longitude" id="editServiceZoneLongitude" type="number" step="any" readonly class="w-full px-4 py-2 border border-gray-300 rounded-lg bg-gray-50" placeholder="Longitude">
+        <p class="text-xs text-gray-500 mt-2"><i class="fas fa-info-circle mr-1"></i>Enter coordinates manually or click the map.</p>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
+          <div>
+            <label for="editServiceZoneLatitude" class="block text-xs font-medium text-gray-600 mb-1">Latitude</label>
+            <input name="latitude" id="editServiceZoneLatitude" type="number" step="any" min="-90" max="90" inputmode="decimal" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="9.76740151" aria-describedby="editServiceZoneCoordinateError">
+          </div>
+          <div>
+            <label for="editServiceZoneLongitude" class="block text-xs font-medium text-gray-600 mb-1">Longitude</label>
+            <input name="longitude" id="editServiceZoneLongitude" type="number" step="any" min="-180" max="180" inputmode="decimal" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500" placeholder="125.45395093" aria-describedby="editServiceZoneCoordinateError">
+          </div>
         </div>
+        <p id="editServiceZoneCoordinateError" class="hidden mt-2 text-xs font-medium text-red-600" role="alert"></p>
       </div>
       <div><label class="block text-gray-700 mb-2">Status</label><select id="editServiceZoneStatus" name="status" class="w-full px-4 py-2 border border-gray-300 rounded-lg"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
     </form>
@@ -133,16 +147,32 @@
       if (zonePickers[key]) return zonePickers[key];
       const latInput = document.getElementById(`${key}ServiceZoneLatitude`);
       const lngInput = document.getElementById(`${key}ServiceZoneLongitude`);
+      const coordinateError = document.getElementById(`${key}ServiceZoneCoordinateError`);
+      const form = document.getElementById(`${key}ServiceZoneForm`);
       const map = L.map(`${key}ServiceZoneMap`).setView(zonePickerDefaultCenter, 13);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '&copy; OpenStreetMap contributors' }).addTo(map);
       let marker = null;
+
+      const setCoordinateError = (message = '', field = null) => {
+        coordinateError.textContent = message;
+        coordinateError.classList.toggle('hidden', message === '');
+        latInput.setCustomValidity(field === 'latitude' || field === 'pair' ? message : '');
+        lngInput.setCustomValidity(field === 'longitude' || field === 'pair' ? message : '');
+      };
+
       const writeCoordinates = (lat, lng) => {
         latInput.value = Number(lat).toFixed(8);
         lngInput.value = Number(lng).toFixed(8);
+        setCoordinateError();
       };
+
+      const updateMarkerPopup = (lat, lng) => {
+        marker.bindPopup(`Selected Location<br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`);
+      };
+
       const setLocation = (lat, lng, center = true) => {
         lat = Number(lat); lng = Number(lng);
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+        if (!Number.isFinite(lat) || !Number.isFinite(lng) || lat < -90 || lat > 90 || lng < -180 || lng > 180) return false;
         writeCoordinates(lat, lng);
         if (marker) marker.setLatLng([lat, lng]);
         else {
@@ -150,13 +180,88 @@
           marker.on('dragend', event => {
             const position = event.target.getLatLng();
             writeCoordinates(position.lat, position.lng);
+            updateMarkerPopup(position.lat, position.lng);
           });
         }
-        marker.bindPopup(`Selected Location<br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`);
+        updateMarkerPopup(lat, lng);
         if (center) map.setView([lat, lng], 15);
+        return true;
       };
+
+      const removeMarker = () => {
+        if (!marker) return;
+        map.removeLayer(marker);
+        marker = null;
+      };
+
+      const syncInputsToMap = (showIncompleteError = false) => {
+        const latitude = latInput.value.trim();
+        const longitude = lngInput.value.trim();
+        const hasLatitude = latitude !== '';
+        const hasLongitude = longitude !== '';
+
+        if (latInput.validity.badInput) {
+          setCoordinateError('Latitude must be a number between -90 and 90.', 'latitude');
+          return false;
+        }
+
+        if (lngInput.validity.badInput) {
+          setCoordinateError('Longitude must be a number between -180 and 180.', 'longitude');
+          return false;
+        }
+
+        if (!hasLatitude && !hasLongitude) {
+          setCoordinateError();
+          removeMarker();
+          return true;
+        }
+
+        if (!hasLatitude || !hasLongitude) {
+          if (showIncompleteError) setCoordinateError('Enter both latitude and longitude, or leave both blank.', 'pair');
+          else setCoordinateError();
+          return false;
+        }
+
+        const lat = Number(latitude);
+        const lng = Number(longitude);
+
+        if (!Number.isFinite(lat) || lat < -90 || lat > 90) {
+          setCoordinateError('Latitude must be a number between -90 and 90.', 'latitude');
+          return false;
+        }
+
+        if (!Number.isFinite(lng) || lng < -180 || lng > 180) {
+          setCoordinateError('Longitude must be a number between -180 and 180.', 'longitude');
+          return false;
+        }
+
+        setCoordinateError();
+        return setLocation(lat, lng);
+      };
+
+      [latInput, lngInput].forEach(input => {
+        input.addEventListener('change', () => syncInputsToMap(false));
+        input.addEventListener('blur', () => syncInputsToMap(false));
+      });
+
+      form.addEventListener('submit', event => {
+        if (syncInputsToMap(true)) return;
+        event.preventDefault();
+        (latInput.validationMessage ? latInput : lngInput).reportValidity();
+      });
+
       map.on('click', event => setLocation(event.latlng.lat, event.latlng.lng, false));
-      return zonePickers[key] = { map, setLocation, clear() { latInput.value = ''; lngInput.value = ''; if (marker) { map.removeLayer(marker); marker = null; } } };
+      return zonePickers[key] = {
+        map,
+        setLocation,
+        syncInputsToMap,
+        clear() {
+          latInput.value = '';
+          lngInput.value = '';
+          setCoordinateError();
+          removeMarker();
+        }
+      };
     }
 
     window.openServiceZoneCreate = function() {

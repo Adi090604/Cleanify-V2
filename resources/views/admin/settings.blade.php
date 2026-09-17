@@ -15,14 +15,14 @@
     </x-alert>
   @endif
 
-  <div class="mb-6">
+  <div class="admin-page-header mb-6">
     <h2 class="text-3xl font-bold text-gray-800">
       <i class="fas fa-cog text-green-600 mr-3"></i>Admin Settings ⚙️
     </h2>
     <p class="text-gray-600 mt-1">Manage your account preferences and system settings</p>
   </div>
 
-  <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+  <div class="admin-section-card bg-white rounded-xl shadow-sm p-6 mb-6">
     <div class="flex items-center mb-4">
       <i class="fas fa-user-circle text-green-600 text-xl mr-3"></i>
       <h3 class="text-xl font-semibold text-gray-800">Profile Settings</h3>
@@ -76,7 +76,7 @@
     </form>
   </div>
 
-  <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+  <div class="admin-section-card bg-white rounded-xl shadow-sm p-6 mb-6">
     <div class="flex items-center mb-4">
       <i class="fas fa-lock text-green-600 text-xl mr-3"></i>
       <h3 class="text-xl font-semibold text-gray-800">Update Password</h3>
@@ -113,7 +113,7 @@
     </form>
   </div>
 
-  <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+  <div class="admin-section-card bg-white rounded-xl shadow-sm p-6 mb-6">
     <div class="flex items-center mb-4">
       <i class="fas fa-bell text-green-600 text-xl mr-3"></i>
       <h3 class="text-xl font-semibold text-gray-800">Notification Preferences</h3>
@@ -161,7 +161,7 @@
     </form>
   </div>
 
-  <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+  <div class="admin-table-card bg-white rounded-xl shadow-sm overflow-hidden">
     <div class="p-6">
       <div class="flex items-center mb-4">
         <i class="fas fa-link text-green-600 text-xl mr-3"></i>

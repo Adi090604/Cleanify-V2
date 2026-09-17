@@ -55,7 +55,164 @@ body.bg-gray-50 { background: #f7f9f7; }
 .cleanify-sidebar button:not(.bg-red-600):hover { background: #edf5ee !important; }
 .cleanify-sidebar button.bg-red-600 { padding: .55rem .7rem; border-radius: .5rem; background: #c2413a !important; font-size: .8125rem; }
 
+/* Compact shared treatment for desktop and mobile admin navigation. */
+.admin-page .cleanify-sidebar > div:first-child { padding: .875rem 1rem; }
+.admin-page .cleanify-sidebar > div:last-child { padding: .75rem; }
+.admin-page .cleanify-sidebar nav { padding: .75rem .65rem; }
+.admin-page .cleanify-sidebar nav > :not([hidden]) ~ :not([hidden]) {
+  margin-top: .25rem !important;
+  margin-bottom: 0 !important;
+}
+.admin-page .cleanify-sidebar nav a {
+  position: relative;
+  min-height: 2.375rem !important;
+  padding: .5rem .75rem !important;
+  border-radius: .625rem;
+}
+.admin-page .cleanify-sidebar nav a i {
+  display: inline-flex;
+  width: 1.25rem;
+  flex: 0 0 1.25rem;
+  align-items: center;
+  justify-content: center;
+  margin-right: .65rem !important;
+  font-size: .875rem;
+  text-align: center;
+}
+.admin-page .cleanify-sidebar nav a.bg-green-700 {
+  background: var(--cleanify-green-soft) !important;
+  color: #226b31 !important;
+  box-shadow: 0 1px 2px rgba(46, 125, 50, .06);
+}
+.admin-page .cleanify-sidebar nav a.bg-green-700::before {
+  position: absolute;
+  top: .45rem !important;
+  bottom: .45rem !important;
+  left: -.65rem !important;
+  width: 3px;
+  border-radius: 0 999px 999px 0;
+  background: var(--cleanify-green);
+  content: '';
+}
+.admin-page .cleanify-sidebar nav a > span[aria-label$="pending reports"] {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: #fff !important;
+}
+
+/* Compact normal-user navigation, matching the admin sidebar language. */
+.user-page .user-sidebar--desktop > div:first-child > div:first-child,
+.user-page .user-sidebar--mobile > div:first-child { padding: .875rem 1rem; }
+.user-page .user-sidebar > div:last-child { padding: .75rem; }
+.user-page .user-sidebar nav { padding: .75rem .65rem; }
+.user-page .user-sidebar nav > :not([hidden]) ~ :not([hidden]) {
+  margin-top: .25rem !important;
+  margin-bottom: 0 !important;
+}
+.user-page .user-sidebar nav a {
+  position: relative;
+  min-height: 2.375rem;
+  padding: .5rem .75rem;
+  border-radius: .625rem;
+}
+.user-page .user-sidebar nav a i {
+  display: inline-flex;
+  width: 1.25rem;
+  flex: 0 0 1.25rem;
+  align-items: center;
+  justify-content: center;
+  margin-right: .65rem;
+  font-size: .875rem;
+  text-align: center;
+}
+.user-page .user-sidebar nav a.bg-green-700 {
+  background: var(--cleanify-green-soft) !important;
+  color: #226b31 !important;
+  box-shadow: 0 1px 2px rgba(46, 125, 50, .06);
+}
+.user-page .user-sidebar nav a.bg-green-700::before {
+  position: absolute;
+  top: .45rem;
+  bottom: .45rem;
+  left: -.65rem;
+  width: 3px;
+  border-radius: 0 999px 999px 0;
+  background: var(--cleanify-green);
+  content: '';
+}
+.user-page .user-sidebar nav a > span[aria-label$="unread notifications"] {
+  flex-shrink: 0;
+  margin-left: auto;
+  color: #fff !important;
+}
+
 .cleanify-main { min-height: 100vh; background: #f7f9f7; }
+.admin-page .cleanify-main main { padding: 1rem; }
+.admin-content-shell { width: 100%; max-width: 100rem; margin: 0 auto; }
+.admin-page:not(.admin-dashboard-page) .admin-page-header {
+  margin-bottom: 1.25rem !important;
+  gap: 1rem;
+}
+.admin-page:not(.admin-dashboard-page) .admin-page-header h2 {
+  color: #202a23;
+  font-size: 1.5rem;
+  line-height: 2rem;
+  letter-spacing: -.025em;
+}
+.admin-page:not(.admin-dashboard-page) .admin-page-header h2 i {
+  width: 1.5rem;
+  margin-right: .5rem !important;
+  font-size: 1rem;
+  text-align: center;
+  vertical-align: .125rem;
+}
+.admin-page:not(.admin-dashboard-page) .admin-page-header p {
+  margin-top: .25rem;
+  color: #718078;
+  font-size: .875rem;
+}
+.admin-page:not(.admin-dashboard-page) .admin-stat-grid {
+  gap: .75rem !important;
+  margin-bottom: 1.25rem !important;
+}
+.admin-page:not(.admin-dashboard-page) .admin-stat-grid > div {
+  min-height: 5.5rem;
+  padding: 1rem !important;
+  border: 1px solid #e2e8e3 !important;
+  border-radius: .875rem !important;
+  box-shadow: 0 1px 2px rgba(24, 48, 32, .04), 0 8px 24px rgba(24, 48, 32, .025) !important;
+}
+.admin-page:not(.admin-dashboard-page) .admin-table-card,
+.admin-page:not(.admin-dashboard-page) .admin-section-card,
+.admin-page:not(.admin-dashboard-page) .admin-toolbar-card {
+  border: 1px solid #e2e8e3 !important;
+  border-radius: .875rem !important;
+  box-shadow: 0 1px 2px rgba(24, 48, 32, .04), 0 8px 24px rgba(24, 48, 32, .025) !important;
+}
+.admin-page:not(.admin-dashboard-page) .admin-section-card { margin-bottom: 1.25rem !important; }
+.admin-page:not(.admin-dashboard-page) .admin-toolbar-card {
+  margin-bottom: 1rem !important;
+  padding: 1rem !important;
+}
+.admin-page:not(.admin-dashboard-page) .admin-table-card > .overflow-x-auto {
+  width: 100%;
+}
+.admin-page:not(.admin-dashboard-page) .admin-table-card table {
+  min-width: 42rem;
+}
+.admin-page:not(.admin-dashboard-page) .admin-table-card thead tr {
+  border-top: 1px solid #e8eee9;
+  border-bottom: 1px solid #e1e8e3;
+}
+.admin-page:not(.admin-dashboard-page) .admin-table-card th {
+  padding-top: .625rem !important;
+  padding-bottom: .625rem !important;
+}
+.admin-page:not(.admin-dashboard-page) .admin-table-card td {
+  padding-top: .75rem !important;
+  padding-bottom: .75rem !important;
+  vertical-align: middle;
+}
 .bg-white.rounded-xl.shadow-sm, .bg-white.rounded-2xl.shadow, .bg-white.rounded-2xl.shadow-xl, .bg-white.rounded-lg.shadow-sm {
   border: 1px solid var(--cleanify-border);
   box-shadow: var(--cleanify-shadow) !important;
@@ -92,7 +249,13 @@ table tbody tr:hover { background: #f7faf7 !important; }
 .chart-card .h-80 { height: 16rem; }
 
 @media (min-width: 1024px) { .lg\:ml-64 { margin-left: 13.25rem !important; } }
+@media (min-width: 640px) {
+  .admin-page .cleanify-main main { padding: 1.25rem; }
+  .admin-page:not(.admin-dashboard-page) .admin-page-header h2 { font-size: 1.875rem; line-height: 2.25rem; }
+}
+@media (min-width: 1280px) { .admin-page .cleanify-main main { padding: 1.5rem; } }
 @media (max-width: 1023px) { .cleanify-sidebar { width: 16rem; } }
+@media (max-width: 639px) { .admin-page:not(.admin-dashboard-page) .admin-page-header { padding-left: 3rem; } }
 @media (max-width: 640px) {
   .bg-white.rounded-xl.shadow-sm.p-6, .bg-white.rounded-2xl.shadow.p-6, .bg-white.rounded-2xl.shadow-xl.p-6 { padding: 1rem !important; }
   input.w-72, .dashboard-toolbar input.w-72 { width: 100%; }

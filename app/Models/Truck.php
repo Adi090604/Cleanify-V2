@@ -22,6 +22,30 @@ class Truck extends Model
         'last_updated' => 'datetime',
     ];
 
+    public static function suggestNextCode(iterable $codes): string
+    {
+        $numbers = [];
+        $widths = [];
+
+        foreach ($codes as $code) {
+            if (!is_string($code) || !preg_match('/^TRK-(\d+)$/', $code, $matches)) {
+                continue;
+            }
+
+            $numbers[] = (int) $matches[1];
+            $widths[] = strlen($matches[1]);
+        }
+
+        if ($numbers === []) {
+            return 'TRK-01';
+        }
+
+        $uniqueWidths = array_unique($widths);
+        $padding = count($uniqueWidths) === 1 ? max(2, $uniqueWidths[0]) : 2;
+
+        return 'TRK-' . str_pad((string) (max($numbers) + 1), $padding, '0', STR_PAD_LEFT);
+    }
+
     /**
      * Get the status badge class.
      */

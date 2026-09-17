@@ -1,6 +1,6 @@
 @props(['active' => 'home', 'unreadCount' => 0])
 
-<div class="cleanify-sidebar hidden lg:block w-64 bg-green-600 text-white flex flex-col justify-between fixed h-full">
+<div class="user-sidebar user-sidebar--desktop cleanify-sidebar hidden lg:flex w-64 bg-green-600 text-white flex-col justify-between fixed h-full">
   <div>
     <!-- Logo Section -->
     <div class="text-center py-5 border-b border-green-500">

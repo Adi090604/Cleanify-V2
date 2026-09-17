@@ -37,6 +37,7 @@ class TrackerController extends Controller
             'trucks' => $trucks,
             'routes' => $allRoutes,
             'serviceZoneCoordinates' => $serviceZoneCoordinates,
+            'suggestedTruckCode' => Truck::suggestNextCode($trucks->pluck('code')),
         ]);
     }
 

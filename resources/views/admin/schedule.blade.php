@@ -9,7 +9,7 @@
     </x-alert>
   @endif
 
-  <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+  <div class="admin-page-header flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
     <div>
       <h2 class="text-3xl font-bold text-gray-800">
         <i class="fas fa-calendar-alt text-green-600 mr-3"></i>Garbage Collection Schedule
@@ -26,14 +26,14 @@
     </div>
   </div>
 
-  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+  <div class="admin-stat-grid grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 mb-5">
     <x-admin.stat-card icon="fas fa-calendar-check" title="Active Schedules" value="{{ $activeSchedules }}" />
     <x-admin.stat-card icon="fas fa-truck" title="Trucks Assigned" value="{{ $trucksAssigned }}" borderClass="border-l-4 border-blue-500" iconWrapperClass="bg-blue-100" iconColorClass="text-blue-600" />
     <x-admin.stat-card icon="fas fa-clock" title="Pending Schedules" value="{{ $pendingSchedules }}" borderClass="border-l-4 border-yellow-500" iconWrapperClass="bg-yellow-100" iconColorClass="text-yellow-600" />
     <x-admin.stat-card icon="fas fa-calendar-times" title="Inactive Schedules" value="{{ $inactiveSchedules }}" borderClass="border-l-4 border-red-500" iconWrapperClass="bg-red-100" iconColorClass="text-red-600" />
   </div>
 
-  <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+  <div class="admin-table-card bg-white rounded-xl shadow-sm overflow-hidden">
     <div class="p-4 flex justify-between items-center">
       <h5 class="font-semibold text-lg text-gray-800">Community Garbage Schedules</h5>
       <button onclick="openAddScheduleModal()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-300">
@@ -176,10 +176,42 @@
         <label class="block text-gray-700 mb-2">
           <i class="fas fa-clock mr-2 text-green-600"></i>Collection Time
         </label>
-        <div class="flex space-x-2">
-          <input type="time" name="time_start" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" value="06:00">
-          <span class="self-center">to</span>
-          <input type="time" name="time_end" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" value="09:00">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-start">
+          @foreach ([
+            ['id' => 'addScheduleTimeStart', 'name' => 'time_start', 'value' => old('time_start', '06:00'), 'label' => 'Start time'],
+            ['id' => 'addScheduleTimeEnd', 'name' => 'time_end', 'value' => old('time_end', '09:00'), 'label' => 'End time'],
+          ] as $timePicker)
+            @if (!$loop->first)
+              <span class="self-center text-sm text-gray-500">to</span>
+            @endif
+            <div class="relative min-w-0 flex-1" data-time-picker>
+              <input type="hidden" name="{{ $timePicker['name'] }}" id="{{ $timePicker['id'] }}" value="{{ $timePicker['value'] }}" data-time-value>
+              <button type="button" class="flex h-10 w-full items-center justify-between rounded-xl border border-gray-300 bg-white px-4 text-left text-gray-800 transition hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1" data-time-trigger aria-haspopup="dialog" aria-expanded="false" aria-controls="{{ $timePicker['id'] }}Popover" aria-label="Choose {{ strtolower($timePicker['label']) }}">
+                <span data-time-display></span>
+                <i class="far fa-clock ml-3 text-sm text-gray-400" aria-hidden="true"></i>
+              </button>
+              <div id="{{ $timePicker['id'] }}Popover" class="fixed z-[70] hidden max-w-[calc(100vw-1.5rem)] rounded-xl border border-gray-200 bg-white p-3 shadow-lg" data-time-popover role="dialog" aria-label="{{ $timePicker['label'] }} picker">
+                <div class="grid grid-cols-[1fr_auto_1fr_1fr] items-start gap-2">
+                  <label class="text-center">
+                    <select class="w-full rounded-lg border-gray-200 bg-green-50 px-2 py-2 text-center font-semibold text-green-700 focus:border-green-500 focus:ring-green-500" data-time-hour aria-label="Hour"></select>
+                    <span class="mt-1 block text-[11px] text-gray-500">hour</span>
+                  </label>
+                  <span class="pt-2 font-semibold text-gray-400" aria-hidden="true">:</span>
+                  <label class="text-center">
+                    <select class="w-full rounded-lg border-gray-200 bg-green-50 px-2 py-2 text-center font-semibold text-green-700 focus:border-green-500 focus:ring-green-500" data-time-minute aria-label="Minute"></select>
+                    <span class="mt-1 block text-[11px] text-gray-500">minute</span>
+                  </label>
+                  <label class="text-center">
+                    <select class="w-full rounded-lg border-gray-200 bg-green-50 px-2 py-2 text-center font-semibold text-green-700 focus:border-green-500 focus:ring-green-500" data-time-period aria-label="AM or PM">
+                      <option value="AM">AM</option>
+                      <option value="PM">PM</option>
+                    </select>
+                    <span class="mt-1 block text-[11px] text-gray-500">period</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          @endforeach
         </div>
       </div>
       <div>
@@ -189,7 +221,7 @@
         <select name="truck" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" required>
           <option value="">Select a truck</option>
           @foreach($trucks as $truck)
-            <option value="{{ $truck->code }}">{{ $truck->code }}@if($truck->driver) - {{ $truck->driver }}@endif</option>
+            <option value="{{ $truck->code }}">{{ $truck->code }} — {{ filled($truck->driver) ? $truck->driver : 'No driver assigned' }} — {{ filled($truck->route) ? $truck->route : 'No route assigned' }}</option>
           @endforeach
         </select>
       </div>
@@ -261,10 +293,42 @@
         <label class="block text-gray-700 mb-2">
           <i class="fas fa-clock mr-2 text-blue-600"></i>Collection Time
         </label>
-        <div class="flex space-x-2">
-          <input type="time" name="time_start" id="editScheduleTimeStart" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-          <span class="self-center">to</span>
-          <input type="time" name="time_end" id="editScheduleTimeEnd" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-start">
+          @foreach ([
+            ['id' => 'editScheduleTimeStart', 'name' => 'time_start', 'label' => 'Start time'],
+            ['id' => 'editScheduleTimeEnd', 'name' => 'time_end', 'label' => 'End time'],
+          ] as $timePicker)
+            @if (!$loop->first)
+              <span class="self-center text-sm text-gray-500">to</span>
+            @endif
+            <div class="relative min-w-0 flex-1" data-time-picker>
+              <input type="hidden" name="{{ $timePicker['name'] }}" id="{{ $timePicker['id'] }}" data-time-value>
+              <button type="button" class="flex h-10 w-full items-center justify-between rounded-xl border border-gray-300 bg-white px-4 text-left text-gray-800 transition hover:border-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-1" data-time-trigger aria-haspopup="dialog" aria-expanded="false" aria-controls="{{ $timePicker['id'] }}Popover" aria-label="Choose {{ strtolower($timePicker['label']) }}">
+                <span data-time-display></span>
+                <i class="far fa-clock ml-3 text-sm text-gray-400" aria-hidden="true"></i>
+              </button>
+              <div id="{{ $timePicker['id'] }}Popover" class="fixed z-[70] hidden max-w-[calc(100vw-1.5rem)] rounded-xl border border-gray-200 bg-white p-3 shadow-lg" data-time-popover role="dialog" aria-label="{{ $timePicker['label'] }} picker">
+                <div class="grid grid-cols-[1fr_auto_1fr_1fr] items-start gap-2">
+                  <label class="text-center">
+                    <select class="w-full rounded-lg border-gray-200 bg-green-50 px-2 py-2 text-center font-semibold text-green-700 focus:border-green-500 focus:ring-green-500" data-time-hour aria-label="Hour"></select>
+                    <span class="mt-1 block text-[11px] text-gray-500">hour</span>
+                  </label>
+                  <span class="pt-2 font-semibold text-gray-400" aria-hidden="true">:</span>
+                  <label class="text-center">
+                    <select class="w-full rounded-lg border-gray-200 bg-green-50 px-2 py-2 text-center font-semibold text-green-700 focus:border-green-500 focus:ring-green-500" data-time-minute aria-label="Minute"></select>
+                    <span class="mt-1 block text-[11px] text-gray-500">minute</span>
+                  </label>
+                  <label class="text-center">
+                    <select class="w-full rounded-lg border-gray-200 bg-green-50 px-2 py-2 text-center font-semibold text-green-700 focus:border-green-500 focus:ring-green-500" data-time-period aria-label="AM or PM">
+                      <option value="AM">AM</option>
+                      <option value="PM">PM</option>
+                    </select>
+                    <span class="mt-1 block text-[11px] text-gray-500">period</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+          @endforeach
         </div>
       </div>
       <div>
@@ -274,7 +338,7 @@
         <select name="truck" id="editScheduleTruck" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
           <option value="">Select a truck</option>
           @foreach($trucks as $truck)
-            <option value="{{ $truck->code }}">{{ $truck->code }}@if($truck->driver) - {{ $truck->driver }}@endif</option>
+            <option value="{{ $truck->code }}">{{ $truck->code }} — {{ filled($truck->driver) ? $truck->driver : 'No driver assigned' }} — {{ filled($truck->route) ? $truck->route : 'No route assigned' }}</option>
           @endforeach
         </select>
       </div>
@@ -333,9 +397,171 @@
   @push('scripts')
   <script>
     let currentScheduleId = null;
+    let activeTimePicker = null;
+
+    function normalizeTime24(value) {
+      const match = String(value || '').match(/^(\d{1,2}):(\d{2})/);
+      if (!match) return null;
+
+      const hour = Number(match[1]);
+      const minute = Number(match[2]);
+      if (!Number.isInteger(hour) || hour < 0 || hour > 23 || !Number.isInteger(minute) || minute < 0 || minute > 59) {
+        return null;
+      }
+
+      return `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+    }
+
+    function time24ToPickerParts(value) {
+      const normalized = normalizeTime24(value) || '00:00';
+      const [hourValue, minute] = normalized.split(':');
+      const hour24 = Number(hourValue);
+
+      return {
+        hour: String(hour24 % 12 || 12).padStart(2, '0'),
+        minute,
+        period: hour24 >= 12 ? 'PM' : 'AM',
+      };
+    }
+
+    function pickerPartsToTime24(hourValue, minute, period) {
+      const hour12 = Number(hourValue);
+      let hour24 = hour12 % 12;
+      if (period === 'PM') hour24 += 12;
+
+      return `${String(hour24).padStart(2, '0')}:${minute}`;
+    }
+
+    function setTimePickerValue(picker, value) {
+      if (!picker) return;
+
+      const input = picker.querySelector('[data-time-value]');
+      const display = picker.querySelector('[data-time-display]');
+      const hourSelect = picker.querySelector('[data-time-hour]');
+      const minuteSelect = picker.querySelector('[data-time-minute]');
+      const periodSelect = picker.querySelector('[data-time-period]');
+      const normalized = normalizeTime24(value) || '00:00';
+      const parts = time24ToPickerParts(normalized);
+
+      input.value = normalized;
+      hourSelect.value = parts.hour;
+      minuteSelect.value = parts.minute;
+      periodSelect.value = parts.period;
+      display.textContent = `${parts.hour}:${parts.minute} ${parts.period}`;
+    }
+
+    function updateTimePickerFromControls(picker) {
+      const hour = picker.querySelector('[data-time-hour]').value;
+      const minute = picker.querySelector('[data-time-minute]').value;
+      const period = picker.querySelector('[data-time-period]').value;
+      setTimePickerValue(picker, pickerPartsToTime24(hour, minute, period));
+    }
+
+    function positionTimePickerPopover(picker) {
+      const trigger = picker.querySelector('[data-time-trigger]');
+      const popover = picker.querySelector('[data-time-popover]');
+      const triggerRect = trigger.getBoundingClientRect();
+      const viewportPadding = 12;
+      const gap = 6;
+      const width = Math.min(264, window.innerWidth - (viewportPadding * 2));
+
+      popover.style.width = `${width}px`;
+      const left = Math.min(
+        Math.max(viewportPadding, triggerRect.left),
+        window.innerWidth - width - viewportPadding
+      );
+      let top = triggerRect.bottom + gap;
+      const popoverHeight = popover.offsetHeight;
+
+      if (top + popoverHeight > window.innerHeight - viewportPadding) {
+        top = Math.max(viewportPadding, triggerRect.top - popoverHeight - gap);
+      }
+
+      popover.style.left = `${left}px`;
+      popover.style.top = `${top}px`;
+    }
+
+    function closeTimePicker({ restoreFocus = false } = {}) {
+      if (!activeTimePicker) return;
+
+      const trigger = activeTimePicker.querySelector('[data-time-trigger]');
+      activeTimePicker.querySelector('[data-time-popover]').classList.add('hidden');
+      trigger.setAttribute('aria-expanded', 'false');
+      activeTimePicker = null;
+
+      if (restoreFocus) trigger.focus();
+    }
+
+    function openTimePicker(picker) {
+      if (activeTimePicker && activeTimePicker !== picker) closeTimePicker();
+
+      const trigger = picker.querySelector('[data-time-trigger]');
+      const popover = picker.querySelector('[data-time-popover]');
+      const isAlreadyOpen = activeTimePicker === picker;
+
+      if (isAlreadyOpen) {
+        closeTimePicker();
+        return;
+      }
+
+      activeTimePicker = picker;
+      popover.classList.remove('hidden');
+      trigger.setAttribute('aria-expanded', 'true');
+      positionTimePickerPopover(picker);
+      requestAnimationFrame(() => picker.querySelector('[data-time-hour]').focus());
+    }
+
+    function initializeTimePickers() {
+      document.querySelectorAll('[data-time-picker]').forEach(picker => {
+        const hourSelect = picker.querySelector('[data-time-hour]');
+        const minuteSelect = picker.querySelector('[data-time-minute]');
+        const periodSelect = picker.querySelector('[data-time-period]');
+        const input = picker.querySelector('[data-time-value]');
+
+        hourSelect.innerHTML = Array.from({ length: 12 }, (_, index) => {
+          const value = String(index + 1).padStart(2, '0');
+          return `<option value="${value}">${value}</option>`;
+        }).join('');
+        minuteSelect.innerHTML = Array.from({ length: 60 }, (_, index) => {
+          const value = String(index).padStart(2, '0');
+          return `<option value="${value}">${value}</option>`;
+        }).join('');
+
+        setTimePickerValue(picker, input.value);
+        picker.querySelector('[data-time-trigger]').addEventListener('click', () => openTimePicker(picker));
+        [hourSelect, minuteSelect, periodSelect].forEach(select => {
+          select.addEventListener('change', () => updateTimePickerFromControls(picker));
+        });
+      });
+
+      document.addEventListener('click', event => {
+        if (activeTimePicker && !activeTimePicker.contains(event.target)) closeTimePicker();
+      });
+      document.addEventListener('keydown', event => {
+        if (event.key === 'Escape' && activeTimePicker) {
+          event.preventDefault();
+          closeTimePicker({ restoreFocus: true });
+        }
+      });
+      window.addEventListener('resize', () => {
+        if (activeTimePicker) positionTimePickerPopover(activeTimePicker);
+      });
+      document.addEventListener('scroll', () => {
+        if (activeTimePicker) positionTimePickerPopover(activeTimePicker);
+      }, true);
+    }
+
+    function syncTimePickersInForm(form) {
+      form.querySelectorAll('[data-time-picker]').forEach(picker => {
+        setTimePickerValue(picker, picker.querySelector('[data-time-value]').value);
+      });
+    }
 
     function openAddScheduleModal() {
-      document.getElementById('addScheduleForm').reset();
+      const form = document.getElementById('addScheduleForm');
+      form.reset();
+      syncTimePickersInForm(form);
+      closeTimePicker();
       openModal('addScheduleModal');
     }
 
@@ -353,8 +579,8 @@
       form.action = `/admin/schedule/${id}`;
       document.getElementById('editScheduleId').value = schedule.id;
       document.getElementById('editScheduleType').value = schedule.schedule_type || 'recurring';
-      document.getElementById('editScheduleTimeStart').value = schedule.time_start;
-      document.getElementById('editScheduleTimeEnd').value = schedule.time_end;
+      setTimePickerValue(document.getElementById('editScheduleTimeStart').closest('[data-time-picker]'), schedule.time_start);
+      setTimePickerValue(document.getElementById('editScheduleTimeEnd').closest('[data-time-picker]'), schedule.time_end);
       document.getElementById('editScheduleTruck').value = schedule.truck;
       document.getElementById('editScheduleStatus').value = schedule.status;
       const areaSelect = document.getElementById('editScheduleArea');
@@ -399,6 +625,7 @@
     }
     
     document.addEventListener('DOMContentLoaded', function() {
+      initializeTimePickers();
       const addScheduleType = document.getElementById('addScheduleType');
       const editScheduleType = document.getElementById('editScheduleType');
       

@@ -5,7 +5,7 @@
 @section('title', 'User Reports')
 
 @section('content')
-  <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+  <div class="admin-page-header flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
     <div>
       <h2 class="text-3xl font-bold text-gray-800">
         <i class="fas fa-user-shield text-red-600 mr-3"></i>User Reports
@@ -48,14 +48,14 @@
     </x-alert>
   @endif
 
-  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+  <div class="admin-stat-grid grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 mb-5">
     <x-admin.stat-card icon="fas fa-flag" title="Total Reports" :value="$totalReports" />
     <x-admin.stat-card icon="fas fa-clock" title="Pending" :value="$pendingReports" borderClass="border-l-4 border-yellow-500" iconWrapperClass="bg-yellow-100" iconColorClass="text-yellow-600" />
     <x-admin.stat-card icon="fas fa-check-circle" title="Reviewed" :value="$reviewedReports" borderClass="border-l-4 border-blue-500" iconWrapperClass="bg-blue-100" iconColorClass="text-blue-600" />
     <x-admin.stat-card icon="fas fa-ban" title="Action Taken" :value="$actionTakenReports" borderClass="border-l-4 border-red-500" iconWrapperClass="bg-red-100" iconColorClass="text-red-600" />
   </div>
 
-  <div class="bg-white rounded-xl shadow-sm p-4 mb-4 flex flex-wrap items-center gap-3">
+  <div class="admin-toolbar-card bg-white rounded-xl shadow-sm p-4 mb-4 flex flex-wrap items-center gap-3">
     <form method="GET" action="{{ route('admin.user-reports') }}" class="flex items-center gap-3 flex-wrap">
       <input type="hidden" name="search" value="{{ $search }}">
       <label class="text-sm text-gray-600 flex items-center gap-2">
@@ -82,7 +82,7 @@
     </form>
   </div>
 
-  <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+  <div class="admin-table-card bg-white rounded-xl shadow-sm overflow-hidden">
     <div class="overflow-x-auto">
       <table class="w-full">
         <thead>
@@ -359,4 +359,3 @@
     });
   </script>
 @endpush
-

@@ -13,11 +13,24 @@ class DashboardController extends Controller
 {
     public function index(): View
     {
+        $currentDate = now();
+        $weekStart = $currentDate->copy()->startOfWeek();
+
         // Statistics
         $totalUsers = User::count();
         $totalReports = Report::count();
         $activeSchedules = Schedule::where('status', 'active')->count();
         $activeTrucks = Truck::where('status', 'active')->count();
+
+        // Current-week creation activity (in the configured application timezone)
+        $usersThisWeek = User::whereBetween('created_at', [$weekStart, $currentDate])->count();
+        $reportsThisWeek = Report::whereBetween('created_at', [$weekStart, $currentDate])->count();
+        $activeSchedulesThisWeek = Schedule::where('status', 'active')
+            ->whereBetween('created_at', [$weekStart, $currentDate])
+            ->count();
+        $activeTrucksThisWeek = Truck::where('status', 'active')
+            ->whereBetween('created_at', [$weekStart, $currentDate])
+            ->count();
 
         // Reports by status for chart
         $pendingReports = Report::where('status', 'pending')->count();
@@ -34,6 +47,8 @@ class DashboardController extends Controller
         // User roles chart data
         $totalAdmins = User::where('is_admin', true)->count();
         $totalRegularUsers = User::where('is_admin', false)->count();
+        $regularUserPercentage = $totalUsers > 0 ? round(($totalRegularUsers / $totalUsers) * 100, 1) : 0.0;
+        $adminPercentage = $totalUsers > 0 ? round(($totalAdmins / $totalUsers) * 100, 1) : 0.0;
         
         $usersChartData = [
             'labels' => ['Regular Users', 'Admins'],
@@ -53,9 +68,17 @@ class DashboardController extends Controller
             'totalReports' => $totalReports,
             'activeSchedules' => $activeSchedules,
             'activeTrucks' => $activeTrucks,
+            'usersThisWeek' => $usersThisWeek,
+            'reportsThisWeek' => $reportsThisWeek,
+            'activeSchedulesThisWeek' => $activeSchedulesThisWeek,
+            'activeTrucksThisWeek' => $activeTrucksThisWeek,
             'reportsChartData' => $reportsChartData,
             'usersChartData' => $usersChartData,
+            'regularUserPercentage' => $regularUserPercentage,
+            'adminPercentage' => $adminPercentage,
             'recentReports' => $recentReports,
+            'admin' => auth()->user(),
+            'currentDate' => $currentDate,
         ]);
     }
 }

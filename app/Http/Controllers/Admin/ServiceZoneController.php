@@ -15,9 +15,12 @@ class ServiceZoneController extends Controller
 {
     public function index(): View
     {
+        $zones = ServiceZone::orderBy('name')->get();
+
         return view('admin.service-zones', [
             'activePage' => 'service-zones',
-            'zones' => ServiceZone::orderBy('name')->get(),
+            'zones' => $zones,
+            'suggestedZoneName' => ServiceZone::suggestNextName($zones->pluck('name')),
         ]);
     }
 

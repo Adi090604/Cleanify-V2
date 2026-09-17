@@ -1,6 +1,6 @@
 @props(['active' => 'dashboard', 'pendingReportCount' => 0])
 
-<div class="cleanify-sidebar hidden lg:block w-64 bg-green-600 text-white flex flex-col fixed h-full">
+<div class="cleanify-sidebar hidden lg:flex w-64 bg-green-600 text-white flex-col fixed h-full">
   <div class="p-4 border-b border-green-500 text-center">
     <img src="/assets/icons/cleanifyicon.png" alt="Cleanify Logo" class="w-16 h-16 mx-auto mb-2">
     <h5 class="font-semibold text-lg">Cleanify Admin</h5>

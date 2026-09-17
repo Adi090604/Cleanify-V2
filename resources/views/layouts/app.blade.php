@@ -10,7 +10,7 @@
   
   @stack('styles')
 </head>
-<body class="bg-gray-50 overflow-hidden">
+<body class="user-page bg-gray-50 overflow-hidden">
   @php
     $navigationUnreadCount = auth()->check()
       ? auth()->user()->unreadNotifications()->count()

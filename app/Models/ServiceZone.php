@@ -13,6 +13,19 @@ class ServiceZone extends Model
         'longitude' => 'decimal:8',
     ];
 
+    public static function suggestNextName(iterable $names): string
+    {
+        $highestNumber = 0;
+
+        foreach ($names as $name) {
+            if (is_string($name) && preg_match('/^Zone (\d+)$/', $name, $matches)) {
+                $highestNumber = max($highestNumber, (int) $matches[1]);
+            }
+        }
+
+        return 'Zone ' . ($highestNumber + 1);
+    }
+
     public function hasCoordinates(): bool
     {
         return $this->latitude !== null && $this->longitude !== null;

@@ -29,14 +29,14 @@
     </x-alert>
   @endif
 
-  <div class="mb-6">
+  <div class="admin-page-header mb-6">
     <h2 class="text-3xl font-bold text-gray-800">
-      <i class="fas fa-truck text-green-600 mr-3"></i>Garbage Truck Tracker 🚛
+      <i class="fas fa-truck text-green-600 mr-3"></i>Garbage Truck Tracker
     </h2>
     <p class="text-gray-600 mt-1">Monitor garbage truck locations and routes in real-time</p>
   </div>
 
-  <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
+  <div class="admin-section-card bg-white rounded-xl shadow-sm p-6 mb-6">
     <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-4 gap-4">
       <div class="flex items-center">
         <i class="fas fa-map-marked-alt text-green-600 text-xl mr-3"></i>
@@ -71,7 +71,7 @@
   </div>
 
 
-  <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+  <div class="admin-table-card bg-white rounded-xl shadow-sm overflow-hidden">
     <div class="p-4 flex justify-between items-center">
       <div class="flex items-center">
         <i class="fas fa-truck text-green-600 text-xl mr-3"></i>
@@ -184,7 +184,7 @@
       @csrf
       <div>
         <label class="block text-gray-700 mb-2"><i class="fas fa-id-card mr-2 text-green-600"></i>Truck ID</label>
-        <input type="text" name="code" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="TRK-001" required>
+        <input type="text" name="code" id="addTruckCode" value="{{ old('code', $suggestedTruckCode) }}" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="TRK-01" required>
         @error('code', 'storeTruck')
           <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
         @enderror
@@ -633,6 +633,33 @@
       // Reuse the existing Truck-map click handler to set its marker and coordinate fields.
       addTruckMap.fire('click', { latlng: L.latLng(lat, lng) });
     }
+
+    function syncSelectedRouteLocation(selectElement) {
+      const latInput = document.getElementById('addTruckLatitude');
+      const lngInput = document.getElementById('addTruckLongitude');
+      const coordinates = selectElement?.value ? serviceZoneCoordinates[selectElement.value] : null;
+      const lat = coordinates ? Number(coordinates.lat) : NaN;
+      const lng = coordinates ? Number(coordinates.lng) : NaN;
+      const hasValidCoordinates = Number.isFinite(lat) && lat >= -90 && lat <= 90
+        && Number.isFinite(lng) && lng >= -180 && lng <= 180;
+
+      if (!hasValidCoordinates) {
+        pendingServiceZoneLocation = null;
+        if (latInput) latInput.value = '';
+        if (lngInput) lngInput.value = '';
+
+        if (addTruckMap && addTruckMapMarker) {
+          addTruckMap.removeLayer(addTruckMapMarker);
+          addTruckMapMarker = null;
+        }
+        return;
+      }
+
+      pendingServiceZoneLocation = { lat, lng };
+      if (latInput) latInput.value = lat.toFixed(8);
+      if (lngInput) lngInput.value = lng.toFixed(8);
+      applyServiceZoneLocationToTruckMap();
+    }
     
     function initializeAddTruckMap() {
       const mapElement = document.getElementById('addTruckMap');
@@ -765,6 +792,8 @@
       const lngInput = document.getElementById('addTruckLongitude');
       if (latInput) latInput.value = '';
       if (lngInput) lngInput.value = '';
+
+      syncSelectedRouteLocation(document.getElementById('addTruckRoute'));
       
       // Initialize map after modal is visible
       setTimeout(function() {
@@ -787,15 +816,7 @@
 
       addTruckRouteSelect.dataset.serviceZoneLocationBound = 'true';
       addTruckRouteSelect.addEventListener('change', function() {
-        const coordinates = serviceZoneCoordinates[this.value];
-        if (!coordinates) return;
-
-        const lat = Number(coordinates.lat);
-        const lng = Number(coordinates.lng);
-        if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-
-        pendingServiceZoneLocation = { lat, lng };
-        applyServiceZoneLocationToTruckMap();
+        syncSelectedRouteLocation(this);
       });
     }
     

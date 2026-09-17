@@ -7,7 +7,7 @@
   @vite(['resources/css/app.css', 'resources/js/app.js'])
   @stack('styles')
 </head>
-<body class="bg-gray-50 overflow-x-hidden">
+<body class="admin-page bg-gray-50 overflow-x-hidden {{ ($activePage ?? null) === 'dashboard' ? 'admin-dashboard-page' : '' }}">
   <!-- Mobile Menu -->
   <x-admin.mobile-menu :active="$activePage ?? 'dashboard'" :pending-report-count="$pendingReportCount" />
   
@@ -16,7 +16,9 @@
 
     <div class="cleanify-main lg:ml-64 flex-1 overflow-y-auto">
       <main class="p-3 sm:p-4 lg:p-4">
-        @yield('content')
+        <div class="admin-content-shell">
+          @yield('content')
+        </div>
       </main>
     </div>
   </div>

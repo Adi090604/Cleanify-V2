@@ -16,7 +16,7 @@
     <x-alert type="error" dismissible class="mb-4">{{ session('error') ?? $errors->first() }}</x-alert>
   @endif
 
-  <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+  <div class="admin-page-header flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
     <div>
       <h2 class="text-3xl font-bold text-gray-800">
         <i class="fas fa-flag text-green-600 mr-3"></i>Reports Management
@@ -33,14 +33,14 @@
     </div>
   </div>
 
-  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+  <div class="admin-stat-grid grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 mb-5">
     <x-admin.stat-card icon="fas fa-clock" title="Pending Reports" value="{{ $pendingReports }}" borderClass="border-l-4 border-yellow-500" iconWrapperClass="bg-yellow-100" iconColorClass="text-yellow-600" />
     <x-admin.stat-card icon="fas fa-check-circle" title="Resolved" value="{{ $resolvedReports }}" borderClass="border-l-4 border-green-500" iconWrapperClass="bg-green-100" iconColorClass="text-green-600" />
     <x-admin.stat-card icon="fas fa-times-circle" title="Rejected" value="{{ $rejectedReports }}" borderClass="border-l-4 border-red-500" iconWrapperClass="bg-red-100" iconColorClass="text-red-600" />
     <x-admin.stat-card icon="fas fa-chart-line" title="This Month" value="{{ $thisMonthReports }}" borderClass="border-l-4 border-blue-500" iconWrapperClass="bg-blue-100" iconColorClass="text-blue-600" />
   </div>
 
-  <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+  <div class="admin-table-card bg-white rounded-xl shadow-sm overflow-hidden">
     <div class="overflow-x-auto">
       <table class="w-full" id="reportsTable">
         <thead>

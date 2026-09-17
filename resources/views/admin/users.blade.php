@@ -3,7 +3,7 @@
 @section('title', 'Users')
 
 @section('content')
-  <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
+  <div class="admin-page-header flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
     <div>
       <h2 class="text-3xl font-bold text-gray-800">
         <i class="fas fa-users text-green-600 mr-3"></i>User Management
@@ -46,7 +46,7 @@
     </x-alert>
   @endif
 
-  <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+  <div class="admin-stat-grid grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 mb-5">
     <x-admin.stat-card icon="fas fa-users" title="Total Users" :value="$totalUsers" />
     <x-admin.stat-card icon="fas fa-user-shield" title="Admins" :value="$totalAdmins" borderClass="border-l-4 border-blue-500" iconWrapperClass="bg-blue-100" iconColorClass="text-blue-600" />
     <x-admin.stat-card icon="fas fa-user-tie" title="Regular Users" :value="$totalRegular" borderClass="border-l-4 border-yellow-500" iconWrapperClass="bg-yellow-100" iconColorClass="text-yellow-600" />
@@ -61,7 +61,7 @@
     ];
   @endphp
 
-  <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+  <div class="admin-table-card bg-white rounded-xl shadow-sm overflow-hidden">
     <div class="overflow-x-auto">
       <table class="w-full" id="userTable">
         <thead>
@@ -529,4 +529,3 @@
     });
   </script>
 @endpush
-

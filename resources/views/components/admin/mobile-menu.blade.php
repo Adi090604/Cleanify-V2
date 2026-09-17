@@ -9,7 +9,7 @@
 <div id="adminMobileMenuOverlay" class="lg:hidden fixed inset-0 bg-black bg-opacity-50 z-40 hidden transition-opacity duration-300"></div>
 
 <!-- Mobile Menu Sidebar -->
-<div id="adminMobileMenu" class="cleanify-sidebar lg:hidden fixed top-0 left-0 h-full w-64 bg-green-600 text-white z-50 transform -translate-x-full transition-transform duration-300 overflow-y-auto">
+<div id="adminMobileMenu" class="cleanify-sidebar flex flex-col lg:hidden fixed top-0 left-0 h-full w-64 bg-green-600 text-white z-50 transform -translate-x-full transition-transform duration-300 overflow-y-auto">
   <div class="p-4 border-b border-green-500 flex items-center justify-between">
     <div class="flex items-center">
       <img src="/assets/icons/cleanifyicon.png" alt="Cleanify Logo" class="w-10 h-10 mr-3">
