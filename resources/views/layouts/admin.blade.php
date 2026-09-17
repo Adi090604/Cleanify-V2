@@ -26,17 +26,17 @@
   @stack('modals')
   
   <!-- Admin Logout Confirmation Modal -->
-  <x-modal id="adminLogoutModal" title="Confirm Logout" icon="fa-sign-out-alt" color="red">
-    <p class="text-gray-700 mb-4">Are you sure you want to logout? You will need to login again to access the admin panel.</p>
+  <x-modal id="adminLogoutModal" title="Confirm Logout" icon="fas fa-sign-out-alt" color="red" variant="confirmation">
+    <p>Are you sure you want to logout? You will need to login again to access the admin panel.</p>
     
     <x-slot name="footer">
-      <div class="flex justify-end space-x-3">
-        <button onclick="closeModal('adminLogoutModal')" class="px-4 py-2 bg-gray-300 hover:bg-gray-400 text-gray-800 rounded-lg transition-colors duration-300">
+      <div class="admin-confirm-actions">
+        <button type="button" onclick="closeModal('adminLogoutModal')" class="admin-btn-secondary">
           Cancel
         </button>
         <form method="POST" action="{{ route('logout') }}" class="inline">
           @csrf
-          <button type="submit" class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors duration-300 inline-flex items-center gap-2">
+          <button type="submit" class="admin-btn-danger gap-2">
             <i class="fas fa-sign-out-alt"></i>
             Logout
           </button>

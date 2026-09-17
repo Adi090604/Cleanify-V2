@@ -8,7 +8,7 @@
   <div class="admin-page-header flex flex-col lg:flex-row justify-between items-start lg:items-center mb-6 gap-4">
     <div>
       <h2 class="text-3xl font-bold text-gray-800">
-        <i class="fas fa-user-shield text-red-600 mr-3"></i>User Reports
+        <i class="fas fa-user-shield text-green-600 mr-3"></i>User Reports
       </h2>
       <p class="text-gray-600 mt-1">Review and manage reports submitted by users about other users</p>
     </div>
@@ -18,10 +18,10 @@
         name="search" 
         type="text" 
         value="{{ $search }}"
-        class="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" 
+        class="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
         placeholder="Search by reporter or reported user..."
       >
-      <button type="submit" class="px-4 bg-red-600 text-white rounded-r-lg hover:bg-red-700 transition-colors duration-300">
+      <button type="submit" class="px-4 bg-green-600 text-white rounded-r-lg hover:bg-green-700 transition-colors duration-300">
         <i class="fas fa-search"></i>
       </button>
       @if($search)
@@ -60,7 +60,7 @@
       <input type="hidden" name="search" value="{{ $search }}">
       <label class="text-sm text-gray-600 flex items-center gap-2">
         <span>Status</span>
-        <select name="status" class="border border-gray-300 rounded-full px-3 py-1.5 text-sm focus:ring-red-500" onchange="this.form.submit()">
+        <select name="status" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-green-500" onchange="this.form.submit()">
           <option value="all" {{ $statusFilter === 'all' ? 'selected' : '' }}>All statuses</option>
           <option value="pending" {{ $statusFilter === 'pending' ? 'selected' : '' }}>Pending</option>
           <option value="reviewed" {{ $statusFilter === 'reviewed' ? 'selected' : '' }}>Reviewed</option>
@@ -70,7 +70,7 @@
       </label>
       <label class="text-sm text-gray-600 flex items-center gap-2">
         <span>Reason</span>
-        <select name="reason" class="border border-gray-300 rounded-full px-3 py-1.5 text-sm focus:ring-red-500" onchange="this.form.submit()">
+        <select name="reason" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-green-500" onchange="this.form.submit()">
           <option value="all" {{ $reasonFilter === 'all' ? 'selected' : '' }}>All reasons</option>
           <option value="spam" {{ $reasonFilter === 'spam' ? 'selected' : '' }}>Spam</option>
           <option value="harassment" {{ $reasonFilter === 'harassment' ? 'selected' : '' }}>Harassment</option>
@@ -86,7 +86,7 @@
     <div class="overflow-x-auto">
       <table class="w-full">
         <thead>
-          <tr class="bg-red-600 text-white">
+          <tr class="admin-table-header">
             <th class="px-4 py-3 text-left text-sm font-semibold">#</th>
             <th class="px-4 py-3 text-left text-sm font-semibold">Reporter</th>
             <th class="px-4 py-3 text-left text-sm font-semibold">Reported User</th>
@@ -127,7 +127,7 @@
                 </div>
               </td>
               <td class="px-4 py-3">
-                <span class="text-xs font-medium px-2 py-1 rounded-full bg-gray-100 text-gray-800">
+                <span class="admin-status-badge bg-gray-100 text-gray-700">
                   {{ $report->getReasonLabel() }}
                 </span>
               </td>
@@ -135,7 +135,7 @@
                 {{ Str::limit($report->description ?? 'No description provided', 50) }}
               </td>
               <td class="px-4 py-3">
-                <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full {{ $report->getStatusBadgeClass() }}">
+                <span class="admin-status-badge {{ $report->getStatusBadgeClass() }}">
                   {{ ucfirst(str_replace('_', ' ', $report->status)) }}
                 </span>
               </td>
@@ -145,7 +145,7 @@
                 <span class="text-xs text-gray-400">{{ $report->created_at->diffForHumans() }}</span>
               </td>
               <td class="px-4 py-3">
-                <button onclick="openUserReportView({{ $report->id }})" class="w-8 h-8 bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors duration-300" title="View Details">
+                <button onclick="openUserReportView({{ $report->id }})" class="admin-icon-button bg-blue-500 text-white hover:bg-blue-600" title="View Details">
                   <i class="fas fa-eye text-xs"></i>
                 </button>
               </td>

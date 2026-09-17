@@ -33,6 +33,34 @@ test('a user cannot log in with invalid mobile API credentials', function () {
     $this->assertDatabaseCount('personal_access_tokens', 0);
 });
 
+test('an admin cannot log in through the mobile API', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    $this->postJson('/api/v1/auth/login', [
+        'email' => $admin->email,
+        'password' => 'password',
+    ])->assertForbidden()
+        ->assertExactJson([
+            'message' => 'Admin accounts can only sign in through the web Admin Portal.',
+        ]);
+
+    $this->assertDatabaseCount('personal_access_tokens', 0);
+});
+
+test('invalid admin credentials do not reveal that the account is an admin', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    $this->postJson('/api/v1/auth/login', [
+        'email' => $admin->email,
+        'password' => 'incorrect-password',
+    ])->assertUnprocessable()
+        ->assertExactJson([
+            'message' => 'The provided credentials are incorrect.',
+        ]);
+
+    $this->assertDatabaseCount('personal_access_tokens', 0);
+});
+
 test('a banned user cannot log in through the mobile API', function () {
     $user = User::factory()->create(['banned_at' => now()]);
 
@@ -43,6 +71,17 @@ test('a banned user cannot log in through the mobile API', function () {
         ->assertJsonPath('message', 'Your account has been banned. Please contact an administrator.');
 
     $this->assertDatabaseCount('personal_access_tokens', 0);
+});
+
+test('an admin can still log in through the web admin portal', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+
+    $this->post('/login', [
+        'email' => $admin->email,
+        'password' => 'password',
+    ])->assertRedirect(route('admin.dashboard', absolute: false));
+
+    $this->assertAuthenticatedAs($admin);
 });
 
 test('the mobile API me endpoint requires a Sanctum token', function () {

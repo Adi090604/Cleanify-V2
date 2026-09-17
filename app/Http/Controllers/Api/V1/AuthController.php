@@ -53,6 +53,12 @@ class AuthController extends Controller
             ], 403);
         }
 
+        if ($user->isAdmin()) {
+            return response()->json([
+                'message' => 'Admin accounts can only sign in through the web Admin Portal.',
+            ], 403);
+        }
+
         $token = $user->createToken('mobile-app')->plainTextToken;
 
         return response()->json([

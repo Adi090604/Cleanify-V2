@@ -28,9 +28,18 @@
   </div>
 
   <div class="admin-table-card bg-white rounded-xl shadow-sm overflow-hidden">
+    <div class="border-b border-gray-100 px-4 py-3.5 sm:px-5">
+      <div class="admin-card-heading">
+        <i class="fas fa-map-location-dot" aria-hidden="true"></i>
+        <div>
+          <h3>Service Zone Directory</h3>
+          <p class="mt-0.5 text-xs text-gray-500">Configured zones and their mapped coordinates</p>
+        </div>
+      </div>
+    </div>
     <div class="overflow-x-auto">
       <table class="w-full">
-        <thead><tr class="bg-green-600 text-white">
+        <thead><tr class="admin-table-header">
           <th class="px-4 py-3 text-left text-sm font-semibold">Zone</th>
           <th class="px-4 py-3 text-left text-sm font-semibold">Barangay</th>
           <th class="px-4 py-3 text-left text-sm font-semibold">Coordinates</th>
@@ -49,7 +58,7 @@
                   <span class="text-gray-400">No location selected</span>
                 @endif
               </td>
-              <td class="px-4 py-3"><span class="text-xs font-medium px-2.5 py-0.5 rounded-full {{ $zone->status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700' }}">{{ ucfirst($zone->status) }}</span></td>
+              <td class="px-4 py-3"><span class="admin-status-badge {{ $zone->status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-700' }}">{{ ucfirst($zone->status) }}</span></td>
               <td class="px-4 py-3 space-x-2 whitespace-nowrap">
                 <button type="button"
                   data-zone-edit
@@ -59,8 +68,8 @@
                   data-zone-status="{{ $zone->status }}"
                   data-zone-latitude="{{ $zone->latitude }}"
                   data-zone-longitude="{{ $zone->longitude }}"
-                  class="w-8 h-8 bg-blue-500 text-white rounded hover:bg-blue-600" title="Edit"><i class="fas fa-edit text-xs"></i></button>
-                <button type="button" data-zone-delete-id="{{ $zone->id }}" data-zone-delete-name="{{ $zone->name }}" class="w-8 h-8 bg-red-500 text-white rounded hover:bg-red-600" title="Delete"><i class="fas fa-trash text-xs"></i></button>
+                  class="admin-icon-button bg-blue-500 text-white hover:bg-blue-600" title="Edit"><i class="fas fa-edit text-xs"></i></button>
+                <button type="button" data-zone-delete-id="{{ $zone->id }}" data-zone-delete-name="{{ $zone->name }}" class="admin-icon-button bg-red-500 text-white hover:bg-red-600" title="Delete"><i class="fas fa-trash text-xs"></i></button>
               </td>
             </tr>
           @empty
@@ -128,10 +137,19 @@
     @slot('footer')<div class="flex justify-end space-x-3"><button onclick="closeModal('editServiceZoneModal')" class="px-4 py-2 border rounded-lg">Cancel</button><button type="submit" form="editServiceZoneForm" class="px-4 py-2 bg-blue-600 text-white rounded-lg">Save Changes</button></div>@endslot
   </x-modal>
 
-  <x-modal id="deleteServiceZoneModal" title="Delete Service Zone" icon="fas fa-exclamation-triangle" color="red">
-    <p class="text-gray-700">Delete <strong id="deleteServiceZoneName"></strong>? Existing schedules are not changed.</p>
+  <x-modal id="deleteServiceZoneModal" title="Delete Service Zone" icon="fas fa-trash-alt" color="red" variant="confirmation">
+    <p>Delete <strong id="deleteServiceZoneName" class="font-semibold text-gray-800"></strong>? Existing schedules are not changed.</p>
+    <div class="admin-confirm-warning">
+      <i class="fas fa-exclamation-circle mt-0.5" aria-hidden="true"></i>
+      <p>This action permanently removes the service zone.</p>
+    </div>
     <form id="deleteServiceZoneForm" method="POST">@csrf @method('DELETE')</form>
-    @slot('footer')<div class="flex justify-end space-x-3"><button onclick="closeModal('deleteServiceZoneModal')" class="px-4 py-2 border rounded-lg">Cancel</button><button type="submit" form="deleteServiceZoneForm" class="px-4 py-2 bg-red-600 text-white rounded-lg">Delete</button></div>@endslot
+    @slot('footer')
+      <div class="admin-confirm-actions">
+        <button type="button" onclick="closeModal('deleteServiceZoneModal')" class="admin-btn-secondary">Cancel</button>
+        <button type="submit" form="deleteServiceZoneForm" class="admin-btn-danger"><i class="fas fa-trash mr-2"></i>Delete Zone</button>
+      </div>
+    @endslot
   </x-modal>
 @endpush
 

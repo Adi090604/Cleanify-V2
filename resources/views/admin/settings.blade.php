@@ -17,19 +17,23 @@
 
   <div class="admin-page-header mb-6">
     <h2 class="text-3xl font-bold text-gray-800">
-      <i class="fas fa-cog text-green-600 mr-3"></i>Admin Settings ⚙️
+      <i class="fas fa-cog text-green-600 mr-3"></i>Admin Settings
     </h2>
     <p class="text-gray-600 mt-1">Manage your account preferences and system settings</p>
   </div>
 
-  <div class="admin-section-card bg-white rounded-xl shadow-sm p-6 mb-6">
-    <div class="flex items-center mb-4">
-      <i class="fas fa-user-circle text-green-600 text-xl mr-3"></i>
-      <h3 class="text-xl font-semibold text-gray-800">Profile Settings</h3>
+  <div class="grid grid-cols-1 gap-5 xl:grid-cols-2 mb-5">
+  <div class="admin-section-card admin-settings-section bg-white rounded-xl shadow-sm p-6 mb-0">
+    <div class="admin-card-heading mb-5">
+      <i class="fas fa-user-circle" aria-hidden="true"></i>
+      <div>
+        <h3>Profile Settings</h3>
+        <p class="mt-0.5 text-xs text-gray-500">Update your admin identity and profile photo</p>
+      </div>
     </div>
     <form method="POST" action="{{ route('admin.settings.profile') }}" class="space-y-4" enctype="multipart/form-data">
       @csrf
-      <div class="flex items-center gap-4">
+      <div class="flex flex-col gap-4 rounded-xl border border-gray-200 bg-gray-50/70 p-4 sm:flex-row sm:items-center">
         @if($user->profile_photo_url)
           <img src="{{ $user->profile_photo_url }}" alt="{{ $user->name }}'s profile photo" class="w-16 h-16 rounded-full object-cover">
         @else
@@ -39,7 +43,7 @@
         @endif
         <div class="flex-1">
           <label class="block text-gray-700 mb-2 font-medium">Profile Photo</label>
-          <input type="file" name="profile_photo" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent @error('profile_photo') border-red-500 @enderror">
+          <input type="file" name="profile_photo" accept=".jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp" class="w-full rounded-lg border border-gray-300 bg-white text-sm text-gray-600 file:mr-3 file:border-0 file:border-r file:border-gray-200 file:bg-green-50 file:px-3 file:py-2 file:text-sm file:font-medium file:text-green-700 hover:file:bg-green-100 focus:outline-none focus:ring-2 focus:ring-green-500 @error('profile_photo') border-red-500 @enderror">
           <p class="mt-1 text-sm text-gray-500">JPG, PNG, or WebP up to 4 MB.</p>
           @error('profile_photo')
             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -76,10 +80,13 @@
     </form>
   </div>
 
-  <div class="admin-section-card bg-white rounded-xl shadow-sm p-6 mb-6">
-    <div class="flex items-center mb-4">
-      <i class="fas fa-lock text-green-600 text-xl mr-3"></i>
-      <h3 class="text-xl font-semibold text-gray-800">Update Password</h3>
+  <div class="admin-section-card admin-settings-section bg-white rounded-xl shadow-sm p-6 mb-0">
+    <div class="admin-card-heading mb-5">
+      <i class="fas fa-lock" aria-hidden="true"></i>
+      <div>
+        <h3>Update Password</h3>
+        <p class="mt-0.5 text-xs text-gray-500">Keep your administrator account secure</p>
+      </div>
     </div>
     <form method="POST" action="{{ route('admin.settings.password') }}" class="space-y-4">
       @csrf
@@ -112,17 +119,21 @@
       </button>
     </form>
   </div>
+  </div>
 
-  <div class="admin-section-card bg-white rounded-xl shadow-sm p-6 mb-6">
-    <div class="flex items-center mb-4">
-      <i class="fas fa-bell text-green-600 text-xl mr-3"></i>
-      <h3 class="text-xl font-semibold text-gray-800">Notification Preferences</h3>
+  <div class="admin-section-card admin-settings-section bg-white rounded-xl shadow-sm p-6 mb-5">
+    <div class="admin-card-heading mb-5">
+      <i class="fas fa-bell" aria-hidden="true"></i>
+      <div>
+        <h3>Notification Preferences</h3>
+        <p class="mt-0.5 text-xs text-gray-500">Choose how administrative updates reach you</p>
+      </div>
     </div>
     <form method="POST" action="{{ route('admin.settings.notifications') }}" class="space-y-3">
       @csrf
       
       <!-- Email Notifications -->
-      <div class="flex items-center p-3 border border-gray-200 rounded-lg">
+      <div class="admin-settings-option flex items-center p-3">
         <input type="checkbox" id="emailNotif" name="email_notifications" value="1" class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2" {{ old('email_notifications', $user->email_notifications ?? true) ? 'checked' : '' }}>
         <label for="emailNotif" class="ml-2 text-gray-700">
           <i class="fas fa-envelope mr-2 text-green-600"></i>Email Notifications
@@ -130,7 +141,7 @@
       </div>
       
       <!-- SMS Notifications -->
-      <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-gray-50">
+      <div class="admin-settings-option flex items-center justify-between p-3">
         <div class="flex items-center">
           <input type="checkbox" id="smsNotif" name="sms_notifications" value="1" class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2" {{ old('sms_notifications', $user->sms_notifications ?? false) ? 'checked' : '' }} disabled>
           <label for="smsNotif" class="ml-2 text-gray-500">
@@ -143,7 +154,7 @@
       </div>
       
       <!-- Push Notifications -->
-      <div class="flex items-center justify-between p-3 border border-gray-200 rounded-lg bg-gray-50">
+      <div class="admin-settings-option flex items-center justify-between p-3">
         <div class="flex items-center">
           <input type="checkbox" id="pushNotif" name="push_notifications" value="1" class="w-4 h-4 text-green-600 bg-gray-100 border-gray-300 rounded focus:ring-green-500 focus:ring-2" {{ old('push_notifications', $user->push_notifications ?? true) ? 'checked' : '' }} disabled>
           <label for="pushNotif" class="ml-2 text-gray-500">
@@ -162,10 +173,15 @@
   </div>
 
   <div class="admin-table-card bg-white rounded-xl shadow-sm overflow-hidden">
-    <div class="p-6">
-      <div class="flex items-center mb-4">
-        <i class="fas fa-link text-green-600 text-xl mr-3"></i>
-        <h3 class="text-xl font-semibold text-gray-800">Connected Accounts</h3>
+    <div>
+      <div class="border-b border-gray-100 px-4 py-3.5 sm:px-5">
+        <div class="admin-card-heading">
+          <i class="fas fa-link" aria-hidden="true"></i>
+          <div>
+            <h3>Connected Accounts</h3>
+            <p class="mt-0.5 text-xs text-gray-500">Manage the external accounts already available here</p>
+          </div>
+        </div>
       </div>
       @php
         $accounts = [
@@ -177,7 +193,7 @@
       <div class="overflow-x-auto">
         <table class="w-full">
           <thead>
-            <tr class="bg-green-600 text-white">
+            <tr class="admin-table-header">
               @foreach (['#','Service','Status','Connected Since','Action'] as $heading)
                 <th class="px-4 py-3 text-left text-sm font-semibold">{{ $heading }}</th>
               @endforeach
@@ -194,7 +210,7 @@
                   </div>
                 </td>
                 <td class="px-4 py-3">
-                  <span class="text-xs font-medium px-2.5 py-0.5 rounded-full {{ $account['connected'] ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
+                  <span class="admin-status-badge {{ $account['connected'] ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
                     <i class="fas fa-circle text-xs mr-1"></i>{{ $account['status'] }}
                   </span>
                 </td>
@@ -224,7 +240,7 @@
         button.classList.remove('bg-red-500', 'hover:bg-red-600');
         button.classList.add('bg-green-600', 'hover:bg-green-700');
         button.innerHTML = '<i class="fas fa-check-circle mr-1"></i>Connect';
-        statusCell.className = 'text-xs font-medium px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-800';
+        statusCell.className = 'admin-status-badge bg-gray-100 text-gray-800';
         statusCell.innerHTML = '<i class="fas fa-circle text-xs mr-1"></i>Disconnected';
         if (typeof showToast === 'function') {
           showToast('info', 'Successfully disconnected account.');
@@ -233,7 +249,7 @@
         button.classList.remove('bg-green-600', 'hover:bg-green-700');
         button.classList.add('bg-red-500', 'hover:bg-red-600');
         button.innerHTML = '<i class="fas fa-times-circle mr-1"></i>Disconnect';
-        statusCell.className = 'text-xs font-medium px-2.5 py-0.5 rounded-full bg-green-100 text-green-800';
+        statusCell.className = 'admin-status-badge bg-green-100 text-green-800';
         statusCell.innerHTML = '<i class="fas fa-circle text-xs mr-1"></i>Connected';
         if (typeof showToast === 'function') {
           showToast('success', 'Successfully connected account.');

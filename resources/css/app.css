@@ -213,6 +213,148 @@ body.bg-gray-50 { background: #f7f9f7; }
   padding-bottom: .75rem !important;
   vertical-align: middle;
 }
+.admin-page .admin-table-header {
+  border-top: 1px solid #e8eee9;
+  border-bottom: 1px solid #dfe8e1;
+  background: #f1f7f2;
+  color: #526158;
+}
+.admin-page .admin-card-heading {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+}
+.admin-page .admin-card-heading > i {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: .625rem;
+  background: #eef8ef;
+  color: #2f8a3f;
+  font-size: .875rem;
+}
+.admin-page .admin-card-heading h3 {
+  color: #253029;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -.01em;
+}
+.admin-page .admin-status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  border-radius: 9999px;
+  padding: .25rem .625rem;
+  font-size: .6875rem;
+  font-weight: 600;
+  line-height: 1rem;
+  white-space: nowrap;
+}
+.admin-page .admin-icon-button {
+  display: inline-flex;
+  width: 2rem;
+  height: 2rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: .5rem;
+  transition: background-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+.admin-page .admin-settings-section {
+  padding: 1.25rem !important;
+}
+.admin-page .grid > .admin-settings-section {
+  margin-bottom: 0 !important;
+}
+.admin-page .admin-settings-option {
+  border: 1px solid #e2e8e3;
+  border-radius: .75rem;
+  background: #fbfcfb;
+}
+.admin-page .admin-confirm-modal {
+  width: calc(100% - 1.5rem);
+  border-color: #e2e8e3;
+  border-radius: .875rem;
+  box-shadow: 0 20px 45px rgba(27, 42, 31, .16) !important;
+}
+.admin-page .admin-confirm-header {
+  gap: 1rem;
+  padding: 1.25rem 1.25rem .75rem;
+  background: #fff;
+  color: #253029;
+}
+.admin-page .admin-confirm-heading {
+  display: flex;
+  align-items: center;
+  gap: .75rem;
+  min-width: 0;
+  font-size: 1rem;
+  font-weight: 650;
+}
+.admin-page .admin-confirm-icon {
+  display: inline-flex;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex: 0 0 2.25rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: .625rem;
+}
+.admin-page .admin-confirm-body {
+  padding: .25rem 1.25rem 1.25rem;
+  color: #526158;
+}
+.admin-page .admin-confirm-warning {
+  display: flex;
+  gap: .625rem;
+  margin-top: 1rem;
+  padding: .75rem;
+  border: 1px solid #fee2e2;
+  border-radius: .625rem;
+  background: #fff7f7;
+  color: #9f3030;
+  font-size: .8125rem;
+  line-height: 1.25rem;
+}
+.admin-page .admin-confirm-footer {
+  padding: .875rem 1.25rem;
+  border-top: 1px solid #edf1ee;
+  background: #fbfcfb;
+}
+.admin-page .admin-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: .75rem;
+}
+.admin-page .admin-btn-secondary,
+.admin-page .admin-btn-danger,
+.admin-page .admin-btn-warning,
+.admin-page .admin-btn-success {
+  display: inline-flex;
+  min-height: 2.5rem;
+  align-items: center;
+  justify-content: center;
+  border-radius: .625rem;
+  padding: .5rem 1rem;
+  font-size: .875rem;
+  font-weight: 600;
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease;
+}
+.admin-page .admin-btn-secondary { border: 1px solid #d7ded9; background: #fff; color: #465149; }
+.admin-page .admin-btn-secondary:hover { background: #f5f7f5; }
+.admin-page .admin-btn-danger { background: #dc2626; color: #fff; }
+.admin-page .admin-btn-danger:hover { background: #b91c1c; }
+.admin-page .admin-btn-warning { background: #d97706; color: #fff; }
+.admin-page .admin-btn-warning:hover { background: #b45309; }
+.admin-page .admin-btn-success { background: #16a34a; color: #fff; }
+.admin-page .admin-btn-success:hover { background: #15803d; }
+@media (max-width: 479px) {
+  .admin-page .admin-confirm-actions { flex-direction: column-reverse; }
+  .admin-page .admin-confirm-actions > *,
+  .admin-page .admin-confirm-actions > form > button { width: 100%; }
+}
 .bg-white.rounded-xl.shadow-sm, .bg-white.rounded-2xl.shadow, .bg-white.rounded-2xl.shadow-xl, .bg-white.rounded-lg.shadow-sm {
   border: 1px solid var(--cleanify-border);
   box-shadow: var(--cleanify-shadow) !important;

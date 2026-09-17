@@ -72,12 +72,15 @@
 
 
   <div class="admin-table-card bg-white rounded-xl shadow-sm overflow-hidden">
-    <div class="p-4 flex justify-between items-center">
-      <div class="flex items-center">
-        <i class="fas fa-truck text-green-600 text-xl mr-3"></i>
-        <h3 class="text-xl font-semibold text-gray-800">Active Garbage Trucks</h3>
+    <div class="flex flex-col gap-3 border-b border-gray-100 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+      <div class="admin-card-heading">
+        <i class="fas fa-truck" aria-hidden="true"></i>
+        <div>
+          <h3>Active Garbage Trucks</h3>
+          <p class="mt-0.5 text-xs text-gray-500">Current fleet assignments and operating status</p>
+        </div>
       </div>
-      <button onclick="openAddTruckModal()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-300">
+      <button onclick="openAddTruckModal()" class="inline-flex min-h-10 items-center justify-center rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white transition-colors duration-200 hover:bg-green-700">
         <i class="fas fa-plus-circle mr-2"></i>Add Truck
       </button>
     </div>
@@ -85,7 +88,7 @@
     <div class="overflow-x-auto">
       <table class="w-full">
         <thead>
-          <tr class="bg-green-600 text-white">
+          <tr class="admin-table-header">
             @foreach (['#','Truck ID','Driver','Route','Status','Last Updated','Actions'] as $heading)
               <th class="px-4 py-3 text-left text-sm font-semibold">{{ $heading }}</th>
             @endforeach
@@ -109,7 +112,7 @@
               <td class="px-4 py-3 text-gray-600">{{ $truck->driver }}</td>
               <td class="px-4 py-3 text-gray-600">{{ $truck->route }}</td>
               <td class="px-4 py-3">
-                <span class="{{ $truck->getStatusBadgeClass() }} text-xs font-medium px-2.5 py-0.5 rounded-full">
+                <span class="admin-status-badge {{ $truck->getStatusBadgeClass() }}">
                   <i class="fas fa-circle text-xs mr-1"></i>{{ $truck->formatted_status }}
                 </span>
               </td>
@@ -120,13 +123,13 @@
               </td>
               <td class="px-4 py-3">
                 <div class="flex space-x-2">
-                  <button onclick="openTruckView({{ $truck->id }})" class="w-8 h-8 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors duration-300" title="View">
+                  <button onclick="openTruckView({{ $truck->id }})" class="admin-icon-button bg-blue-500 text-white hover:bg-blue-600" title="View">
                     <i class="fas fa-eye text-xs"></i>
                   </button>
-                  <button onclick="editTruck({{ $truck->id }})" class="w-8 h-8 bg-yellow-500 text-white rounded hover:bg-yellow-600 transition-colors duration-300" title="Edit">
+                  <button onclick="editTruck({{ $truck->id }})" class="admin-icon-button bg-yellow-500 text-white hover:bg-yellow-600" title="Edit">
                     <i class="fas fa-edit text-xs"></i>
                   </button>
-                  <button onclick="openTruckDelete({{ $truck->id }})" class="w-8 h-8 bg-red-500 text-white rounded hover:bg-red-600 transition-colors duration-300" title="Delete">
+                  <button onclick="openTruckDelete({{ $truck->id }})" class="admin-icon-button bg-red-500 text-white hover:bg-red-600" title="Delete">
                     <i class="fas fa-trash text-xs"></i>
                   </button>
                 </div>
@@ -351,29 +354,21 @@
     @endslot
   </x-modal>
 
-  <x-modal id="deleteTruckModal" title="Delete Truck" icon="fas fa-exclamation-triangle" color="red">
-    <div class="text-center">
-      <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-        <i class="fas fa-exclamation text-red-600 text-2xl"></i>
-      </div>
-      <h4 class="text-xl font-semibold text-gray-800 mb-2">Confirm Deletion</h4>
-      <p class="text-gray-600 mb-4">Are you sure you want to delete this truck? This action cannot be undone.</p>
-      <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 text-left flex">
-        <i class="fas fa-exclamation-circle text-yellow-400 mr-3 mt-1"></i>
-        <p class="text-sm text-yellow-700">
-          This will permanently remove the truck from the system and all associated data.
-        </p>
-      </div>
+  <x-modal id="deleteTruckModal" title="Delete Truck" icon="fas fa-trash-alt" color="red" variant="confirmation">
+    <p>Are you sure you want to delete this truck? This action cannot be undone.</p>
+    <div class="admin-confirm-warning">
+      <i class="fas fa-exclamation-circle mt-0.5" aria-hidden="true"></i>
+      <p>This will permanently remove the truck from the system and all associated data.</p>
     </div>
     @slot('footer')
-      <div class="flex justify-end space-x-3">
-        <button onclick="closeModal('deleteTruckModal')" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-300">
-          <i class="fas fa-times mr-2"></i>Cancel
+      <div class="admin-confirm-actions">
+        <button type="button" onclick="closeModal('deleteTruckModal')" class="admin-btn-secondary">
+          Cancel
         </button>
         <form id="deleteTruckForm" method="POST" class="inline">
           @csrf
           @method('DELETE')
-          <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-300">
+          <button type="submit" class="admin-btn-danger">
             <i class="fas fa-trash mr-2"></i>Delete Truck
           </button>
         </form>
@@ -1001,7 +996,7 @@
               'maintenance': 'bg-blue-100 text-blue-800',
             };
             const statusClass = statusClasses[truck.status] || 'bg-gray-100 text-gray-800';
-            statusBadge.className = statusClass + ' text-xs font-medium px-2.5 py-0.5 rounded-full';
+            statusBadge.className = 'admin-status-badge ' + statusClass;
             statusBadge.innerHTML = '<i class="fas fa-circle text-xs mr-1"></i>' + (truck.formatted_status || truck.status);
           }
         }

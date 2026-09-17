@@ -65,7 +65,7 @@
     <div class="overflow-x-auto">
       <table class="w-full" id="userTable">
         <thead>
-          <tr class="bg-green-600 text-white">
+          <tr class="admin-table-header">
             @foreach (['#','Avatar','Name','Email','Role','Status','Date Joined','Actions'] as $heading)
               <th class="px-4 py-3 text-left text-sm font-semibold">{{ $heading }}</th>
             @endforeach
@@ -91,7 +91,7 @@
               <td class="px-4 py-3 font-medium text-gray-900">{{ $user->name }}</td>
               <td class="px-4 py-3 text-gray-600">{{ $user->email }}</td>
               <td class="px-4 py-3">
-                <span class="{{ $user->is_admin ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800' }} text-xs font-medium px-2.5 py-0.5 rounded-full">
+                <span class="admin-status-badge {{ $user->is_admin ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800' }}">
                   <i class="fas {{ $user->is_admin ? 'fa-user-shield' : 'fa-user' }} mr-1"></i>{{ $user->is_admin ? 'Admin' : 'User' }}
                 </span>
               </td>
@@ -109,29 +109,29 @@
               <td class="px-4 py-3 text-gray-600">{{ $user->created_at->format('M d, Y') }}</td>
               <td class="px-4 py-3">
                 <div class="flex space-x-2">
-                  <button onclick="openUserView({{ $user->id }})" class="w-8 h-8 bg-purple-500 text-white rounded hover:bg-purple-600 transition-colors duration-300">
+                  <button onclick="openUserView({{ $user->id }})" class="admin-icon-button bg-purple-500 text-white hover:bg-purple-600">
                     <i class="fas fa-eye text-xs"></i>
                   </button>
-                  <button onclick="openUserEdit({{ $user->id }})" class="w-8 h-8 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors duration-300">
+                  <button onclick="openUserEdit({{ $user->id }})" class="admin-icon-button bg-blue-500 text-white hover:bg-blue-600">
                     <i class="fas fa-edit text-xs"></i>
                   </button>
                   @if(auth()->id() != $user->id && !$user->isAdmin())
                     @if($user->isBanned())
-                      <button onclick="openUserUnban({{ $user->id }})" class="w-8 h-8 bg-green-500 text-white rounded hover:bg-green-600 transition-colors duration-300 flex items-center justify-center" title="Unban User">
+                      <button onclick="openUserUnban({{ $user->id }})" class="admin-icon-button bg-green-500 text-white hover:bg-green-600" title="Unban User">
                         <i class="fas fa-unlock text-sm"></i>
                       </button>
                     @else
-                      <button onclick="openUserBan({{ $user->id }})" class="w-8 h-8 bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors duration-300 flex items-center justify-center" title="Ban User">
+                      <button onclick="openUserBan({{ $user->id }})" class="admin-icon-button bg-orange-500 text-white hover:bg-orange-600" title="Ban User">
                         <i class="fas fa-ban text-sm"></i>
                       </button>
                     @endif
                   @endif
                   @if(auth()->id() != $user->id)
-                    <button onclick="openUserDelete({{ $user->id }})" class="w-8 h-8 bg-red-500 text-white rounded hover:bg-red-600 transition-colors duration-300">
+                    <button onclick="openUserDelete({{ $user->id }})" class="admin-icon-button bg-red-500 text-white hover:bg-red-600">
                       <i class="fas fa-trash text-xs"></i>
                     </button>
                   @else
-                    <button disabled class="w-8 h-8 bg-gray-300 text-gray-500 rounded cursor-not-allowed" title="Cannot delete your own account">
+                    <button disabled class="admin-icon-button bg-gray-300 text-gray-500 cursor-not-allowed" title="Cannot delete your own account">
                       <i class="fas fa-trash text-xs"></i>
                     </button>
                   @endif
@@ -237,29 +237,21 @@
     @endslot
   </x-modal>
 
-  <x-modal id="deleteUserModal" title="Delete User" icon="fas fa-exclamation-triangle" color="red">
-    <div class="text-center">
-      <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-        <i class="fas fa-exclamation text-red-600 text-2xl"></i>
-      </div>
-      <h4 class="text-xl font-semibold text-gray-800 mb-2">Confirm Deletion</h4>
-      <p class="text-gray-600 mb-4">Are you sure you want to delete this user? This action cannot be undone and all user data will be permanently removed.</p>
-      <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 text-left flex">
-        <i class="fas fa-exclamation-circle text-yellow-400 mr-3 mt-1"></i>
-        <p class="text-sm text-yellow-700">
-          This will delete the user account and all associated data including posts and reports.
-        </p>
-      </div>
+  <x-modal id="deleteUserModal" title="Delete User" icon="fas fa-trash-alt" color="red" variant="confirmation">
+    <p>Are you sure you want to delete this user? This action cannot be undone and all user data will be permanently removed.</p>
+    <div class="admin-confirm-warning">
+      <i class="fas fa-exclamation-circle mt-0.5" aria-hidden="true"></i>
+      <p>This will delete the user account and all associated data including posts and reports.</p>
     </div>
     @slot('footer')
-      <div class="flex justify-end space-x-3">
-        <button onclick="closeModal('deleteUserModal')" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-300">
-          <i class="fas fa-times mr-2"></i>Cancel
+      <div class="admin-confirm-actions">
+        <button type="button" onclick="closeModal('deleteUserModal')" class="admin-btn-secondary">
+          Cancel
         </button>
         <form id="deleteUserForm" method="POST" action="" class="inline">
           @csrf
           @method('DELETE')
-          <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-300">
+          <button type="submit" class="admin-btn-danger">
             <i class="fas fa-trash mr-2"></i>Delete User
           </button>
         </form>
@@ -267,28 +259,20 @@
     @endslot
   </x-modal>
 
-  <x-modal id="banUserModal" title="Ban User" icon="fas fa-ban" color="orange">
-    <div class="text-center">
-      <div class="w-16 h-16 bg-orange-100 rounded-full flex items-center justify-center mx-auto mb-4">
-        <i class="fas fa-ban text-orange-600 text-2xl"></i>
-      </div>
-      <h4 class="text-xl font-semibold text-gray-800 mb-2">Confirm Ban</h4>
-      <p class="text-gray-600 mb-4">Are you sure you want to ban this user? Banned users will not be able to log in or access the application.</p>
-      <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 text-left flex">
-        <i class="fas fa-exclamation-circle text-yellow-400 mr-3 mt-1"></i>
-        <p class="text-sm text-yellow-700">
-          The user will be immediately logged out if currently active and will not be able to access their account.
-        </p>
-      </div>
+  <x-modal id="banUserModal" title="Ban User" icon="fas fa-ban" color="orange" variant="confirmation">
+    <p>Are you sure you want to ban this user? Banned users will not be able to log in or access the application.</p>
+    <div class="admin-confirm-warning">
+      <i class="fas fa-exclamation-circle mt-0.5" aria-hidden="true"></i>
+      <p>The user will be immediately logged out if currently active and will not be able to access their account.</p>
     </div>
     @slot('footer')
-      <div class="flex justify-end space-x-3">
-        <button onclick="closeModal('banUserModal')" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-300">
-          <i class="fas fa-times mr-2"></i>Cancel
+      <div class="admin-confirm-actions">
+        <button type="button" onclick="closeModal('banUserModal')" class="admin-btn-secondary">
+          Cancel
         </button>
         <form id="banUserForm" method="POST" action="" class="inline">
           @csrf
-          <button type="submit" class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition-colors duration-300">
+          <button type="submit" class="admin-btn-warning">
             <i class="fas fa-ban mr-2"></i>Ban User
           </button>
         </form>
@@ -296,22 +280,16 @@
     @endslot
   </x-modal>
 
-  <x-modal id="unbanUserModal" title="Unban User" icon="fas fa-unlock" color="green">
-    <div class="text-center">
-      <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-        <i class="fas fa-unlock text-green-600 text-2xl"></i>
-      </div>
-      <h4 class="text-xl font-semibold text-gray-800 mb-2">Confirm Unban</h4>
-      <p class="text-gray-600 mb-4">Are you sure you want to unban this user? The user will be able to log in and access the application again.</p>
-    </div>
+  <x-modal id="unbanUserModal" title="Unban User" icon="fas fa-unlock" color="green" variant="confirmation">
+    <p>Are you sure you want to unban this user? The user will be able to log in and access the application again.</p>
     @slot('footer')
-      <div class="flex justify-end space-x-3">
-        <button onclick="closeModal('unbanUserModal')" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-300">
-          <i class="fas fa-times mr-2"></i>Cancel
+      <div class="admin-confirm-actions">
+        <button type="button" onclick="closeModal('unbanUserModal')" class="admin-btn-secondary">
+          Cancel
         </button>
         <form id="unbanUserForm" method="POST" action="" class="inline">
           @csrf
-          <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-300">
+          <button type="submit" class="admin-btn-success">
             <i class="fas fa-unlock mr-2"></i>Unban User
           </button>
         </form>

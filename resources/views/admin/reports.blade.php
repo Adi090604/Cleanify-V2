@@ -44,7 +44,7 @@
     <div class="overflow-x-auto">
       <table class="w-full" id="reportsTable">
         <thead>
-          <tr class="bg-green-600 text-white">
+          <tr class="admin-table-header">
             @foreach (['#','Reporter','Location','Description','Image','Status','Date Reported','Actions'] as $heading)
               <th class="px-4 py-3 text-left text-sm font-semibold">{{ $heading }}</th>
             @endforeach
@@ -101,7 +101,15 @@
                 @endif
               </td>
               <td class="px-4 py-3">
-                <span class="{{ $report->getStatusBadgeClass() }} font-semibold">
+                @php
+                  $statusBadgeClass = match($report->status) {
+                    'pending' => 'bg-yellow-50 text-yellow-700 ring-yellow-600/20',
+                    'resolved' => 'bg-green-50 text-green-700 ring-green-600/20',
+                    'rejected' => 'bg-red-50 text-red-700 ring-red-600/20',
+                    default => 'bg-gray-100 text-gray-700 ring-gray-500/20',
+                  };
+                @endphp
+                <span class="admin-status-badge ring-1 ring-inset {{ $statusBadgeClass }}">
                   <i class="fas fa-circle text-xs mr-1"></i>{{ ucfirst($report->status) }}
                 </span>
               </td>
@@ -109,20 +117,20 @@
               <td class="px-4 py-3">
                 <div class="flex space-x-2">
                   @if($report->status === 'pending')
-                    <button onclick="openResolveModal({{ $report->id }})" class="w-8 h-8 bg-green-500 text-white rounded hover:bg-green-600 transition-colors duration-300" title="Resolve">
+                    <button onclick="openResolveModal({{ $report->id }})" class="admin-icon-button bg-green-500 text-white hover:bg-green-600" title="Resolve">
                       <i class="fas fa-check text-xs"></i>
                     </button>
-                    <button onclick="openRejectModal({{ $report->id }})" class="w-8 h-8 bg-red-500 text-white rounded hover:bg-red-600 transition-colors duration-300" title="Reject">
+                    <button onclick="openRejectModal({{ $report->id }})" class="admin-icon-button bg-red-500 text-white hover:bg-red-600" title="Reject">
                       <i class="fas fa-times text-xs"></i>
                     </button>
                   @endif
-                  <button onclick="openReportView({{ $report->id }})" class="w-8 h-8 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors duration-300" title="View">
+                  <button onclick="openReportView({{ $report->id }})" class="admin-icon-button bg-blue-500 text-white hover:bg-blue-600" title="View">
                     <i class="fas fa-eye text-xs"></i>
                   </button>
                   <form method="POST" action="{{ route('admin.reports.destroy', $report) }}" onsubmit="return confirm('Permanently delete this report? This action cannot be undone.');">
                     @csrf
                     @method('DELETE')
-                                        <button type="submit" class="w-8 h-8 bg-red-500 text-white rounded hover:bg-red-600 transition-colors duration-300" title="Delete permanently">
+                    <button type="submit" class="admin-icon-button bg-red-500 text-white hover:bg-red-600" title="Delete permanently">
                       <i class="fas fa-trash-alt text-xs"></i>
                     </button>
                   </form>
@@ -235,16 +243,10 @@
     @endslot
   </x-modal>
 
-  <x-modal id="rejectReportModal" title="Reject Report" icon="fas fa-times-circle" color="red">
+  <x-modal id="rejectReportModal" title="Reject Report" icon="fas fa-times-circle" color="red" variant="confirmation">
     <form id="rejectReportForm" method="POST">
       @csrf
-      <div class="text-center mb-4">
-        <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <i class="fas fa-exclamation text-red-600 text-2xl"></i>
-        </div>
-        <h4 class="text-xl font-semibold text-gray-800 mb-2">Reject Report</h4>
-        <p class="text-gray-600">Are you sure you want to reject this report?</p>
-      </div>
+      <p class="mb-4">Are you sure you want to reject this report?</p>
       <div class="mb-4">
         <label class="block text-sm font-medium text-gray-700 mb-2">
           <i class="fas fa-comment mr-2 text-red-600"></i>Rejection Reason (Required)
@@ -254,19 +256,17 @@
           <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
         @enderror
       </div>
-      <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 flex">
-        <i class="fas fa-exclamation-triangle text-yellow-400 mr-3 mt-1"></i>
-        <p class="text-sm text-yellow-700">
-          This action cannot be undone. The reporter will be notified about the rejection.
-        </p>
+      <div class="admin-confirm-warning">
+        <i class="fas fa-exclamation-circle mt-0.5" aria-hidden="true"></i>
+        <p>This action cannot be undone. The reporter will be notified about the rejection.</p>
       </div>
     </form>
     @slot('footer')
-      <div class="flex justify-end space-x-3">
-        <button onclick="closeModal('rejectReportModal')" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-300">
-          <i class="fas fa-times mr-2"></i>Cancel
+      <div class="admin-confirm-actions">
+        <button type="button" onclick="closeModal('rejectReportModal')" class="admin-btn-secondary">
+          Cancel
         </button>
-        <button type="submit" form="rejectReportForm" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-300">
+        <button type="submit" form="rejectReportForm" class="admin-btn-danger">
           <i class="fas fa-times mr-2"></i>Reject Report
         </button>
       </div>

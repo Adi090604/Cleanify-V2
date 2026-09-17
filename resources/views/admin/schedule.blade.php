@@ -44,7 +44,7 @@
     <div class="overflow-x-auto">
       <table class="w-full" id="scheduleTable">
         <thead>
-          <tr class="bg-green-600 text-white">
+          <tr class="admin-table-header">
             @foreach (['#','Barangay / Zone','Collection Day','Time','Truck Assigned','Status','Actions'] as $heading)
               <th class="px-4 py-3 text-left text-sm font-semibold">{{ $heading }}</th>
             @endforeach
@@ -88,16 +88,16 @@
                 @endif
               </td>
               <td class="px-4 py-3">
-                <span class="{{ $schedule->getStatusBadgeClass() }} text-xs font-medium px-2.5 py-0.5 rounded-full">
+                <span class="admin-status-badge {{ $schedule->getStatusBadgeClass() }}">
                   <i class="fas fa-circle text-xs mr-1"></i>{{ $schedule->formatted_status }}
                 </span>
               </td>
               <td class="px-4 py-3">
                 <div class="flex space-x-2">
-                  <button onclick="openEditScheduleModal({{ $schedule->id }})" class="w-8 h-8 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors duration-300" title="Edit">
+                  <button onclick="openEditScheduleModal({{ $schedule->id }})" class="admin-icon-button bg-blue-500 text-white hover:bg-blue-600" title="Edit">
                     <i class="fas fa-edit text-xs"></i>
                   </button>
-                  <button onclick="openDeleteScheduleModal({{ $schedule->id }})" class="w-8 h-8 bg-red-500 text-white rounded hover:bg-red-600 transition-colors duration-300" title="Delete">
+                  <button onclick="openDeleteScheduleModal({{ $schedule->id }})" class="admin-icon-button bg-red-500 text-white hover:bg-red-600" title="Delete">
                     <i class="fas fa-trash text-xs"></i>
                   </button>
                 </div>
@@ -365,27 +365,21 @@
     @endslot
   </x-modal>
 
-  <x-modal id="deleteScheduleModal" title="Delete Schedule" icon="fas fa-exclamation-triangle" color="red">
-    <div class="text-center">
-      <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-        <i class="fas fa-exclamation text-red-600 text-2xl"></i>
-      </div>
-      <h4 class="text-xl font-semibold text-gray-800 mb-2">Confirm Deletion</h4>
-      <p class="text-gray-600 mb-4">Are you sure you want to delete this schedule? This action cannot be undone.</p>
-      <div class="bg-yellow-50 border-l-4 border-yellow-400 p-4 mb-4 text-left flex">
-        <i class="fas fa-exclamation-circle text-yellow-400 mr-3 mt-1"></i>
-        <p class="text-sm text-yellow-700">This will permanently remove the schedule and may affect garbage collection in the area.</p>
-      </div>
+  <x-modal id="deleteScheduleModal" title="Delete Schedule" icon="fas fa-trash-alt" color="red" variant="confirmation">
+    <p>Are you sure you want to delete this schedule? This action cannot be undone.</p>
+    <div class="admin-confirm-warning">
+      <i class="fas fa-exclamation-circle mt-0.5" aria-hidden="true"></i>
+      <p>This will permanently remove the schedule and may affect garbage collection in the area.</p>
     </div>
     @slot('footer')
-      <div class="flex justify-end space-x-3">
-        <button onclick="closeModal('deleteScheduleModal')" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-300">
-          <i class="fas fa-times mr-2"></i>Cancel
+      <div class="admin-confirm-actions">
+        <button type="button" onclick="closeModal('deleteScheduleModal')" class="admin-btn-secondary">
+          Cancel
         </button>
         <form id="deleteScheduleForm" method="POST" class="inline">
           @csrf
           @method('DELETE')
-          <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-300">
+          <button type="submit" class="admin-btn-danger">
             <i class="fas fa-trash mr-2"></i>Delete Schedule
           </button>
         </form>
