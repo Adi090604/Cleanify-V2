@@ -27,6 +27,9 @@ Route::prefix('v1')->group(function (): void {
         Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy']);
         Route::get('/reports', [ReportController::class, 'index']);
         Route::post('/reports', [ReportController::class, 'store']);
+        Route::post('/reports/{report}/like', [ReportController::class, 'toggleLike']);
+        Route::get('/reports/{report}/comments', [ReportController::class, 'comments']);
+        Route::post('/reports/{report}/comment', [ReportController::class, 'storeComment']);
         Route::get('/me/reports', [ReportController::class, 'mine']);
         Route::get('/schedules', [ScheduleController::class, 'index']);
         Route::get('/schedules/next', [ScheduleController::class, 'next']);

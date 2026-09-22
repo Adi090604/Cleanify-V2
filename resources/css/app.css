@@ -84,16 +84,6 @@ body.bg-gray-50 { background: #f7f9f7; }
   color: #226b31 !important;
   box-shadow: 0 1px 2px rgba(46, 125, 50, .06);
 }
-.admin-page .cleanify-sidebar nav a.bg-green-700::before {
-  position: absolute;
-  top: .45rem !important;
-  bottom: .45rem !important;
-  left: -.65rem !important;
-  width: 3px;
-  border-radius: 0 999px 999px 0;
-  background: var(--cleanify-green);
-  content: '';
-}
 .admin-page .cleanify-sidebar nav a > span[aria-label$="pending reports"] {
   flex-shrink: 0;
   margin-left: auto;

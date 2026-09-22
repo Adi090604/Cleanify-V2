@@ -34,17 +34,6 @@
       box-shadow: 0 1px 2px rgba(46, 125, 50, .06);
     }
 
-    .admin-dashboard-page .cleanify-sidebar nav a.bg-green-700::before {
-      position: absolute;
-      top: .5rem;
-      bottom: .5rem;
-      left: -.65rem;
-      width: 3px;
-      border-radius: 0 999px 999px 0;
-      background: var(--cleanify-green);
-      content: '';
-    }
-
     .admin-dashboard-shell {
       width: 100%;
       max-width: 100rem;
