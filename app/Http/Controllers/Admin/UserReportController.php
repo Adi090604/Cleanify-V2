@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\UserReport;
+use App\Services\ReportDeletionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -15,21 +16,21 @@ class UserReportController extends Controller
      */
     public function index(Request $request): View
     {
-        $query = UserReport::with(['reporter', 'reportedUser', 'reviewer']);
+        $query = UserReport::with(['reporter', 'reportedUser', 'reviewer', 'report.user']);
 
         // Search functionality
         if ($request->has('search') && $request->search) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->whereHas('reporter', function($userQuery) use ($search) {
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('reporter', function ($userQuery) use ($search) {
                     $userQuery->where('name', 'like', "%{$search}%")
-                              ->orWhere('email', 'like', "%{$search}%");
+                        ->orWhere('email', 'like', "%{$search}%");
                 })
-                ->orWhereHas('reportedUser', function($userQuery) use ($search) {
-                    $userQuery->where('name', 'like', "%{$search}%")
-                              ->orWhere('email', 'like', "%{$search}%");
-                })
-                ->orWhere('description', 'like', "%{$search}%");
+                    ->orWhereHas('reportedUser', function ($userQuery) use ($search) {
+                        $userQuery->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    })
+                    ->orWhere('description', 'like', "%{$search}%");
             });
         }
 
@@ -95,10 +96,30 @@ class UserReportController extends Controller
             try {
                 $report->reporter->notify(new \App\Notifications\UserReportReviewedNotification($report));
             } catch (\Exception $e) {
-                \Log::error('Failed to notify user about report review: ' . $e->getMessage());
+                \Log::error('Failed to notify user about report review: '.$e->getMessage());
             }
         }
 
         return back()->with('success', 'User report updated successfully!');
+    }
+
+    /**
+     * Permanently delete the originating Community Report without changing moderation state.
+     */
+    public function destroyCommunityReport(
+        UserReport $userReport,
+        ReportDeletionService $deletionService
+    ): RedirectResponse {
+        $report = $userReport->report;
+
+        if (! $report) {
+            return back()->with('error', 'The original Community Report is no longer available.');
+        }
+
+        if (! $deletionService->delete($report)) {
+            return back()->with('error', 'The report image could not be removed, so the report was not deleted.');
+        }
+
+        return back()->with('success', 'Community Report permanently deleted. The user report was retained.');
     }
 }

@@ -1,12 +1,13 @@
 <?php
 
 use App\Http\Controllers\Api\V1\AuthController;
+use App\Http\Controllers\Api\V1\NotificationController;
+use App\Http\Controllers\Api\V1\ProfilePhotoController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\ScheduleController;
 use App\Http\Controllers\Api\V1\SettingsController;
-use App\Http\Controllers\Api\V1\ProfilePhotoController;
-use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\TruckController;
+use App\Http\Controllers\Api\V1\UserReportController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
@@ -30,6 +31,7 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/reports/{report}/like', [ReportController::class, 'toggleLike']);
         Route::get('/reports/{report}/comments', [ReportController::class, 'comments']);
         Route::post('/reports/{report}/comment', [ReportController::class, 'storeComment']);
+        Route::post('/users/{user}/report', [UserReportController::class, 'store']);
         Route::get('/me/reports', [ReportController::class, 'mine']);
         Route::get('/schedules', [ScheduleController::class, 'index']);
         Route::get('/schedules/next', [ScheduleController::class, 'next']);

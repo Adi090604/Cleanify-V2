@@ -2,9 +2,10 @@
 
 namespace App\Http\Controllers\Client;
 
+use App\Exceptions\DuplicateUserReportException;
 use App\Http\Controllers\Controller;
 use App\Models\User;
-use App\Models\UserReport;
+use App\Services\UserReportSubmissionService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -15,11 +16,19 @@ class UserReportController extends Controller
     /**
      * Store a new user report.
      */
-    public function store(Request $request, User $user): JsonResponse|RedirectResponse
-    {
+    public function store(
+        Request $request,
+        User $user,
+        UserReportSubmissionService $submissionService
+    ): JsonResponse|RedirectResponse {
         $validated = $request->validate([
             'reason' => ['required', Rule::in(['spam', 'harassment', 'inappropriate_content', 'fake_account', 'other'])],
             'description' => ['nullable', 'string', 'max:1000'],
+            'report_id' => [
+                'nullable',
+                'integer',
+                Rule::exists('reports', 'id')->where(fn ($query) => $query->where('user_id', $user->id)),
+            ],
         ]);
 
         $reporter = $request->user();
@@ -30,45 +39,21 @@ class UserReportController extends Controller
             if ($request->expectsJson()) {
                 return response()->json(['error' => 'You cannot report yourself.'], 422);
             }
+
             return back()->withErrors(['error' => 'You cannot report yourself.']);
         }
 
-        // Check if user already reported this user
-        $existingReport = UserReport::where('reporter_id', $reporter->id)
-            ->where('reported_user_id', $reportedUser->id)
-            ->first();
-
-        if ($existingReport) {
-            // If report is dismissed, allow updating it
-            if ($existingReport->status === 'dismissed') {
-                $existingReport->update([
-                    'reason' => $validated['reason'],
-                    'description' => $validated['description'] ?? null,
-                    'status' => 'pending',
-                    'admin_notes' => null,
-                    'reviewed_by' => null,
-                    'reviewed_at' => null,
-                ]);
-                $report = $existingReport;
-            } else {
-                // Report already exists and is not dismissed
-                if ($request->expectsJson()) {
-                    return response()->json([
-                        'error' => 'You have already reported this user. Please wait for admin review.',
-                        'status' => $existingReport->status,
-                    ], 422);
-                }
-                return back()->withErrors(['error' => 'You have already reported this user. Please wait for admin review.']);
+        try {
+            $submissionService->submit($reporter, $reportedUser, $validated);
+        } catch (DuplicateUserReportException $exception) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'error' => $exception->getMessage(),
+                    'status' => $exception->userReport->status,
+                ], 422);
             }
-        } else {
-            // Create a new report
-            $report = UserReport::create([
-                'reporter_id' => $reporter->id,
-                'reported_user_id' => $reportedUser->id,
-                'reason' => $validated['reason'],
-                'description' => $validated['description'] ?? null,
-                'status' => 'pending',
-            ]);
+
+            return back()->withErrors(['error' => $exception->getMessage()]);
         }
 
         if ($request->expectsJson()) {

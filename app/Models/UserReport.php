@@ -10,6 +10,7 @@ class UserReport extends Model
     protected $fillable = [
         'reporter_id',
         'reported_user_id',
+        'report_id',
         'reason',
         'description',
         'status',
@@ -39,6 +40,14 @@ class UserReport extends Model
     }
 
     /**
+     * Get the originating Community Report, when it is still available.
+     */
+    public function report(): BelongsTo
+    {
+        return $this->belongsTo(Report::class);
+    }
+
+    /**
      * Get the admin who reviewed the report.
      */
     public function reviewer(): BelongsTo
@@ -51,7 +60,7 @@ class UserReport extends Model
      */
     public function getReasonLabel(): string
     {
-        return match($this->reason) {
+        return match ($this->reason) {
             'spam' => 'Spam',
             'harassment' => 'Harassment',
             'inappropriate_content' => 'Inappropriate Content',
@@ -66,7 +75,7 @@ class UserReport extends Model
      */
     public function getStatusBadgeClass(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             'pending' => 'bg-yellow-100 text-yellow-800',
             'reviewed' => 'bg-blue-100 text-blue-800',
             'dismissed' => 'bg-gray-100 text-gray-800',

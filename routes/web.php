@@ -107,6 +107,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     // User Reports Management
     Route::get('/user-reports', [App\Http\Controllers\Admin\UserReportController::class, 'index'])->name('user-reports');
     Route::put('/user-reports/{id}', [App\Http\Controllers\Admin\UserReportController::class, 'update'])->name('user-reports.update');
+    Route::delete('/user-reports/{userReport}/report', [App\Http\Controllers\Admin\UserReportController::class, 'destroyCommunityReport'])->name('user-reports.report.destroy');
 });
 
 require __DIR__.'/auth.php';

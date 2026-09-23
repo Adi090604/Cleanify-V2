@@ -1,6 +1,9 @@
 @extends('layouts.admin')
 
-@php use Illuminate\Support\Str; @endphp
+@php
+  use Illuminate\Support\Facades\Storage;
+  use Illuminate\Support\Str;
+@endphp
 
 @section('title', 'User Reports')
 
@@ -35,6 +38,12 @@
   @if(session('success'))
     <x-alert type="success" dismissible class="mb-4">
       {{ session('success') }}
+    </x-alert>
+  @endif
+
+  @if(session('error'))
+    <x-alert type="error" dismissible class="mb-4">
+      {{ session('error') }}
     </x-alert>
   @endif
 
@@ -225,6 +234,26 @@
       </div>
     @endslot
   </x-modal>
+
+  <x-modal id="deleteCommunityReportModal" title="Delete Community Report" icon="fas fa-trash-alt" color="red">
+    <p class="text-gray-700">
+      Are you sure you want to permanently delete this Community Report? This action cannot be undone.
+    </p>
+    @slot('footer')
+      <div class="flex justify-end space-x-3">
+        <button onclick="closeModal('deleteCommunityReportModal')" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-300">
+          Cancel
+        </button>
+        <form id="deleteCommunityReportForm" method="POST" action="">
+          @csrf
+          @method('DELETE')
+          <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-300">
+            <i class="fas fa-trash-alt mr-2"></i>Delete Report
+          </button>
+        </form>
+      </div>
+    @endslot
+  </x-modal>
 @endpush
 
 @push('scripts')
@@ -254,10 +283,28 @@
           'created_at_human' => $report->created_at->diffForHumans(),
           'reviewed_at' => $report->reviewed_at ? $report->reviewed_at->format('M d, Y') : null,
           'reviewer' => $report->reviewer ? $report->reviewer->name : null,
+          'originating_report' => $report->report ? [
+            'id' => $report->report->id,
+            'user_name' => $report->report->user->name ?? 'Unknown',
+            'description' => $report->report->description,
+            'location' => $report->report->location,
+            'status' => $report->report->status,
+            'submitted_at' => $report->report->created_at->format('M d, Y g:i A'),
+            'image_url' => $report->report->image_path && Storage::disk('public')->exists($report->report->image_path)
+              ? asset('storage/' . $report->report->image_path)
+              : null,
+            'delete_url' => route('admin.user-reports.report.destroy', $report),
+          ] : null,
         ];
       })->keyBy('id');
     @endphp
     const userReportsData = @json($userReportsData);
+
+    function escapeHtml(value) {
+      const element = document.createElement('div');
+      element.textContent = value ?? '';
+      return element.innerHTML;
+    }
 
     function openUserReportView(id) {
       const report = userReportsData[id];
@@ -292,7 +339,38 @@
           
           <div>
             <h4 class="font-semibold text-gray-800 mb-2"><i class="fas fa-comment mr-2 text-red-600"></i>Description</h4>
-            <p class="text-gray-700 bg-gray-50 rounded-lg p-3">${report.description || 'No description provided'}</p>
+            <p class="text-gray-700 bg-gray-50 rounded-lg p-3">${escapeHtml(report.description || 'No description provided')}</p>
+          </div>
+
+          <div>
+            <h4 class="font-semibold text-gray-800 mb-2"><i class="fas fa-file-alt mr-2 text-red-600"></i>Reported Content</h4>
+            ${report.originating_report ? `
+              <div class="border border-gray-200 rounded-lg p-4 space-y-3 bg-gray-50">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                  <p><strong>Community Report ID:</strong> #${report.originating_report.id}</p>
+                  <p><strong>Reported user:</strong> ${escapeHtml(report.originating_report.user_name)}</p>
+                  <p><strong>Location:</strong> ${escapeHtml(report.originating_report.location || 'Not provided')}</p>
+                  <p><strong>Status:</strong> ${escapeHtml(report.originating_report.status)}</p>
+                  <p class="md:col-span-2"><strong>Submitted:</strong> ${escapeHtml(report.originating_report.submitted_at)}</p>
+                </div>
+                <div>
+                  <p class="font-semibold text-sm text-gray-700 mb-1">Community Report description</p>
+                  <p class="text-gray-700 bg-white rounded p-3">${escapeHtml(report.originating_report.description)}</p>
+                </div>
+                ${report.originating_report.image_url ? `
+                  <img src="${escapeHtml(report.originating_report.image_url)}" class="w-full max-h-72 object-contain rounded-lg border border-gray-200 bg-white" alt="Reported Community Report image">
+                ` : '<p class="text-sm text-gray-500">No uploaded image is available for this Community Report.</p>'}
+                <div class="flex justify-end">
+                  <button type="button" onclick="openDeleteCommunityReportModal(${report.id})" class="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm">
+                    <i class="fas fa-trash-alt mr-2"></i>Delete Community Report
+                  </button>
+                </div>
+              </div>
+            ` : `
+              <p class="text-gray-600 bg-gray-50 border border-gray-200 rounded-lg p-4">
+                Original Community Report is no longer available.
+              </p>
+            `}
           </div>
           
           <div>
@@ -339,6 +417,15 @@
       
       closeModal('viewUserReportModal');
       setTimeout(() => openModal('editUserReportModal'), 300);
+    }
+
+    function openDeleteCommunityReportModal(userReportId) {
+      const report = userReportsData[userReportId];
+      if (!report?.originating_report) return;
+
+      document.getElementById('deleteCommunityReportForm').action = report.originating_report.delete_url;
+      closeModal('viewUserReportModal');
+      setTimeout(() => openModal('deleteCommunityReportModal'), 300);
     }
 
     function getStatusBadgeClass(status) {

@@ -9,8 +9,11 @@ use App\Models\Schedule;
 use App\Models\ServiceZone;
 use App\Models\Truck;
 use App\Models\User;
+use App\Notifications\ScheduleUpdatedNotification;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 
 class ScheduleController extends Controller
@@ -25,11 +28,11 @@ class ScheduleController extends Controller
         // Search functionality
         if ($request->has('search') && $request->search) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('area', 'like', "%{$search}%")
-                  ->orWhere('days', 'like', "%{$search}%")
-                  ->orWhere('truck', 'like', "%{$search}%")
-                  ->orWhere('schedule_type', 'like', "%{$search}%");
+                    ->orWhere('days', 'like', "%{$search}%")
+                    ->orWhere('truck', 'like', "%{$search}%")
+                    ->orWhere('schedule_type', 'like', "%{$search}%");
             });
         }
 
@@ -96,10 +99,8 @@ class ScheduleController extends Controller
     public function update(UpdateScheduleRequest $request, string $id): RedirectResponse
     {
         $schedule = Schedule::findOrFail($id);
-        $oldArea = $schedule->area;
-        $areaChanged = $oldArea !== $request->area;
-
-        $schedule->update([
+        $oldArea = (string) $schedule->area;
+        $schedule->fill([
             'area' => $request->area,
             'schedule_type' => $request->schedule_type,
             'specific_date' => $request->schedule_type === 'specific_date' ? $request->specific_date : null,
@@ -110,9 +111,27 @@ class ScheduleController extends Controller
             'status' => $request->status,
         ]);
 
-        // Notify users if area changed or schedule was activated
-        if ($areaChanged || ($schedule->status === 'active' && $schedule->wasChanged('status'))) {
-            $this->notifyUsersAboutSchedule($schedule);
+        $meaningfulFields = [
+            'area',
+            'schedule_type',
+            'specific_date',
+            'days',
+            'time_start',
+            'time_end',
+            'truck',
+            'status',
+        ];
+        $changedFields = array_values(array_intersect(
+            array_keys($schedule->getDirty()),
+            $meaningfulFields
+        ));
+
+        DB::transaction(function () use ($schedule): void {
+            $schedule->save();
+        });
+
+        if ($changedFields !== []) {
+            $this->notifyUsersAboutScheduleUpdate($schedule, $oldArea, $changedFields);
         }
 
         return redirect()->route('admin.schedule')
@@ -154,8 +173,59 @@ class ScheduleController extends Controller
                 try {
                     $user->notify(new \App\Notifications\ScheduleCreatedNotification($schedule));
                 } catch (\Exception $e) {
-                    \Illuminate\Support\Facades\Log::error('Failed to notify user about schedule: ' . $e->getMessage());
+                    \Illuminate\Support\Facades\Log::error('Failed to notify user about schedule: '.$e->getMessage());
                 }
+            }
+        }
+    }
+
+    /**
+     * Notify eligible residents after a meaningful schedule update has committed.
+     *
+     * @param  array<int, string>  $changedFields
+     */
+    protected function notifyUsersAboutScheduleUpdate(
+        Schedule $schedule,
+        string $oldArea,
+        array $changedFields
+    ): void {
+        $newArea = (string) $schedule->area;
+        $areaChanged = $oldArea !== $newArea;
+        $areas = $areaChanged ? [$oldArea, $newArea] : [$newArea];
+
+        $users = User::query()
+            ->whereIn('service_area', array_values(array_unique($areas)))
+            ->where('is_admin', false)
+            ->whereNull('banned_at')
+            ->get()
+            ->unique('id');
+
+        foreach ($users as $user) {
+            $preferences = $user->notification_preferences ?? [];
+
+            if (($preferences['schedule'] ?? true) !== true) {
+                continue;
+            }
+
+            $changeKind = match (true) {
+                ! $areaChanged => ScheduleUpdatedNotification::CHANGE_UPDATED,
+                $user->service_area === $oldArea => ScheduleUpdatedNotification::CHANGE_REMOVED_FROM_AREA,
+                default => ScheduleUpdatedNotification::CHANGE_ASSIGNED_TO_AREA,
+            };
+
+            try {
+                $user->notify(new ScheduleUpdatedNotification(
+                    $schedule,
+                    $changeKind,
+                    $oldArea,
+                    $changedFields
+                ));
+            } catch (\Throwable $exception) {
+                Log::error('Failed to notify user about schedule update.', [
+                    'schedule_id' => $schedule->id,
+                    'user_id' => $user->id,
+                    'exception' => $exception->getMessage(),
+                ]);
             }
         }
     }

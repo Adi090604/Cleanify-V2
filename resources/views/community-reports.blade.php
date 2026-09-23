@@ -101,7 +101,7 @@
               <div class="flex items-center gap-2">
                 <p class="font-semibold text-gray-800">{{ $report->user->name ?? 'Cleanify User' }}</p>
                 @if($report->user && $report->user->id !== auth()->id())
-                  <button onclick="openReportUserModal({{ $report->user->id }}, '{{ $report->user->name }}')" class="text-xs text-red-600 hover:text-red-700 hover:underline" title="Report this user">
+                  <button onclick="openReportUserModal({{ $report->user->id }}, @js($report->user->name), {{ $report->id }})" class="text-xs text-red-600 hover:text-red-700 hover:underline" title="Report this user">
                     <i class="fas fa-flag"></i>
                   </button>
                 @endif
@@ -142,6 +142,7 @@
     <form id="reportUserForm" class="space-y-4">
       @csrf
       <input type="hidden" id="reportedUserId" name="reported_user_id">
+      <input type="hidden" id="originatingReportId" name="report_id">
       <div>
         <p class="text-sm text-gray-600 mb-2">You are reporting: <strong id="reportedUserName"></strong></p>
         <p class="text-xs text-gray-500">Please provide details about why you're reporting this user. False reports may result in action against your account.</p>
@@ -319,8 +320,9 @@
 
     initializeReportLocationMap();
 
-    function openReportUserModal(userId, userName) {
+    function openReportUserModal(userId, userName, reportId) {
       document.getElementById('reportedUserId').value = userId;
+      document.getElementById('originatingReportId').value = reportId;
       document.getElementById('reportedUserName').textContent = userName;
       document.getElementById('reportReason').value = '';
       document.getElementById('reportDescription').value = '';
@@ -367,6 +369,7 @@
           // Reset form
           document.getElementById('reportReason').value = '';
           document.getElementById('reportDescription').value = '';
+          document.getElementById('originatingReportId').value = '';
         } else if (data.error) {
           if (typeof showToast === 'function') {
             showToast('error', data.error);

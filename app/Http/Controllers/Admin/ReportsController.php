@@ -5,14 +5,11 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\RejectReportRequest;
 use App\Http\Requests\Admin\ResolveReportRequest;
-use App\Models\ActivityLog;
 use App\Models\Report;
 use App\Services\ActivityLogService;
+use App\Services\ReportDeletionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
-use Illuminate\Notifications\DatabaseNotification;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
 use Illuminate\View\View;
 
 class ReportsController extends Controller
@@ -23,15 +20,15 @@ class ReportsController extends Controller
         $selectedReportId = $request->integer('report');
 
         // Search functionality
-        if (!$selectedReportId && $request->has('search') && $request->search) {
+        if (! $selectedReportId && $request->has('search') && $request->search) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('location', 'like', "%{$search}%")
-                  ->orWhere('description', 'like', "%{$search}%")
-                  ->orWhereHas('user', function($userQuery) use ($search) {
-                      $userQuery->where('name', 'like', "%{$search}%")
-                                ->orWhere('email', 'like', "%{$search}%");
-                  });
+                    ->orWhere('description', 'like', "%{$search}%")
+                    ->orWhereHas('user', function ($userQuery) use ($search) {
+                        $userQuery->where('name', 'like', "%{$search}%")
+                            ->orWhere('email', 'like', "%{$search}%");
+                    });
             });
         }
 
@@ -39,12 +36,12 @@ class ReportsController extends Controller
         // $query->whereHas('user');
 
         // Filter by status
-        if (!$selectedReportId && $request->has('status') && $request->status && in_array($request->status, ['pending', 'resolved', 'rejected'])) {
+        if (! $selectedReportId && $request->has('status') && $request->status && in_array($request->status, ['pending', 'resolved', 'rejected'])) {
             $query->where('status', $request->status);
         }
 
         // Filter by priority
-        if (!$selectedReportId && $request->has('priority') && $request->priority && in_array($request->priority, ['low', 'medium', 'high', 'critical'])) {
+        if (! $selectedReportId && $request->has('priority') && $request->priority && in_array($request->priority, ['low', 'medium', 'high', 'critical'])) {
             $query->where('priority', $request->priority);
         }
 
@@ -211,31 +208,12 @@ class ReportsController extends Controller
             ->with('success', 'Report rejected successfully!');
     }
 
-    public function destroy(Report $report): RedirectResponse
+    public function destroy(Report $report, ReportDeletionService $deletionService): RedirectResponse
     {
-        $imagePath = $report->image_path;
-        $hasSafeImagePath = $imagePath
-            && preg_match('/\Areports\/[^\/\\\\]+\z/', $imagePath) === 1;
-
-        if ($hasSafeImagePath
-            && Storage::disk('public')->exists($imagePath)
-            && ! Storage::disk('public')->delete($imagePath)) {
+        if (! $deletionService->delete($report)) {
             return redirect()->route('admin.reports')
                 ->with('error', 'The report image could not be removed, so the report was not deleted.');
         }
-
-        DB::transaction(function () use ($report) {
-            DatabaseNotification::query()
-                ->where('data->report_id', $report->id)
-                ->delete();
-
-            ActivityLog::query()
-                ->where('model_type', Report::class)
-                ->where('model_id', $report->id)
-                ->delete();
-
-            $report->delete();
-        });
 
         return redirect()->route('admin.reports')
             ->with('success', 'Report permanently deleted successfully.');
@@ -243,7 +221,7 @@ class ReportsController extends Controller
 
     protected function notifyReportOwner(Report $report, string $type): void
     {
-        if (!$report->user) {
+        if (! $report->user) {
             return;
         }
 
@@ -254,7 +232,7 @@ class ReportsController extends Controller
                 $report->user->notify(new \App\Notifications\ReportRejectedNotification($report));
             }
         } catch (\Exception $e) {
-            \Log::error('Failed to notify report owner: ' . $e->getMessage());
+            \Log::error('Failed to notify report owner: '.$e->getMessage());
         }
     }
 
@@ -279,7 +257,7 @@ class ReportsController extends Controller
                     }
                 }
             } catch (\Exception $e) {
-                \Log::error('Failed to notify follower: ' . $e->getMessage());
+                \Log::error('Failed to notify follower: '.$e->getMessage());
             }
         }
     }
