@@ -52,15 +52,17 @@ class User extends Authenticatable
     ];
 
     /**
-     * Get the public URL for the stored profile photo, when it exists.
+     * Get the request-relative web URL for the stored profile photo.
+     *
+     * API resources build their own request-host-aware absolute URL.
      */
     public function getProfilePhotoUrlAttribute(): ?string
     {
-        if (!$this->profile_photo_path || !Storage::disk('public')->exists($this->profile_photo_path)) {
+        if (! $this->profile_photo_path || ! Storage::disk('public')->exists($this->profile_photo_path)) {
             return null;
         }
 
-        return Storage::disk('public')->url($this->profile_photo_path);
+        return '/storage/'.ltrim($this->profile_photo_path, '/');
     }
 
     /**
@@ -139,10 +141,10 @@ class User extends Authenticatable
         // Use the first letter to determine color index
         $firstLetter = strtoupper(substr($this->name, 0, 1));
         $charCode = ord($firstLetter);
-        
+
         // Map A-Z to 0-25, then modulo by color count
         $colorIndex = ($charCode - 65) % count($colors);
-        
+
         return $colors[$colorIndex];
     }
 
@@ -152,6 +154,7 @@ class User extends Authenticatable
     public function getAvatarBgClasses(): string
     {
         $colors = $this->getAvatarColor();
+
         return "bg-gradient-to-br {$colors[0]} {$colors[1]}";
     }
 
@@ -162,5 +165,4 @@ class User extends Authenticatable
     {
         return $this->hasMany(Report::class);
     }
-
 }

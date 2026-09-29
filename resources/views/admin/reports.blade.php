@@ -127,13 +127,9 @@
                   <button onclick="openReportView({{ $report->id }})" class="admin-icon-button bg-blue-500 text-white hover:bg-blue-600" title="View">
                     <i class="fas fa-eye text-xs"></i>
                   </button>
-                  <form method="POST" action="{{ route('admin.reports.destroy', $report) }}" onsubmit="return confirm('Permanently delete this report? This action cannot be undone.');">
-                    @csrf
-                    @method('DELETE')
-                    <button type="submit" class="admin-icon-button bg-red-500 text-white hover:bg-red-600" title="Delete permanently">
-                      <i class="fas fa-trash-alt text-xs"></i>
-                    </button>
-                  </form>
+                  <button type="button" onclick="openDeleteReportModal({{ $report->id }})" class="admin-icon-button bg-red-500 text-white hover:bg-red-600" title="Delete permanently">
+                    <i class="fas fa-trash-alt text-xs"></i>
+                  </button>
                 </div>
               </td>
             </tr>
@@ -272,6 +268,28 @@
       </div>
     @endslot
   </x-modal>
+
+  <x-modal id="deleteReportModal" title="Delete Report" icon="fas fa-trash-alt" color="red" variant="confirmation">
+    <p>Are you sure you want to permanently delete this report? This action cannot be undone.</p>
+    <div class="admin-confirm-warning">
+      <i class="fas fa-exclamation-circle mt-0.5" aria-hidden="true"></i>
+      <p>The report and its related data will be permanently removed.</p>
+    </div>
+    <form id="deleteReportForm" method="POST">
+      @csrf
+      @method('DELETE')
+    </form>
+    @slot('footer')
+      <div class="admin-confirm-actions">
+        <button type="button" onclick="closeModal('deleteReportModal')" class="admin-btn-secondary">
+          Cancel
+        </button>
+        <button type="submit" form="deleteReportForm" class="admin-btn-danger">
+          <i class="fas fa-trash mr-2"></i>Delete Report
+        </button>
+      </div>
+    @endslot
+  </x-modal>
 @endpush
 
 @push('scripts')
@@ -364,6 +382,12 @@
       form.action = `/admin/reports/${id}/reject`;
       document.getElementById('rejectReason').value = '';
       openModal('rejectReportModal');
+    }
+
+    function openDeleteReportModal(id) {
+      const form = document.getElementById('deleteReportForm');
+      form.action = `/admin/reports/${id}`;
+      openModal('deleteReportModal');
     }
 
     function openResolveModalFromView() {

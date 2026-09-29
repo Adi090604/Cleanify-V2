@@ -91,7 +91,7 @@ body.bg-gray-50 { background: #f7f9f7; }
 }
 
 /* Compact normal-user navigation, matching the admin sidebar language. */
-.user-page .user-sidebar--desktop > div:first-child > div:first-child,
+.user-page .user-sidebar--desktop > div:first-child,
 .user-page .user-sidebar--mobile > div:first-child { padding: .875rem 1rem; }
 .user-page .user-sidebar > div:last-child { padding: .75rem; }
 .user-page .user-sidebar nav { padding: .75rem .65rem; }

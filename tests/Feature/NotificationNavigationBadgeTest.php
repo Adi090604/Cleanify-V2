@@ -2,6 +2,7 @@
 
 use App\Models\User;
 use Illuminate\Notifications\DatabaseNotification;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Str;
 
 function navigationNotificationFor(User $user, bool $read = false): DatabaseNotification
@@ -15,6 +16,25 @@ function navigationNotificationFor(User $user, bool $read = false): DatabaseNoti
         'read_at' => $read ? now() : null,
     ]);
 }
+
+test('normal user desktop sidebar retains its identity and navigation with the admin-style footer', function () {
+    $sidebar = Blade::render('<x-sidebar active="home" :unread-count="2" />');
+
+    expect($sidebar)
+        ->toContain('/assets/icons/cleanifyicon.png')
+        ->toContain('>Cleanify</h5>')
+        ->toContain('Home')
+        ->toContain('Garbage Schedule')
+        ->toContain('Truck Tracker')
+        ->toContain('Notifications')
+        ->toContain('Community Reports')
+        ->toContain('Profile')
+        ->toContain('Settings')
+        ->toContain('aria-label="2 unread notifications"')
+        ->toContain("openModal('logoutModal')")
+        ->not->toContain('&copy;')
+        ->not->toContain('© 2025 Cleanify');
+});
 
 test('normal user navigation shows the real unread notification count and hides zero', function () {
     $user = User::factory()->create();

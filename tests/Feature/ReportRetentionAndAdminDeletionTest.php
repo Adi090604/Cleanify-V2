@@ -120,8 +120,10 @@ test('admin reports retain old resolved reports and expose permanent deletion', 
     $this->actingAs($admin)->get('/admin/reports')
         ->assertOk()
         ->assertViewHas('reports', fn ($reports) => $reports->contains('id', $oldResolved->id))
-        ->assertSee(route('admin.reports.destroy', $oldResolved), false)
-        ->assertSee('Permanently delete this report? This action cannot be undone.', false);
+        ->assertSee("openDeleteReportModal({$oldResolved->id})", false)
+        ->assertSee('Are you sure you want to permanently delete this report? This action cannot be undone.', false)
+        ->assertSee('id="deleteReportForm"', false)
+        ->assertDontSee('confirm(', false);
 });
 
 test('only admins can permanently delete reports and all stored dependencies are cleaned up', function () {

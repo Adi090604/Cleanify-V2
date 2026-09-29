@@ -1,15 +1,14 @@
 @props(['active' => 'home', 'unreadCount' => 0])
 
-<div class="user-sidebar user-sidebar--desktop cleanify-sidebar hidden lg:flex w-64 bg-green-600 text-white flex-col justify-between fixed h-full">
-  <div>
-    <!-- Logo Section -->
-    <div class="text-center py-5 border-b border-green-500">
-      <img src="/assets/icons/cleanifyicon.png" alt="Cleanify Logo" class="w-16 mx-auto mb-2">
-      <h5 class="font-bold text-lg">Cleanify</h5>
-    </div>
+<div class="user-sidebar user-sidebar--desktop cleanify-sidebar hidden lg:flex w-64 bg-green-600 text-white flex-col fixed h-full">
+  <!-- Logo Section -->
+  <div class="p-4 border-b border-green-500 text-center">
+    <img src="/assets/icons/cleanifyicon.png" alt="Cleanify Logo" class="w-16 h-16 mx-auto mb-2">
+    <h5 class="font-semibold text-lg">Cleanify</h5>
+  </div>
 
-    <!-- Navigation -->
-    <nav class="p-4 space-y-2">
+  <!-- Navigation -->
+  <nav class="flex-1 p-4 space-y-2">
       <a href="{{ route('dashboard') }}" class="flex items-center px-4 py-3 rounded-lg text-white transition-colors duration-300 {{ $active === 'home' ? 'bg-green-700' : 'hover:bg-green-700' }}">
         <i class="fas fa-home mr-3 text-lg"></i>
         <span>Home</span>
@@ -49,17 +48,13 @@
         <i class="fas fa-cog mr-3 text-lg"></i>
         <span>Settings</span>
       </a>
-    </nav>
-  </div>
+  </nav>
 
   <!-- Footer -->
-  <div class="p-3 border-t border-green-500">
-    <button onclick="openModal('logoutModal')" class="w-full flex items-center justify-center px-4 py-3 rounded-lg text-white bg-red-600 hover:bg-red-700 transition-colors duration-300 mb-3">
+  <div class="p-4 border-t border-green-500">
+    <button onclick="openModal('logoutModal')" class="w-full flex items-center justify-center px-4 py-3 rounded-lg text-white bg-red-600 hover:bg-red-700 transition-colors duration-300">
       <i class="fas fa-sign-out-alt mr-2"></i>
       <span>Logout</span>
     </button>
-    <div class="text-center">
-      <small class="text-gray-200">&copy; 2025 Cleanify</small>
-    </div>
   </div>
 </div>
