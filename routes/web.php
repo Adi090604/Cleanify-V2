@@ -1,6 +1,5 @@
 <?php
 
-use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -33,13 +32,14 @@ Route::middleware(['auth', 'not.admin', 'not.banned'])->group(function () {
     Route::patch('/settings/notifications', [App\Http\Controllers\Client\SettingsController::class, 'updateNotifications'])->name('settings.notifications');
     Route::patch('/settings/privacy', [App\Http\Controllers\Client\SettingsController::class, 'updatePrivacy'])->name('settings.privacy');
     Route::patch('/settings/preferences', [App\Http\Controllers\Client\SettingsController::class, 'updatePreferences'])->name('settings.preferences');
+    Route::post('/settings/service-area-requests', [App\Http\Controllers\Client\ServiceAreaRequestController::class, 'store'])->name('settings.service-area-requests.store');
     Route::delete('/settings/sessions/{sessionId}/revoke', [App\Http\Controllers\Client\SettingsController::class, 'revokeSession'])->name('settings.revoke-session');
     Route::get('/settings/download-data', [App\Http\Controllers\Client\SettingsController::class, 'downloadData'])->name('settings.download-data');
     Route::delete('/settings/account', [App\Http\Controllers\Client\SettingsController::class, 'deleteAccount'])->name('settings.delete-account');
 
     Route::get('/profile', [App\Http\Controllers\Client\ProfileController::class, 'index'])->name('profile');
     Route::patch('/profile', [App\Http\Controllers\Client\ProfileController::class, 'update'])->name('profile.update');
-    
+
     // Profile report management
     Route::patch('/profile/reports/{report}', [App\Http\Controllers\Client\ProfileController::class, 'updateReport'])->name('profile.reports.update');
     Route::delete('/profile/reports/{report}', [App\Http\Controllers\Client\ProfileController::class, 'deleteReport'])->name('profile.reports.delete');
@@ -51,7 +51,7 @@ Route::middleware(['auth', 'not.admin', 'not.banned'])->group(function () {
     Route::get('/reports/{report}/comments', [App\Http\Controllers\Client\ReportFeedController::class, 'getComments'])->name('reports.comments');
     Route::get('/reports/{report}', [App\Http\Controllers\Client\CommunityReportController::class, 'show'])->name('reports.show');
     Route::post('/reports/{report}/follow', [App\Http\Controllers\Client\ReportFeedController::class, 'toggleFollow'])->name('reports.follow');
-    
+
     // User reporting
     Route::post('/users/{user}/report', [App\Http\Controllers\Client\UserReportController::class, 'store'])->name('users.report');
 });
@@ -97,6 +97,12 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::post('/service-zones', [App\Http\Controllers\Admin\ServiceZoneController::class, 'store'])->name('service-zones.store');
     Route::put('/service-zones/{id}', [App\Http\Controllers\Admin\ServiceZoneController::class, 'update'])->name('service-zones.update');
     Route::delete('/service-zones/{id}', [App\Http\Controllers\Admin\ServiceZoneController::class, 'destroy'])->name('service-zones.destroy');
+
+    // Service Area Request Review
+    Route::get('/service-area-requests', [App\Http\Controllers\Admin\ServiceAreaRequestController::class, 'index'])->name('service-area-requests');
+    Route::post('/service-area-requests/{serviceAreaRequest}/approve', [App\Http\Controllers\Admin\ServiceAreaRequestController::class, 'approve'])->name('service-area-requests.approve');
+    Route::post('/service-area-requests/{serviceAreaRequest}/reject', [App\Http\Controllers\Admin\ServiceAreaRequestController::class, 'reject'])->name('service-area-requests.reject');
+    Route::post('/service-area-requests/{serviceAreaRequest}/create-zone', [App\Http\Controllers\Admin\ServiceAreaRequestController::class, 'createZone'])->name('service-area-requests.create-zone');
 
     // Settings Management
     Route::get('/settings', [App\Http\Controllers\Admin\SettingsController::class, 'index'])->name('settings');

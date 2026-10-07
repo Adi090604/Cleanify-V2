@@ -2,6 +2,13 @@
 
 @section('title', 'Settings')
 
+@push('styles')
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <style>
+    .service-area-request-map { height: 230px; border: 1px solid #d1d5db; border-radius: .5rem; }
+  </style>
+@endpush
+
 @section('content')
   @if(session('success'))
     <x-alert type="success" dismissible class="mb-4">
@@ -41,11 +48,46 @@
           @endforeach
         </select>
         <p class="text-sm text-gray-500 mt-1">This helps us show you relevant schedules and updates.</p>
+        <div class="mt-3 flex flex-col gap-2 rounded-lg border border-green-200 bg-green-50 p-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-800">Can't find your area?</p>
+            <p class="text-xs text-gray-600">Send your area details for administrator review.</p>
+          </div>
+          <button type="button" id="openServiceAreaRequestButton" onclick="openServiceAreaRequestModal()" class="inline-flex items-center justify-center gap-2 rounded-lg border border-green-600 px-4 py-2 text-sm font-medium text-green-700 transition-colors duration-300 hover:bg-green-600 hover:text-white">
+            <i class="fas fa-map-marker-alt" aria-hidden="true"></i>
+            My area is not listed
+          </button>
+        </div>
       </div>
       <button type="submit" class="px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-300">
         <i class="fas fa-check-circle mr-2"></i>Save Changes
       </button>
     </form>
+
+    @if($latestServiceAreaRequest)
+      @php
+        $requestStatus = match ($latestServiceAreaRequest->status) {
+            'approved' => ['label' => 'Approved', 'classes' => 'bg-green-100 text-green-800', 'message' => 'Your requested area has been approved. Check the Garbage Schedule page for any available collection schedule.'],
+            'rejected' => ['label' => 'Rejected', 'classes' => 'bg-red-100 text-red-800', 'message' => 'Your request was not approved. You may submit a new request if your area details have changed.'],
+            default => ['label' => 'Pending Review', 'classes' => 'bg-yellow-100 text-yellow-800', 'message' => 'Your request has been submitted and is waiting for administrator review.'],
+        };
+      @endphp
+      <section aria-labelledby="serviceAreaRequestStatusHeading" class="mt-5 rounded-xl border border-gray-200 bg-gray-50 p-4">
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+          <div>
+            <h6 id="serviceAreaRequestStatusHeading" class="font-semibold text-gray-800">Service Area Request</h6>
+            <p class="mt-1 text-sm text-gray-700">
+              {{ $latestServiceAreaRequest->area_name }}@if($latestServiceAreaRequest->barangay), {{ $latestServiceAreaRequest->barangay }}@endif
+            </p>
+          </div>
+          <span class="inline-flex w-fit rounded-full px-3 py-1 text-xs font-semibold {{ $requestStatus['classes'] }}">
+            {{ $requestStatus['label'] }}
+          </span>
+        </div>
+        <p class="mt-3 text-sm text-gray-600">{{ $requestStatus['message'] }}</p>
+        <p class="mt-2 text-xs text-gray-500">Submitting a request does not automatically create a collection schedule. The area will first be reviewed by the administrator.</p>
+      </section>
+    @endif
   </div>
 
   <!-- Password Change Section -->
@@ -358,6 +400,93 @@
 @endsection
 
 @push('modals')
+  @php
+    $serviceAreaRequestHasErrors = $errors->hasAny([
+        'area_name', 'barangay', 'address', 'latitude', 'longitude', 'details',
+    ]);
+  @endphp
+
+  <x-modal id="serviceAreaRequestModal" title="Request Service for Your Area" icon="fas fa-map-marked-alt" color="green">
+    <div class="mb-4">
+      <p class="text-sm text-gray-700">Can't find your area in our service areas? Send your location and area details for review.</p>
+      @if($pendingServiceAreaRequest)
+        <div class="mt-3 rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
+          <i class="fas fa-clock mr-1" aria-hidden="true"></i>
+          You already have a pending request for <strong>{{ $pendingServiceAreaRequest->area_name }}</strong>. You cannot submit the same area again while it is pending.
+        </div>
+      @endif
+    </div>
+
+    <form id="serviceAreaRequestForm" method="POST" action="{{ route('settings.service-area-requests.store') }}" class="space-y-4">
+      @csrf
+      <div>
+        <label for="serviceAreaRequestName" class="mb-1 block text-sm font-medium text-gray-700">Area / Purok <span class="text-red-600">*</span></label>
+        <input id="serviceAreaRequestName" name="area_name" value="{{ old('area_name') }}" maxlength="255" required class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-green-500 @error('area_name') border-red-500 @enderror" placeholder="e.g. Purok 8">
+        @error('area_name')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+        <p id="serviceAreaRequestDuplicateError" class="mt-1 hidden text-sm text-red-600" role="alert">You already have a pending request for this service area.</p>
+      </div>
+
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+        <div>
+          <label for="serviceAreaRequestBarangay" class="mb-1 block text-sm font-medium text-gray-700">Barangay <span class="font-normal text-gray-400">(optional)</span></label>
+          <input id="serviceAreaRequestBarangay" name="barangay" value="{{ old('barangay') }}" maxlength="255" class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-green-500 @error('barangay') border-red-500 @enderror" placeholder="e.g. Barangay Washington">
+          @error('barangay')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+        </div>
+        <div>
+          <label for="serviceAreaRequestAddress" class="mb-1 block text-sm font-medium text-gray-700">Address / Landmark <span class="font-normal text-gray-400">(optional)</span></label>
+          <input id="serviceAreaRequestAddress" name="address" value="{{ old('address') }}" maxlength="255" class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-green-500 @error('address') border-red-500 @enderror" placeholder="e.g. Near the covered court">
+          @error('address')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+        </div>
+      </div>
+
+      <div>
+        <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p class="text-sm font-medium text-gray-700">Location <span class="font-normal text-gray-400">(optional)</span></p>
+            <p class="text-xs text-gray-500">Share your position or choose a point on the map.</p>
+          </div>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" id="useServiceAreaCurrentLocation" class="inline-flex items-center gap-2 rounded-lg border border-green-600 px-3 py-2 text-xs font-medium text-green-700 hover:bg-green-50">
+              <i class="fas fa-location-crosshairs" aria-hidden="true"></i>Use My Current Location
+            </button>
+            <button type="button" id="selectServiceAreaOnMap" class="inline-flex items-center gap-2 rounded-lg border border-gray-300 px-3 py-2 text-xs font-medium text-gray-700 hover:bg-gray-50">
+              <i class="fas fa-map" aria-hidden="true"></i>Select on Map
+            </button>
+          </div>
+        </div>
+        <div id="serviceAreaRequestMapWrapper" class="mt-3 hidden">
+          <div id="serviceAreaRequestMap" class="service-area-request-map w-full"></div>
+          <p class="mt-2 text-xs text-gray-500">Click the map to place the marker, or drag it to refine the location.</p>
+        </div>
+        <p id="serviceAreaLocationStatus" class="mt-2 hidden text-xs" role="status" aria-live="polite"></p>
+        <input type="hidden" name="latitude" id="serviceAreaRequestLatitude" value="{{ old('latitude') }}">
+        <input type="hidden" name="longitude" id="serviceAreaRequestLongitude" value="{{ old('longitude') }}">
+        @error('latitude')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+        @error('longitude')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+      </div>
+
+      <div>
+        <label for="serviceAreaRequestDetails" class="mb-1 block text-sm font-medium text-gray-700">Additional Details <span class="font-normal text-gray-400">(optional)</span></label>
+        <textarea id="serviceAreaRequestDetails" name="details" maxlength="2000" rows="3" class="w-full resize-none rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-green-500 @error('details') border-red-500 @enderror" placeholder="Tell us anything that may help identify or review the area.">{{ old('details') }}</textarea>
+        @error('details')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+      </div>
+
+      <div class="rounded-lg bg-gray-50 p-3 text-xs text-gray-600">
+        <i class="fas fa-info-circle mr-1 text-green-600" aria-hidden="true"></i>
+        Submitting a request does not automatically create a collection schedule. The area will first be reviewed by the administrator.
+      </div>
+    </form>
+
+    @slot('footer')
+      <div class="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        <button type="button" onclick="closeModal('serviceAreaRequestModal')" class="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 transition-colors duration-300 hover:bg-gray-50">Cancel</button>
+        <button type="submit" form="serviceAreaRequestForm" class="rounded-lg bg-green-600 px-4 py-2 font-medium text-white transition-colors duration-300 hover:bg-green-700">
+          <i class="fas fa-paper-plane mr-2" aria-hidden="true"></i>Submit Service Area Request
+        </button>
+      </div>
+    @endslot
+  </x-modal>
+
   <!-- Revoke Session Confirmation Modal -->
   <x-modal id="revokeSessionModal" title="Revoke Session" icon="fas fa-sign-out-alt" color="orange">
     <p class="text-gray-700 mb-4">Are you sure you want to revoke this session? The user will be logged out from that device.</p>
@@ -405,7 +534,127 @@
 @endpush
 
 @push('scripts')
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
+  let serviceAreaRequestMap;
+  let serviceAreaRequestMarker;
+  const pendingServiceAreaName = @json($pendingServiceAreaRequest?->area_name);
+  const serviceAreaRequestHasErrors = @json($serviceAreaRequestHasErrors);
+
+  function normalizeServiceAreaName(value) {
+    return value.trim().replace(/\s+/g, ' ').toLocaleLowerCase();
+  }
+
+  function showServiceAreaLocationStatus(message, isError = false) {
+    const status = document.getElementById('serviceAreaLocationStatus');
+    status.textContent = message;
+    status.classList.remove('hidden', 'text-gray-600', 'text-red-600', 'text-green-700');
+    status.classList.add(isError ? 'text-red-600' : 'text-green-700');
+  }
+
+  function setServiceAreaRequestLocation(lat, lng, center = true) {
+    const latitude = Number(lat);
+    const longitude = Number(lng);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude)
+      || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return false;
+
+    document.getElementById('serviceAreaRequestLatitude').value = latitude.toFixed(8);
+    document.getElementById('serviceAreaRequestLongitude').value = longitude.toFixed(8);
+
+    if (serviceAreaRequestMarker) serviceAreaRequestMarker.setLatLng([latitude, longitude]);
+    else {
+      serviceAreaRequestMarker = L.marker([latitude, longitude], { draggable: true }).addTo(serviceAreaRequestMap);
+      serviceAreaRequestMarker.on('dragend', event => {
+        const point = event.target.getLatLng();
+        setServiceAreaRequestLocation(point.lat, point.lng, false);
+      });
+    }
+
+    if (center) serviceAreaRequestMap.setView([latitude, longitude], 16);
+    showServiceAreaLocationStatus(`Selected location: ${latitude.toFixed(6)}, ${longitude.toFixed(6)}`);
+    return true;
+  }
+
+  function initializeServiceAreaRequestMap() {
+    if (serviceAreaRequestMap || typeof L === 'undefined') return;
+
+    serviceAreaRequestMap = L.map('serviceAreaRequestMap').setView([9.7870, 125.4928], 13);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors',
+      maxZoom: 19,
+    }).addTo(serviceAreaRequestMap);
+    serviceAreaRequestMap.on('click', event => setServiceAreaRequestLocation(event.latlng.lat, event.latlng.lng, false));
+
+    const latitude = document.getElementById('serviceAreaRequestLatitude').value;
+    const longitude = document.getElementById('serviceAreaRequestLongitude').value;
+    if (latitude !== '' && longitude !== '') setServiceAreaRequestLocation(latitude, longitude);
+  }
+
+  function showServiceAreaRequestMap() {
+    document.getElementById('serviceAreaRequestMapWrapper').classList.remove('hidden');
+    initializeServiceAreaRequestMap();
+    setTimeout(() => serviceAreaRequestMap?.invalidateSize(), 100);
+  }
+
+  function openServiceAreaRequestModal() {
+    openModal('serviceAreaRequestModal');
+    if (document.getElementById('serviceAreaRequestLatitude').value !== '' || serviceAreaRequestHasErrors) {
+      showServiceAreaRequestMap();
+    }
+  }
+
+  document.getElementById('selectServiceAreaOnMap')?.addEventListener('click', showServiceAreaRequestMap);
+
+  document.getElementById('useServiceAreaCurrentLocation')?.addEventListener('click', function() {
+    showServiceAreaRequestMap();
+
+    if (!navigator.geolocation) {
+      showServiceAreaLocationStatus('Location lookup is unavailable in this browser. You can still select a point on the map.', true);
+      return;
+    }
+
+    const button = this;
+    button.disabled = true;
+    button.classList.add('cursor-wait', 'opacity-60');
+    showServiceAreaLocationStatus('Finding your current location...');
+
+    navigator.geolocation.getCurrentPosition(
+      position => {
+        const updated = setServiceAreaRequestLocation(position.coords.latitude, position.coords.longitude);
+        if (!updated) showServiceAreaLocationStatus('Your browser returned an invalid location. Please select a point on the map.', true);
+        button.disabled = false;
+        button.classList.remove('cursor-wait', 'opacity-60');
+      },
+      () => {
+        showServiceAreaLocationStatus('We could not access your location. You can still select a point on the map.', true);
+        button.disabled = false;
+        button.classList.remove('cursor-wait', 'opacity-60');
+      },
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 60000 },
+    );
+  });
+
+  document.getElementById('serviceAreaRequestForm')?.addEventListener('submit', event => {
+    const areaInput = document.getElementById('serviceAreaRequestName');
+    const duplicateError = document.getElementById('serviceAreaRequestDuplicateError');
+    const isDuplicate = pendingServiceAreaName
+      && normalizeServiceAreaName(areaInput.value) === normalizeServiceAreaName(pendingServiceAreaName);
+
+    duplicateError.classList.toggle('hidden', !isDuplicate);
+    if (isDuplicate) {
+      event.preventDefault();
+      areaInput.focus();
+    }
+  });
+
+  document.getElementById('serviceAreaRequestName')?.addEventListener('input', () => {
+    document.getElementById('serviceAreaRequestDuplicateError').classList.add('hidden');
+  });
+
+  if (serviceAreaRequestHasErrors) {
+    window.addEventListener('DOMContentLoaded', openServiceAreaRequestModal, { once: true });
+  }
+
   // Handle form submissions with toast notifications
   document.getElementById('accountForm')?.addEventListener('submit', function(e) {
     e.preventDefault();

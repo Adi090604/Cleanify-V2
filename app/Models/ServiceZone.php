@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ServiceZone extends Model
 {
@@ -23,7 +24,7 @@ class ServiceZone extends Model
             }
         }
 
-        return 'Zone ' . ($highestNumber + 1);
+        return 'Zone '.($highestNumber + 1);
     }
 
     public function hasCoordinates(): bool
@@ -33,11 +34,15 @@ class ServiceZone extends Model
 
     public function getDisplayNameAttribute(): string
     {
-        if (!$this->barangay || str_contains($this->name, $this->barangay)) {
+        if (! $this->barangay || str_contains($this->name, $this->barangay)) {
             return $this->name;
         }
 
         return "{$this->name} - {$this->barangay}";
     }
 
+    public function serviceAreaRequests(): HasMany
+    {
+        return $this->hasMany(ServiceAreaRequest::class);
+    }
 }

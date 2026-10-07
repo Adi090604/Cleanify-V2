@@ -7,8 +7,6 @@ use App\Models\Report;
 use App\Models\Schedule;
 use App\Models\ServiceZone;
 use App\Services\ProfilePhotoService;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -25,19 +23,19 @@ class SettingsController extends Controller
     public function index(): View
     {
         $user = Auth::user();
-        
+
         // Get available service areas
         $availableAreas = ServiceZone::where('status', 'active')->orderBy('name')->get()->map->display_name
             ->merge(Schedule::where('status', 'active')->orderBy('area')->pluck('area'))
             ->unique()->values();
-        
+
         // Get user statistics for deletion confirmation
         $userStats = [
             'reports_count' => Report::where('user_id', $user->id)->count(),
             'likes_count' => \App\Models\ReportLike::where('user_id', $user->id)->count(),
             'comments_count' => \App\Models\ReportComment::where('user_id', $user->id)->count(),
         ];
-        
+
         // Get notification preferences
         $notificationPrefs = $user->notification_preferences ?? [];
         $defaultPrefs = [
@@ -47,7 +45,13 @@ class SettingsController extends Controller
             'truck_tracking' => true,
         ];
         $notificationPrefs = array_merge($defaultPrefs, $notificationPrefs);
-        
+
+        $latestServiceAreaRequest = $user->serviceAreaRequests()->latest()->first();
+        $pendingServiceAreaRequest = $user->serviceAreaRequests()
+            ->where('status', 'pending')
+            ->latest()
+            ->first();
+
         // Get active sessions (from Laravel's sessions table)
         $activeSessions = DB::table('sessions')
             ->where('user_id', $user->id)
@@ -70,6 +74,8 @@ class SettingsController extends Controller
             'availableAreas' => $availableAreas,
             'notificationPrefs' => $notificationPrefs,
             'activeSessions' => $activeSessions,
+            'latestServiceAreaRequest' => $latestServiceAreaRequest,
+            'pendingServiceAreaRequest' => $pendingServiceAreaRequest,
         ]);
     }
 
@@ -79,7 +85,7 @@ class SettingsController extends Controller
     public function updateAccount(Request $request)
     {
         $validated = $request->validate([
-            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . Auth::id()],
+            'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,'.Auth::id()],
             'phone' => ['nullable', 'string', 'max:20'],
             'service_area' => ['nullable', 'string', 'max:255'],
         ]);
@@ -88,12 +94,12 @@ class SettingsController extends Controller
         $user->email = $validated['email'];
         $user->phone = $validated['phone'] ?? null;
         $user->service_area = $validated['service_area'] ?? null;
-        
+
         // If email changed, unverify it
         if ($user->isDirty('email')) {
             $user->email_verified_at = null;
         }
-        
+
         $user->save();
 
         if ($request->expectsJson()) {
@@ -143,23 +149,23 @@ class SettingsController extends Controller
         ]);
 
         $user = Auth::user();
-        
+
         // Update global notification toggles
         $user->email_notifications = $request->has('email_notifications');
         $user->sms_notifications = $request->has('sms_notifications');
         $user->push_notifications = $request->has('push_notifications');
-        
+
         // Update category-specific preferences
         if ($request->has('preferences')) {
             $preferences = [];
             foreach ($request->input('preferences', []) as $key => $value) {
                 $preferences[$key] = (bool) $value;
             }
-            
+
             $currentPrefs = $user->notification_preferences ?? [];
             $user->notification_preferences = array_merge($currentPrefs, $preferences);
         }
-        
+
         $user->save();
 
         if ($request->expectsJson()) {
@@ -211,42 +217,42 @@ class SettingsController extends Controller
 
         $user = Auth::user();
         $profilePhotoPath = $user->profile_photo_path;
-        
+
         // Delete all user's reports and associated images
         $reports = Report::where('user_id', $user->id)->get();
         foreach ($reports as $report) {
             if ($report->image_path && Storage::disk('public')->exists($report->image_path)) {
                 Storage::disk('public')->delete($report->image_path);
             }
-            
+
             // Delete associated likes, comments, and followers
             $report->likes()->delete();
             $report->comments()->delete();
             $report->followers()->detach();
         }
         Report::where('user_id', $user->id)->delete();
-        
+
         // Delete user's likes on other reports
         \App\Models\ReportLike::where('user_id', $user->id)->delete();
-        
+
         // Delete user's comments on other reports
         \App\Models\ReportComment::where('user_id', $user->id)->delete();
-        
+
         // Delete user's report follows
         \DB::table('report_followers')->where('user_id', $user->id)->delete();
-        
+
         // Delete user's notifications
         \DB::table('notifications')->where('notifiable_type', 'App\Models\User')
             ->where('notifiable_id', $user->id)
             ->delete();
-        
+
         // Logout the user before deleting
         Auth::logout();
-        
+
         // Delete the user account
         $user->delete();
         $profilePhotos->delete($profilePhotoPath);
-        
+
         if ($request->expectsJson()) {
             return response()->json([
                 'success' => true,
@@ -292,10 +298,10 @@ class SettingsController extends Controller
     public function revokeSession(Request $request, string $sessionId)
     {
         $user = Auth::user();
-        
+
         // URL decode the session ID
         $sessionId = urldecode($sessionId);
-        
+
         // Prevent revoking current session
         if ($sessionId === session()->getId()) {
             return response()->json([
@@ -310,7 +316,7 @@ class SettingsController extends Controller
             ->where('user_id', $user->id)
             ->first();
 
-        if (!$session) {
+        if (! $session) {
             return response()->json([
                 'success' => false,
                 'message' => 'Session not found or you do not have permission to revoke it',
@@ -335,7 +341,7 @@ class SettingsController extends Controller
     public function downloadData()
     {
         $user = Auth::user();
-        
+
         $data = [
             'user' => [
                 'name' => $user->name,
@@ -370,7 +376,7 @@ class SettingsController extends Controller
 
         return response()->json($data, 200, [
             'Content-Type' => 'application/json',
-            'Content-Disposition' => 'attachment; filename="cleanify-data-' . date('Y-m-d') . '.json"',
+            'Content-Disposition' => 'attachment; filename="cleanify-data-'.date('Y-m-d').'.json"',
         ]);
     }
 }

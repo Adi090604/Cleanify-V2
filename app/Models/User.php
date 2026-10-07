@@ -165,4 +165,12 @@ class User extends Authenticatable
     {
         return $this->hasMany(Report::class);
     }
+
+    /**
+     * Get the service area requests submitted by this user.
+     */
+    public function serviceAreaRequests(): HasMany
+    {
+        return $this->hasMany(ServiceAreaRequest::class);
+    }
 }

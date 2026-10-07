@@ -59,6 +59,10 @@
       <i class="fas fa-draw-polygon mr-3 text-lg"></i>
       <span>Service Zones</span>
     </a>
+    <a href="{{ route('admin.service-area-requests') }}" class="flex items-center px-4 py-3 rounded-lg text-white transition-colors duration-300 {{ $active === 'service-area-requests' ? 'bg-green-700' : 'hover:bg-green-700' }}" onclick="closeAdminMobileMenu()">
+      <i class="fas fa-map-marked-alt mr-3 text-lg"></i>
+      <span>Service Area Requests</span>
+    </a>
     
     <a href="{{ route('admin.settings') }}" class="flex items-center px-4 py-3 rounded-lg text-white transition-colors duration-300 {{ $active === 'settings' ? 'bg-green-700' : 'hover:bg-green-700' }}" onclick="closeAdminMobileMenu()">
       <i class="fas fa-cog mr-3 text-lg"></i>

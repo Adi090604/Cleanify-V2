@@ -5,10 +5,14 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreServiceZoneRequest;
 use App\Http\Requests\Admin\UpdateServiceZoneRequest;
-use App\Models\ServiceZone;
 use App\Models\Schedule;
+use App\Models\ServiceAreaRequest;
+use App\Models\ServiceZone;
 use App\Models\Truck;
+use App\Models\User;
+use App\Services\ServiceZoneCreator;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class ServiceZoneController extends Controller
@@ -24,9 +28,9 @@ class ServiceZoneController extends Controller
         ]);
     }
 
-    public function store(StoreServiceZoneRequest $request): RedirectResponse
+    public function store(StoreServiceZoneRequest $request, ServiceZoneCreator $creator): RedirectResponse
     {
-        ServiceZone::create($request->validated());
+        $creator->create($request->validated());
 
         return to_route('admin.service-zones')->with('success', 'Service zone created successfully.');
     }
@@ -53,7 +57,11 @@ class ServiceZoneController extends Controller
                 ->with('error', 'This Service Zone is used by a schedule and cannot be deleted. Reassign the schedule first.');
         }
 
-        $zone->delete();
+        DB::transaction(function () use ($displayName, $zone): void {
+            User::where('service_area', $displayName)->update(['service_area' => null]);
+            ServiceAreaRequest::where('service_zone_id', $zone->id)->update(['service_zone_id' => null]);
+            $zone->delete();
+        });
 
         return to_route('admin.service-zones')->with('success', 'Service zone deleted successfully.');
     }
