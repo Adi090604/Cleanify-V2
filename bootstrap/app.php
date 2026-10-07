@@ -17,6 +17,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'not.admin' => \App\Http\Middleware\EnsureUserIsNotAdmin::class,
             'throttle.reports' => \App\Http\Middleware\ThrottleReports::class,
             'not.banned' => \App\Http\Middleware\EnsureUserIsNotBanned::class,
+            'mobile.resident' => \App\Http\Middleware\EnsureMobileResident::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

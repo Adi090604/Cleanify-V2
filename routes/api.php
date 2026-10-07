@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\NotificationController;
 use App\Http\Controllers\Api\V1\ProfilePhotoController;
 use App\Http\Controllers\Api\V1\ReportController;
 use App\Http\Controllers\Api\V1\ScheduleController;
+use App\Http\Controllers\Api\V1\ServiceAreaRequestController;
 use App\Http\Controllers\Api\V1\SettingsController;
 use App\Http\Controllers\Api\V1\TruckController;
 use App\Http\Controllers\Api\V1\UserReportController;
@@ -39,5 +40,9 @@ Route::prefix('v1')->group(function (): void {
         Route::patch('/settings/account', [SettingsController::class, 'updateAccount']);
         Route::patch('/settings/password', [SettingsController::class, 'updatePassword']);
         Route::patch('/settings/notifications', [SettingsController::class, 'updateNotifications']);
+        Route::middleware('mobile.resident')->group(function (): void {
+            Route::get('/service-area-requests/latest', [ServiceAreaRequestController::class, 'latest']);
+            Route::post('/service-area-requests', [ServiceAreaRequestController::class, 'store']);
+        });
     });
 });
