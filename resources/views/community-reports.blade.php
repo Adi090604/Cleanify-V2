@@ -76,11 +76,24 @@
             </div>
             <textarea name="description" rows="3" class="w-full border border-gray-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 resize-none @error('description') border-red-500 @enderror" placeholder="Describe the issue..." required>{{ old('description') }}</textarea>
             @error('description') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
-            <label class="inline-flex items-center px-4 py-2 border border-green-600 text-green-600 rounded-lg hover:bg-green-600 hover:text-white transition-colors duration-300 cursor-pointer text-sm">
+            <button type="button" id="reportImageButton" onclick="openModal('reportPhotoSourceModal')" class="inline-flex items-center px-4 py-2 border border-green-600 text-green-600 rounded-lg hover:bg-green-600 hover:text-white transition-colors duration-300 text-sm">
               <i class="fas fa-image mr-2"></i>
               <span id="reportImageLabel">Add Photo</span>
-              <input type="file" name="image" accept="image/*" class="hidden" id="reportImageInput">
-            </label>
+            </button>
+            <input type="file" name="image" accept="image/*" class="hidden" id="reportDeviceImageInput">
+            <input type="file" accept="image/*" capture="environment" class="hidden" id="reportCameraImageInput">
+            <div id="reportImagePreview" class="hidden rounded-xl border border-gray-200 bg-gray-50 p-3">
+              <div class="flex flex-col gap-3 sm:flex-row sm:items-center">
+                <img id="reportImagePreviewImage" src="" alt="Selected report photo preview" class="h-28 w-full rounded-lg object-cover sm:w-36">
+                <div class="min-w-0 flex-1">
+                  <p class="text-xs font-medium uppercase tracking-wide text-gray-500">Selected Photo</p>
+                  <p id="reportImageFileName" class="mt-1 truncate text-sm font-medium text-gray-800"></p>
+                  <button type="button" id="removeReportImageButton" class="mt-3 inline-flex items-center gap-2 text-sm font-medium text-red-600 hover:text-red-700">
+                    <i class="fas fa-trash-alt" aria-hidden="true"></i>Remove Photo
+                  </button>
+                </div>
+              </div>
+            </div>
             @error('image') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
           </div>
         </div>
@@ -138,6 +151,23 @@
 @endsection
 
 @push('modals')
+  <x-modal id="reportPhotoSourceModal" title="Add Photo" icon="fas fa-camera" color="green">
+    <p class="mb-4 text-sm text-gray-600">Choose how you want to add a photo to this report.</p>
+    <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <button type="button" onclick="chooseReportPhotoSource('reportCameraImageInput')" class="flex items-center gap-3 rounded-xl border border-green-200 bg-green-50 p-4 text-left text-green-800 hover:bg-green-100">
+        <i class="fas fa-camera text-xl" aria-hidden="true"></i>
+        <span><span class="block font-semibold">Take Photo</span><span class="block text-xs text-green-700">Use your device camera</span></span>
+      </button>
+      <button type="button" onclick="chooseReportPhotoSource('reportDeviceImageInput')" class="flex items-center gap-3 rounded-xl border border-gray-200 p-4 text-left text-gray-800 hover:bg-gray-50">
+        <i class="fas fa-images text-xl text-green-600" aria-hidden="true"></i>
+        <span><span class="block font-semibold">Choose from Device</span><span class="block text-xs text-gray-500">Browse photos or files</span></span>
+      </button>
+    </div>
+    @slot('footer')
+      <button type="button" onclick="closeModal('reportPhotoSourceModal')" class="rounded-lg border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-50">Cancel</button>
+    @endslot
+  </x-modal>
+
   <x-modal id="reportUserModal" title="Report User" icon="fas fa-flag" color="red">
     <form id="reportUserForm" class="space-y-4">
       @csrf
@@ -408,9 +438,57 @@
       });
     });
 
-    document.getElementById('reportImageInput')?.addEventListener('change', function () {
-      const label = document.getElementById('reportImageLabel');
-      label.textContent = this.files.length ? this.files[0].name : 'Attach photo (optional)';
+    const reportDeviceImageInput = document.getElementById('reportDeviceImageInput');
+    const reportCameraImageInput = document.getElementById('reportCameraImageInput');
+    const reportImagePreview = document.getElementById('reportImagePreview');
+    const reportImagePreviewImage = document.getElementById('reportImagePreviewImage');
+    const reportImageFileName = document.getElementById('reportImageFileName');
+    const reportImageLabel = document.getElementById('reportImageLabel');
+    let reportImagePreviewUrl = null;
+
+    window.chooseReportPhotoSource = function(inputId) {
+      closeModal('reportPhotoSourceModal');
+      document.getElementById(inputId)?.click();
+    };
+
+    function selectReportImage(input, alternateInput) {
+      if (!input.files?.length) return;
+
+      const file = input.files[0];
+      input.setAttribute('name', 'image');
+      alternateInput.removeAttribute('name');
+      alternateInput.value = '';
+
+      if (reportImagePreviewUrl) URL.revokeObjectURL(reportImagePreviewUrl);
+      reportImagePreviewUrl = URL.createObjectURL(file);
+      reportImagePreviewImage.src = reportImagePreviewUrl;
+      reportImageFileName.textContent = file.name;
+      reportImageLabel.textContent = 'Replace Photo';
+      reportImagePreview.classList.remove('hidden');
+    }
+
+    reportDeviceImageInput?.addEventListener('change', function() {
+      selectReportImage(this, reportCameraImageInput);
+    });
+    reportCameraImageInput?.addEventListener('change', function() {
+      selectReportImage(this, reportDeviceImageInput);
+    });
+
+    document.getElementById('removeReportImageButton')?.addEventListener('click', function() {
+      reportDeviceImageInput.value = '';
+      reportCameraImageInput.value = '';
+      reportDeviceImageInput.setAttribute('name', 'image');
+      reportCameraImageInput.removeAttribute('name');
+      if (reportImagePreviewUrl) URL.revokeObjectURL(reportImagePreviewUrl);
+      reportImagePreviewUrl = null;
+      reportImagePreviewImage.removeAttribute('src');
+      reportImageFileName.textContent = '';
+      reportImageLabel.textContent = 'Add Photo';
+      reportImagePreview.classList.add('hidden');
+    });
+
+    window.addEventListener('beforeunload', function() {
+      if (reportImagePreviewUrl) URL.revokeObjectURL(reportImagePreviewUrl);
     });
 
     document.querySelectorAll('.view-report-btn').forEach(button => {
