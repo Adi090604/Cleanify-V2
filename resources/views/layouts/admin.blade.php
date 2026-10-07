@@ -9,10 +9,10 @@
 </head>
 <body class="admin-page bg-gray-50 overflow-x-hidden {{ ($activePage ?? null) === 'dashboard' ? 'admin-dashboard-page' : '' }}">
   <!-- Mobile Menu -->
-  <x-admin.mobile-menu :active="$activePage ?? 'dashboard'" :pending-report-count="$pendingReportCount" />
+  <x-admin.mobile-menu :active="$activePage ?? 'dashboard'" :pending-report-count="$pendingReportCount" :pending-service-area-request-count="$pendingServiceAreaRequestCount" />
   
   <div class="flex h-screen">
-    <x-admin.sidebar :active="$activePage ?? 'dashboard'" :pending-report-count="$pendingReportCount" />
+    <x-admin.sidebar :active="$activePage ?? 'dashboard'" :pending-report-count="$pendingReportCount" :pending-service-area-request-count="$pendingServiceAreaRequestCount" />
 
     <div class="cleanify-main lg:ml-64 flex-1 overflow-y-auto">
       <main class="p-3 sm:p-4 lg:p-4">

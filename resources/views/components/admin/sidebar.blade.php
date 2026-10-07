@@ -1,4 +1,4 @@
-@props(['active' => 'dashboard', 'pendingReportCount' => 0])
+@props(['active' => 'dashboard', 'pendingReportCount' => 0, 'pendingServiceAreaRequestCount' => 0])
 
 <div class="cleanify-sidebar hidden lg:flex w-64 bg-green-600 text-white flex-col fixed h-full">
   <div class="p-4 border-b border-green-500 text-center">
@@ -43,6 +43,11 @@
     <a href="{{ route('admin.service-area-requests') }}" class="flex items-center px-4 py-3 rounded-lg text-white transition-colors duration-300 {{ $active === 'service-area-requests' ? 'bg-green-700' : 'hover:bg-green-700' }}">
       <i class="fas fa-map-marked-alt mr-3 text-lg"></i>
       <span>Service Area Requests</span>
+      @if($pendingServiceAreaRequestCount > 0)
+        <span class="ml-auto inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1.5 text-[10px] font-bold leading-none text-white" aria-label="{{ $pendingServiceAreaRequestCount }} pending service area requests">
+          {{ $pendingServiceAreaRequestCount > 99 ? '99+' : $pendingServiceAreaRequestCount }}
+        </span>
+      @endif
     </a>
     <a href="{{ route('admin.settings') }}" class="flex items-center px-4 py-3 rounded-lg text-white transition-colors duration-300 {{ $active === 'settings' ? 'bg-green-700' : 'hover:bg-green-700' }}">
       <i class="fas fa-cog mr-3 text-lg"></i>
