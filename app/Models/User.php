@@ -104,6 +104,54 @@ class User extends Authenticatable
     }
 
     /**
+     * Determine whether a resident notification category is enabled.
+     */
+    public function notificationPreferenceEnabled(string $key, ?string $legacyKey = null): bool
+    {
+        $preferences = $this->notification_preferences ?? [];
+
+        if (array_key_exists($key, $preferences)) {
+            return $preferences[$key] === true;
+        }
+
+        if ($legacyKey !== null && array_key_exists($legacyKey, $preferences)) {
+            return $preferences[$legacyKey] === true;
+        }
+
+        return true;
+    }
+
+    /**
+     * Get stored notification categories that should be hidden from inboxes.
+     *
+     * @return array<int, string>
+     */
+    public function mutedNotificationCategories(): array
+    {
+        $preferences = $this->notification_preferences ?? [];
+        $categories = collect($preferences)
+            ->filter(fn ($enabled) => $enabled === false)
+            ->keys()
+            ->reject(fn ($key) => in_array($key, [
+                'report_updates',
+                'schedule_reminders',
+                'reports',
+                'schedule',
+            ], true))
+            ->values();
+
+        if (! $this->notificationPreferenceEnabled('report_updates', 'reports')) {
+            $categories->push('reports');
+        }
+
+        if (! $this->notificationPreferenceEnabled('schedule_reminders', 'schedule')) {
+            $categories->push('schedule');
+        }
+
+        return $categories->unique()->all();
+    }
+
+    /**
      * Get the first letter of the user's name for avatar.
      */
     public function getAvatarInitial(): string

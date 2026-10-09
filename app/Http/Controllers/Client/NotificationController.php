@@ -38,13 +38,10 @@ class NotificationController extends Controller
             $notificationsQuery->whereJsonContains('data->category', $categoryFilter);
         }
 
-        if (!$includeMuted) {
-            $mutedCategories = collect($preferences)
-                ->filter(fn ($enabled) => $enabled === false)
-                ->keys()
-                ->all();
+        if (! $includeMuted) {
+            $mutedCategories = $user->mutedNotificationCategories();
 
-            if (!empty($mutedCategories)) {
+            if (! empty($mutedCategories)) {
                 foreach ($mutedCategories as $mutedCategory) {
                     $notificationsQuery->whereJsonDoesntContain('data->category', $mutedCategory);
                 }
@@ -116,8 +113,12 @@ class NotificationController extends Controller
             ->only(array_keys($this->categories))
             ->toArray();
 
+        $currentPreferences = $request->user()->notification_preferences ?? [];
         $request->user()->update([
-            'notification_preferences' => $prefs,
+            'notification_preferences' => array_merge($currentPreferences, $prefs, [
+                'report_updates' => $prefs['reports'] ?? true,
+                'schedule_reminders' => $prefs['schedule'] ?? true,
+            ]),
         ]);
 
         return back()->with('success', 'Notification preferences updated.');
@@ -129,7 +130,16 @@ class NotificationController extends Controller
             ->mapWithKeys(fn ($label, $key) => [$key => true])
             ->toArray();
 
-        return array_merge($defaults, $prefs);
+        $state = array_merge($defaults, $prefs);
+
+        if (array_key_exists('report_updates', $prefs)) {
+            $state['reports'] = $prefs['report_updates'];
+        }
+
+        if (array_key_exists('schedule_reminders', $prefs)) {
+            $state['schedule'] = $prefs['schedule_reminders'];
+        }
+
+        return $state;
     }
 }
-

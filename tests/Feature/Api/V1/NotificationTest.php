@@ -52,6 +52,40 @@ test('notification filters and muted category behavior match the web inbox', fun
         ->assertOk()->assertJsonCount(2, 'notifications');
 });
 
+test('canonical preferences control legacy report and schedule display categories', function () {
+    $muted = User::factory()->create([
+        'notification_preferences' => [
+            'report_updates' => false,
+            'schedule_reminders' => false,
+            'reports' => true,
+            'schedule' => true,
+        ],
+    ]);
+    notificationFor($muted, ['title' => 'Muted report', 'category' => 'reports']);
+    notificationFor($muted, ['title' => 'Muted schedule', 'category' => 'schedule']);
+    notificationFor($muted, ['title' => 'Visible system', 'category' => 'system']);
+
+    $this->actingAs($muted, 'sanctum')->getJson('/api/v1/notifications')
+        ->assertOk()
+        ->assertJsonCount(1, 'notifications')
+        ->assertJsonPath('notifications.0.title', 'Visible system');
+
+    $enabled = User::factory()->create([
+        'notification_preferences' => [
+            'report_updates' => true,
+            'schedule_reminders' => true,
+            'reports' => false,
+            'schedule' => false,
+        ],
+    ]);
+    notificationFor($enabled, ['title' => 'Visible report', 'category' => 'reports']);
+    notificationFor($enabled, ['title' => 'Visible schedule', 'category' => 'schedule']);
+
+    $this->actingAs($enabled, 'sanctum')->getJson('/api/v1/notifications')
+        ->assertOk()
+        ->assertJsonCount(2, 'notifications');
+});
+
 test('users can read dismiss and mark all of only their own notifications', function () {
     $user = User::factory()->create();
     $other = User::factory()->create();

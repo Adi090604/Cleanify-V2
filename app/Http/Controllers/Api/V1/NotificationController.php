@@ -34,7 +34,7 @@ class NotificationController extends Controller
             $query->whereJsonContains('data->category', $category);
         }
 
-        foreach (collect($user->notification_preferences ?? [])->filter(fn ($enabled) => $enabled === false)->keys() as $muted) {
+        foreach ($user->mutedNotificationCategories() as $muted) {
             $query->whereJsonDoesntContain('data->category', $muted);
         }
 
@@ -54,6 +54,7 @@ class NotificationController extends Controller
     public function markAllAsRead(Request $request): JsonResponse
     {
         $request->user()->unreadNotifications->markAsRead();
+
         return response()->json(['message' => 'All notifications marked as read.']);
     }
 
@@ -61,12 +62,14 @@ class NotificationController extends Controller
     {
         $item = $request->user()->notifications()->findOrFail($notification);
         $item->markAsRead();
+
         return response()->json(['notification' => $this->serialize($item->fresh())]);
     }
 
     public function destroy(Request $request, string $notification): JsonResponse
     {
         $request->user()->notifications()->findOrFail($notification)->delete();
+
         return response()->json(['message' => 'Notification removed.']);
     }
 

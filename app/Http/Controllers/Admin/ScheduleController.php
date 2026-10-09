@@ -165,11 +165,7 @@ class ScheduleController extends Controller
             ->get();
 
         foreach ($users as $user) {
-            // Check if user has schedule notifications enabled
-            $preferences = $user->notification_preferences ?? [];
-            $scheduleEnabled = $preferences['schedule'] ?? true;
-
-            if ($scheduleEnabled) {
+            if ($user->notificationPreferenceEnabled('schedule_reminders', 'schedule')) {
                 try {
                     $user->notify(new \App\Notifications\ScheduleCreatedNotification($schedule));
                 } catch (\Exception $e) {
@@ -201,9 +197,7 @@ class ScheduleController extends Controller
             ->unique('id');
 
         foreach ($users as $user) {
-            $preferences = $user->notification_preferences ?? [];
-
-            if (($preferences['schedule'] ?? true) !== true) {
+            if (! $user->notificationPreferenceEnabled('schedule_reminders', 'schedule')) {
                 continue;
             }
 

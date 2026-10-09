@@ -41,8 +41,6 @@ class SettingsController extends Controller
         $defaultPrefs = [
             'report_updates' => true,
             'schedule_reminders' => true,
-            'community_posts' => true,
-            'truck_tracking' => true,
         ];
         $notificationPrefs = array_merge($defaultPrefs, $notificationPrefs);
 
@@ -142,29 +140,25 @@ class SettingsController extends Controller
     public function updateNotifications(Request $request)
     {
         $validated = $request->validate([
-            'email_notifications' => ['nullable', 'boolean'],
-            'sms_notifications' => ['nullable', 'boolean'],
-            'push_notifications' => ['nullable', 'boolean'],
-            'preferences' => ['nullable', 'array'],
+            'email_notifications' => ['required', 'boolean'],
+            'sms_notifications' => ['required', 'boolean'],
+            'preferences' => ['required', 'array:report_updates,schedule_reminders'],
+            'preferences.report_updates' => ['required', 'boolean'],
+            'preferences.schedule_reminders' => ['required', 'boolean'],
         ]);
 
         $user = Auth::user();
 
         // Update global notification toggles
-        $user->email_notifications = $request->has('email_notifications');
-        $user->sms_notifications = $request->has('sms_notifications');
-        $user->push_notifications = $request->has('push_notifications');
+        $user->email_notifications = (bool) $validated['email_notifications'];
+        $user->sms_notifications = (bool) $validated['sms_notifications'];
 
-        // Update category-specific preferences
-        if ($request->has('preferences')) {
-            $preferences = [];
-            foreach ($request->input('preferences', []) as $key => $value) {
-                $preferences[$key] = (bool) $value;
-            }
-
-            $currentPrefs = $user->notification_preferences ?? [];
-            $user->notification_preferences = array_merge($currentPrefs, $preferences);
-        }
+        // Preserve preferences managed elsewhere while updating supported resident settings.
+        $currentPrefs = $user->notification_preferences ?? [];
+        $user->notification_preferences = array_merge($currentPrefs, [
+            'report_updates' => (bool) $validated['preferences']['report_updates'],
+            'schedule_reminders' => (bool) $validated['preferences']['schedule_reminders'],
+        ]);
 
         $user->save();
 

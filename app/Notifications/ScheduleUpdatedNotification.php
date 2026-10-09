@@ -34,11 +34,13 @@ class ScheduleUpdatedNotification extends Notification
      */
     public function via(object $notifiable): array
     {
-        $channels = ['database'];
-        $preferences = $notifiable->notification_preferences ?? [];
+        if (! $notifiable->notificationPreferenceEnabled('schedule_reminders', 'schedule')) {
+            return [];
+        }
 
-        if (($notifiable->email_notifications ?? true)
-            && ($preferences['schedule'] ?? true)) {
+        $channels = ['database'];
+
+        if ($notifiable->email_notifications ?? true) {
             $channels[] = 'mail';
         }
 

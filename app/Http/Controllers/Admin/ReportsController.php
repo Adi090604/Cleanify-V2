@@ -245,11 +245,7 @@ class ReportsController extends Controller
 
         foreach ($followers as $follower) {
             try {
-                // Check if user has reports notifications enabled
-                $preferences = $follower->notification_preferences ?? [];
-                $reportsEnabled = $preferences['reports'] ?? true;
-
-                if ($reportsEnabled) {
+                if ($follower->notificationPreferenceEnabled('report_updates', 'reports')) {
                     if ($type === 'resolved') {
                         $follower->notify(new \App\Notifications\ReportResolvedNotification($report, true));
                     } else {

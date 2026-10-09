@@ -4,7 +4,6 @@ namespace App\Notifications;
 
 use App\Models\Report;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -29,16 +28,16 @@ class ReportRejectedNotification extends Notification
      */
     public function via(object $notifiable): array
     {
+        if (! $notifiable->notificationPreferenceEnabled('report_updates', 'reports')) {
+            return [];
+        }
+
         $channels = ['database'];
-        
-        // Check if user has email notifications enabled and reports category enabled
-        $preferences = $notifiable->notification_preferences ?? [];
-        $reportsEnabled = $preferences['reports'] ?? true;
-        
-        if (($notifiable->email_notifications ?? true) && $reportsEnabled) {
+
+        if ($notifiable->email_notifications ?? true) {
             $channels[] = 'mail';
         }
-        
+
         return $channels;
     }
 
@@ -59,25 +58,25 @@ class ReportRejectedNotification extends Notification
             : 'We wanted to inform you about the status of your community report.';
 
         return (new MailMessage)
-                    ->subject($subject)
-                    ->greeting('Hello ' . $notifiable->name . ',')
-                    ->line($intro)
-                    ->line('**Report Details:**')
-                    ->line('📍 Location: ' . $this->report->location)
-                    ->line('📝 Description: ' . $this->report->description)
-                    ->line('**Status:** Rejected')
-                    ->when($this->report->rejection_reason, function ($mail) {
-                        return $mail->line('**Reason:**')
-                                    ->line($this->report->rejection_reason);
-                    })
-                    ->line('Reviewed by: ' . $resolverName)
-                    ->when($this->report->resolved_at, function ($mail) {
-                        return $mail->line('Reviewed on: ' . $this->report->resolved_at->format('F d, Y \a\t h:i A'));
-                    }, function ($mail) {
-                        return $mail->line('Reviewed on: ' . now()->format('F d, Y \a\t h:i A'));
-                    })
-                    ->action('View Report', route('community-reports'))
-                    ->line('If you have any questions, please feel free to submit a new report.');
+            ->subject($subject)
+            ->greeting('Hello '.$notifiable->name.',')
+            ->line($intro)
+            ->line('**Report Details:**')
+            ->line('📍 Location: '.$this->report->location)
+            ->line('📝 Description: '.$this->report->description)
+            ->line('**Status:** Rejected')
+            ->when($this->report->rejection_reason, function ($mail) {
+                return $mail->line('**Reason:**')
+                    ->line($this->report->rejection_reason);
+            })
+            ->line('Reviewed by: '.$resolverName)
+            ->when($this->report->resolved_at, function ($mail) {
+                return $mail->line('Reviewed on: '.$this->report->resolved_at->format('F d, Y \a\t h:i A'));
+            }, function ($mail) {
+                return $mail->line('Reviewed on: '.now()->format('F d, Y \a\t h:i A'));
+            })
+            ->action('View Report', route('community-reports'))
+            ->line('If you have any questions, please feel free to submit a new report.');
     }
 
     /**
@@ -94,7 +93,7 @@ class ReportRejectedNotification extends Notification
             'follower' => $this->isFollower,
             'category' => 'reports',
             'title' => $this->isFollower ? 'Report you follow rejected' : 'Your report was rejected',
-            'message' => 'Location: ' . $this->report->location,
+            'message' => 'Location: '.$this->report->location,
             'icon' => 'fa-times-circle',
             'color' => 'bg-red-600',
             'url' => '/community-reports',

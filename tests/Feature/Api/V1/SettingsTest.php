@@ -35,8 +35,28 @@ test('settings returns real account preferences and only active service zones', 
         ->assertJsonPath('account.service_area', $active->display_name)
         ->assertJsonPath('service_areas.0', $active->display_name)
         ->assertJsonCount(1, 'service_areas')
+        ->assertJsonPath('notifications.email_notifications', true)
+        ->assertJsonPath('notifications.sms_notifications', false)
+        ->assertJsonPath('notifications.report_updates', false)
+        ->assertJsonPath('notifications.schedule_reminders', true)
+        ->assertJsonPath('notifications.push_available', false)
         ->assertJsonPath('notifications.preferences.report_updates', false)
-        ->assertJsonPath('notifications.preferences.schedule_reminders', true);
+        ->assertJsonPath('notifications.preferences.schedule_reminders', true)
+        ->assertJsonCount(2, 'notifications.preferences')
+        ->assertJsonMissingPath('notifications.push_notifications')
+        ->assertJsonMissingPath('notifications.preferences.community_posts')
+        ->assertJsonMissingPath('notifications.preferences.truck_tracking');
+});
+
+test('settings resolves legacy stored report and schedule keys into canonical values', function () {
+    $user = User::factory()->create([
+        'notification_preferences' => ['reports' => false, 'schedule' => false],
+    ]);
+
+    $this->withToken(settingsToken($user))->getJson('/api/v1/settings')
+        ->assertOk()
+        ->assertJsonPath('notifications.report_updates', false)
+        ->assertJsonPath('notifications.schedule_reminders', false);
 });
 
 test('settings exposes an invalid service area as unselected', function () {
@@ -94,29 +114,141 @@ test('password settings require the current password and confirmation', function
     expect(Hash::check('new-password', $user->fresh()->password))->toBeTrue();
 });
 
-test('a user can persist the existing notification preference fields', function () {
-    $user = User::factory()->create();
+test('a user can persist the canonical notification preferences including false values', function () {
+    $user = User::factory()->create([
+        'push_notifications' => true,
+        'notification_preferences' => [
+            'system' => false,
+            'community_posts' => true,
+            'truck_tracking' => true,
+        ],
+    ]);
 
     $this->withToken(settingsToken($user))->patchJson('/api/v1/settings/notifications', [
         'email_notifications' => false,
         'sms_notifications' => true,
-        'push_notifications' => false,
-        'preferences' => [
+        'report_updates' => false,
+        'schedule_reminders' => false,
+    ])->assertOk();
+
+    $user->refresh();
+    expect($user->email_notifications)->toBeFalse()
+        ->and($user->sms_notifications)->toBeTrue()
+        ->and($user->push_notifications)->toBeTrue()
+        ->and($user->notification_preferences)->toBe([
+            'system' => false,
             'report_updates' => false,
-            'schedule_reminders' => true,
+            'schedule_reminders' => false,
+        ]);
+});
+
+test('the previous mobile notification payload remains temporarily compatible', function () {
+    $user = User::factory()->create([
+        'push_notifications' => false,
+        'notification_preferences' => ['system' => true, 'community_posts' => true],
+    ]);
+
+    $this->withToken(settingsToken($user))->patchJson('/api/v1/settings/notifications', [
+        'email_notifications' => true,
+        'sms_notifications' => false,
+        'push_notifications' => true,
+        'preferences' => [
+            'report_updates' => true,
+            'schedule_reminders' => false,
             'community_posts' => false,
             'truck_tracking' => true,
         ],
     ])->assertOk();
 
     $user->refresh();
-    expect($user->email_notifications)->toBeFalse()
-        ->and($user->sms_notifications)->toBeTrue()
+    expect($user->email_notifications)->toBeTrue()
+        ->and($user->sms_notifications)->toBeFalse()
         ->and($user->push_notifications)->toBeFalse()
         ->and($user->notification_preferences)->toBe([
-            'report_updates' => false,
+            'system' => true,
+            'report_updates' => true,
+            'schedule_reminders' => false,
+        ]);
+});
+
+test('canonical notification fields are required booleans', function (string $field) {
+    $user = User::factory()->create();
+    $payload = [
+        'email_notifications' => true,
+        'sms_notifications' => false,
+        'report_updates' => true,
+        'schedule_reminders' => false,
+    ];
+    unset($payload[$field]);
+
+    $this->withToken(settingsToken($user))->patchJson('/api/v1/settings/notifications', $payload)
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors($field);
+})->with([
+    'email' => ['email_notifications'],
+    'sms' => ['sms_notifications'],
+    'report updates' => ['report_updates'],
+    'schedule reminders' => ['schedule_reminders'],
+]);
+
+test('canonical notification fields reject non-boolean values', function () {
+    $user = User::factory()->create();
+
+    $this->withToken(settingsToken($user))->patchJson('/api/v1/settings/notifications', [
+        'email_notifications' => 'enabled',
+        'sms_notifications' => 'disabled',
+        'report_updates' => 'yes',
+        'schedule_reminders' => 'no',
+    ])->assertUnprocessable()
+        ->assertJsonValidationErrors([
+            'email_notifications',
+            'sms_notifications',
+            'report_updates',
+            'schedule_reminders',
+        ]);
+});
+
+test('canonical fields take precedence when both notification payload shapes are sent', function () {
+    $user = User::factory()->create();
+
+    $this->withToken(settingsToken($user))->patchJson('/api/v1/settings/notifications', [
+        'email_notifications' => true,
+        'sms_notifications' => false,
+        'report_updates' => false,
+        'schedule_reminders' => true,
+        'preferences' => [
+            'report_updates' => true,
+            'schedule_reminders' => false,
+        ],
+    ])->assertOk();
+
+    expect($user->fresh()->notification_preferences)->toMatchArray([
+        'report_updates' => false,
+        'schedule_reminders' => true,
+    ]);
+});
+
+test('notification updates cannot target another user', function () {
+    $user = User::factory()->create();
+    $other = User::factory()->create([
+        'email_notifications' => true,
+        'sms_notifications' => false,
+        'notification_preferences' => ['report_updates' => true, 'schedule_reminders' => true],
+    ]);
+
+    $this->withToken(settingsToken($user))->patchJson('/api/v1/settings/notifications', [
+        'email_notifications' => false,
+        'sms_notifications' => true,
+        'report_updates' => false,
+        'schedule_reminders' => false,
+        'user_id' => $other->id,
+    ])->assertOk();
+
+    $other->refresh();
+    expect($other->email_notifications)->toBeTrue()
+        ->and($other->sms_notifications)->toBeFalse()
+        ->and($other->notification_preferences)->toBe([
+            'report_updates' => true,
             'schedule_reminders' => true,
-            'community_posts' => false,
-            'truck_tracking' => true,
         ]);
 });

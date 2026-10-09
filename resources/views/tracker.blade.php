@@ -106,9 +106,6 @@
             <button id="detailFocusBtn" class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">
               <i class="fas fa-crosshairs text-green-600 mr-1"></i>Center map
             </button>
-            <button id="detailRouteBtn" class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">
-              <i class="fas fa-map-marked-alt text-blue-600 mr-1"></i>View route
-            </button>
           </div>
         </div>
 
@@ -152,9 +149,6 @@
                   <button class="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-50 center-truck-btn" data-id="{{ $truck->id }}">
                     <i class="fas fa-crosshairs text-green-600 mr-1"></i>Focus
                   </button>
-                  <button class="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-50 route-history-btn" data-id="{{ $truck->id }}">
-                    <i class="fas fa-map-marked-alt text-blue-600 mr-1"></i>Route
-                  </button>
                 @else
                   <button class="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-gray-400 cursor-not-allowed" disabled title="No location data available">
                     <i class="fas fa-map-marker-alt mr-1"></i>No location
@@ -180,7 +174,6 @@
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
   <script>
     const trackerDataUrl = '{{ route('tracker.data.client') }}';
-    const routeHistoryUrlTemplate = '{{ route('tracker.route-history.client', ['truck' => '__ID__']) }}';
     @php
       $initialTrucks = $trucks->map(function ($truck) {
           return [
@@ -246,10 +239,8 @@
     const detailLastUpdated = document.getElementById('detailLastUpdated');
     const detailEta = document.getElementById('detailEta');
     const detailFocusBtn = document.getElementById('detailFocusBtn');
-    const detailRouteBtn = document.getElementById('detailRouteBtn');
     let selectedTruckId = null;
     let truckCache = {};
-    let routeLayer = null;
     let countdown = 30;
     let countdownInterval = null;
 
@@ -404,27 +395,6 @@
       });
     });
 
-    document.querySelectorAll('.route-history-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.dataset.id;
-        fetch(routeHistoryUrlTemplate.replace('__ID__', id))
-          .then(res => res.json())
-          .then(data => {
-            if (routeLayer) {
-              map.removeLayer(routeLayer);
-            }
-            if (!data.locations.length) {
-              showToast?.('info', 'No route history available for the last 24 hours.');
-              return;
-            }
-            const latlngs = data.locations.map(loc => [loc.latitude, loc.longitude]);
-            routeLayer = L.polyline(latlngs, { color: '#2563eb', weight: 4, opacity: 0.7 }).addTo(map);
-            map.fitBounds(routeLayer.getBounds(), { padding: [30, 30] });
-          })
-          .catch(() => showToast?.('error', 'Unable to load route history.'));
-      });
-    });
-
     const filterList = () => {
       const search = document.getElementById('truckSearch').value.toLowerCase();
       const status = document.getElementById('statusFilter').value;
@@ -518,10 +488,6 @@
           map.setView(marker.getLatLng(), 15);
           marker.openPopup();
         }
-      };
-      detailRouteBtn.onclick = () => {
-        const btn = document.querySelector(`.route-history-btn[data-id="${truck.id}"]`);
-        btn?.click();
       };
     };
 

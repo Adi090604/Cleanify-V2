@@ -132,6 +132,12 @@
     <form id="notificationsForm" method="POST" action="{{ route('settings.notifications') }}">
       @csrf
       @method('PATCH')
+
+      @if($errors->hasAny(['email_notifications', 'sms_notifications', 'preferences', 'preferences.report_updates', 'preferences.schedule_reminders']))
+        <x-alert type="error" class="mb-4">
+          Please review the notification preference errors and try again.
+        </x-alert>
+      @endif
       
       <!-- Global Notification Toggles -->
       <div class="mb-6">
@@ -142,34 +148,47 @@
               <label for="email_notifications" class="text-gray-700 cursor-pointer">Email Notifications</label>
               <p class="text-sm text-gray-500">Receive notifications via email</p>
             </div>
-            <div class="relative inline-block w-12 h-6">
-              <input type="checkbox" name="email_notifications" id="email_notifications" value="1" class="sr-only peer" {{ $user->email_notifications ? 'checked' : '' }}>
-              <div class="w-12 h-6 bg-gray-300 peer-checked:bg-green-600 rounded-full transition-colors duration-300"></div>
-              <div class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 peer-checked:translate-x-6"></div>
+            <div>
+              <input type="hidden" name="email_notifications" value="0">
+              <label for="email_notifications" class="relative inline-block w-12 h-6 cursor-pointer">
+                <input type="checkbox" name="email_notifications" id="email_notifications" value="1" class="sr-only peer" {{ old('email_notifications', $user->email_notifications) ? 'checked' : '' }}>
+                <span class="block w-12 h-6 bg-gray-300 peer-checked:bg-green-600 rounded-full transition-colors duration-300"></span>
+                <span class="pointer-events-none absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 peer-checked:translate-x-6"></span>
+              </label>
             </div>
           </div>
 
           <div class="flex items-center justify-between">
             <div>
               <label for="sms_notifications" class="text-gray-700 cursor-pointer">SMS Notifications</label>
-              <p class="text-sm text-gray-500">Receive notifications via SMS</p>
+              @if(config('sms.driver') === 'twilio')
+                <p class="text-sm text-gray-500">Receive garbage pickup reminders via SMS</p>
+              @else
+                <p class="text-sm text-gray-500">SMS delivery is currently in simulation mode. Your preference will apply when SMS delivery is configured.</p>
+              @endif
             </div>
-            <div class="relative inline-block w-12 h-6">
-              <input type="checkbox" name="sms_notifications" id="sms_notifications" value="1" class="sr-only peer" {{ $user->sms_notifications ? 'checked' : '' }}>
-              <div class="w-12 h-6 bg-gray-300 peer-checked:bg-green-600 rounded-full transition-colors duration-300"></div>
-              <div class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 peer-checked:translate-x-6"></div>
+            <div>
+              <input type="hidden" name="sms_notifications" value="0">
+              <label for="sms_notifications" class="relative inline-block w-12 h-6 cursor-pointer">
+                <input type="checkbox" name="sms_notifications" id="sms_notifications" value="1" class="sr-only peer" {{ old('sms_notifications', $user->sms_notifications) ? 'checked' : '' }}>
+                <span class="block w-12 h-6 bg-gray-300 peer-checked:bg-green-600 rounded-full transition-colors duration-300"></span>
+                <span class="pointer-events-none absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 peer-checked:translate-x-6"></span>
+              </label>
             </div>
           </div>
 
           <div class="flex items-center justify-between">
             <div>
-              <label for="push_notifications" class="text-gray-700 cursor-pointer">Push Notifications</label>
-              <p class="text-sm text-gray-500">Receive browser push notifications</p>
+              <div class="flex items-center gap-2">
+                <span class="text-gray-500">Push Notifications</span>
+                <span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">Unavailable</span>
+              </div>
+              <p class="text-sm text-gray-500">Browser push notifications are not currently supported</p>
             </div>
             <div class="relative inline-block w-12 h-6">
-              <input type="checkbox" name="push_notifications" id="push_notifications" value="1" class="sr-only peer" {{ $user->push_notifications ? 'checked' : '' }}>
-              <div class="w-12 h-6 bg-gray-300 peer-checked:bg-green-600 rounded-full transition-colors duration-300"></div>
-              <div class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 peer-checked:translate-x-6"></div>
+              <input type="checkbox" aria-label="Push Notifications unavailable" class="sr-only peer" disabled>
+              <div class="w-12 h-6 bg-gray-200 rounded-full cursor-not-allowed"></div>
+              <div class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full"></div>
             </div>
           </div>
         </div>
@@ -184,10 +203,13 @@
               <label for="pref_report_updates" class="text-gray-700 cursor-pointer">Report Updates</label>
               <p class="text-sm text-gray-500">When your reports are resolved or rejected</p>
             </div>
-            <div class="relative inline-block w-12 h-6">
-              <input type="checkbox" name="preferences[report_updates]" id="pref_report_updates" value="1" class="sr-only peer" {{ $notificationPrefs['report_updates'] ?? true ? 'checked' : '' }}>
-              <div class="w-12 h-6 bg-gray-300 peer-checked:bg-green-600 rounded-full transition-colors duration-300"></div>
-              <div class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 peer-checked:translate-x-6"></div>
+            <div>
+              <input type="hidden" name="preferences[report_updates]" value="0">
+              <label for="pref_report_updates" class="relative inline-block w-12 h-6 cursor-pointer">
+                <input type="checkbox" name="preferences[report_updates]" id="pref_report_updates" value="1" class="sr-only peer" {{ old('preferences.report_updates', $notificationPrefs['report_updates'] ?? true) ? 'checked' : '' }}>
+                <span class="block w-12 h-6 bg-gray-300 peer-checked:bg-green-600 rounded-full transition-colors duration-300"></span>
+                <span class="pointer-events-none absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 peer-checked:translate-x-6"></span>
+              </label>
             </div>
           </div>
 
@@ -196,34 +218,13 @@
               <label for="pref_schedule_reminders" class="text-gray-700 cursor-pointer">Schedule Reminders</label>
               <p class="text-sm text-gray-500">Garbage pickup reminders for your area</p>
             </div>
-            <div class="relative inline-block w-12 h-6">
-              <input type="checkbox" name="preferences[schedule_reminders]" id="pref_schedule_reminders" value="1" class="sr-only peer" {{ $notificationPrefs['schedule_reminders'] ?? true ? 'checked' : '' }}>
-              <div class="w-12 h-6 bg-gray-300 peer-checked:bg-green-600 rounded-full transition-colors duration-300"></div>
-              <div class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 peer-checked:translate-x-6"></div>
-            </div>
-          </div>
-
-          <div class="flex items-center justify-between">
             <div>
-              <label for="pref_community_posts" class="text-gray-700 cursor-pointer">Community Posts</label>
-              <p class="text-sm text-gray-500">New posts and updates from your community</p>
-            </div>
-            <div class="relative inline-block w-12 h-6">
-              <input type="checkbox" name="preferences[community_posts]" id="pref_community_posts" value="1" class="sr-only peer" {{ $notificationPrefs['community_posts'] ?? true ? 'checked' : '' }}>
-              <div class="w-12 h-6 bg-gray-300 peer-checked:bg-green-600 rounded-full transition-colors duration-300"></div>
-              <div class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 peer-checked:translate-x-6"></div>
-            </div>
-          </div>
-
-          <div class="flex items-center justify-between">
-            <div>
-              <label for="pref_truck_tracking" class="text-gray-700 cursor-pointer">Truck Tracking</label>
-              <p class="text-sm text-gray-500">ETA updates and route changes</p>
-            </div>
-            <div class="relative inline-block w-12 h-6">
-              <input type="checkbox" name="preferences[truck_tracking]" id="pref_truck_tracking" value="1" class="sr-only peer" {{ $notificationPrefs['truck_tracking'] ?? true ? 'checked' : '' }}>
-              <div class="w-12 h-6 bg-gray-300 peer-checked:bg-green-600 rounded-full transition-colors duration-300"></div>
-              <div class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 peer-checked:translate-x-6"></div>
+              <input type="hidden" name="preferences[schedule_reminders]" value="0">
+              <label for="pref_schedule_reminders" class="relative inline-block w-12 h-6 cursor-pointer">
+                <input type="checkbox" name="preferences[schedule_reminders]" id="pref_schedule_reminders" value="1" class="sr-only peer" {{ old('preferences.schedule_reminders', $notificationPrefs['schedule_reminders'] ?? true) ? 'checked' : '' }}>
+                <span class="block w-12 h-6 bg-gray-300 peer-checked:bg-green-600 rounded-full transition-colors duration-300"></span>
+                <span class="pointer-events-none absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 peer-checked:translate-x-6"></span>
+              </label>
             </div>
           </div>
         </div>

@@ -4,7 +4,6 @@ namespace App\Notifications;
 
 use App\Models\Report;
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -29,16 +28,16 @@ class ReportResolvedNotification extends Notification
      */
     public function via(object $notifiable): array
     {
+        if (! $notifiable->notificationPreferenceEnabled('report_updates', 'reports')) {
+            return [];
+        }
+
         $channels = ['database'];
-        
-        // Check if user has email notifications enabled and reports category enabled
-        $preferences = $notifiable->notification_preferences ?? [];
-        $reportsEnabled = $preferences['reports'] ?? true;
-        
-        if (($notifiable->email_notifications ?? true) && $reportsEnabled) {
+
+        if ($notifiable->email_notifications ?? true) {
             $channels[] = 'mail';
         }
-        
+
         return $channels;
     }
 
@@ -58,24 +57,24 @@ class ReportResolvedNotification extends Notification
             : 'Great news! Your community report has been resolved.';
 
         return (new MailMessage)
-                    ->subject($subject)
-                    ->greeting('Hello ' . $notifiable->name . '!')
-                    ->line($intro)
-                    ->line('**Report Details:**')
-                    ->line('📍 Location: ' . $this->report->location)
-                    ->line('📝 Description: ' . $this->report->description)
-                    ->when($this->report->admin_notes, function ($mail) {
-                        return $mail->line('**Admin Notes:**')
-                                    ->line($this->report->admin_notes);
-                    })
-                    ->line('Resolved by: ' . $resolverName)
-                    ->when($this->report->resolved_at, function ($mail) {
-                        return $mail->line('Resolved on: ' . $this->report->resolved_at->format('F d, Y \a\t h:i A'));
-                    }, function ($mail) {
-                        return $mail->line('Resolved on: ' . now()->format('F d, Y \a\t h:i A'));
-                    })
-                    ->action('View Report', route('community-reports'))
-                    ->line('Thank you for helping keep our community clean!');
+            ->subject($subject)
+            ->greeting('Hello '.$notifiable->name.'!')
+            ->line($intro)
+            ->line('**Report Details:**')
+            ->line('📍 Location: '.$this->report->location)
+            ->line('📝 Description: '.$this->report->description)
+            ->when($this->report->admin_notes, function ($mail) {
+                return $mail->line('**Admin Notes:**')
+                    ->line($this->report->admin_notes);
+            })
+            ->line('Resolved by: '.$resolverName)
+            ->when($this->report->resolved_at, function ($mail) {
+                return $mail->line('Resolved on: '.$this->report->resolved_at->format('F d, Y \a\t h:i A'));
+            }, function ($mail) {
+                return $mail->line('Resolved on: '.now()->format('F d, Y \a\t h:i A'));
+            })
+            ->action('View Report', route('community-reports'))
+            ->line('Thank you for helping keep our community clean!');
     }
 
     /**
@@ -92,7 +91,7 @@ class ReportResolvedNotification extends Notification
             'follower' => $this->isFollower,
             'category' => 'reports',
             'title' => $this->isFollower ? 'Report you follow resolved' : 'Your report is resolved',
-            'message' => 'Location: ' . $this->report->location,
+            'message' => 'Location: '.$this->report->location,
             'icon' => 'fa-check-circle',
             'color' => 'bg-green-600',
             'url' => '/community-reports',

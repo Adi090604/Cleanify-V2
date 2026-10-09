@@ -6,23 +6,19 @@ use App\Http\Controllers\Controller;
 use App\Models\ServiceZone;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules\Password;
 
 class SettingsController extends Controller
 {
-    private const DEFAULT_NOTIFICATION_PREFERENCES = [
-        'report_updates' => true,
-        'schedule_reminders' => true,
-        'community_posts' => true,
-        'truck_tracking' => true,
-    ];
-
     public function show(Request $request): JsonResponse
     {
         $user = $request->user();
         $serviceAreas = $this->activeServiceAreas();
+        $reportUpdates = $user->notificationPreferenceEnabled('report_updates', 'reports');
+        $scheduleReminders = $user->notificationPreferenceEnabled('schedule_reminders', 'schedule');
 
         return response()->json([
             'account' => [
@@ -36,11 +32,14 @@ class SettingsController extends Controller
             'notifications' => [
                 'email_notifications' => (bool) $user->email_notifications,
                 'sms_notifications' => (bool) $user->sms_notifications,
-                'push_notifications' => (bool) $user->push_notifications,
-                'preferences' => array_merge(
-                    self::DEFAULT_NOTIFICATION_PREFERENCES,
-                    $user->notification_preferences ?? [],
-                ),
+                'report_updates' => $reportUpdates,
+                'schedule_reminders' => $scheduleReminders,
+                'push_available' => false,
+                // Temporary read alias for installed clients using the previous nested shape.
+                'preferences' => [
+                    'report_updates' => $reportUpdates,
+                    'schedule_reminders' => $scheduleReminders,
+                ],
             ],
         ]);
     }
@@ -87,22 +86,40 @@ class SettingsController extends Controller
 
     public function updateNotifications(Request $request): JsonResponse
     {
-        $validated = $request->validate([
+        $canonicalPayload = $request->hasAny(['report_updates', 'schedule_reminders']);
+        $rules = [
             'email_notifications' => ['required', 'boolean'],
             'sms_notifications' => ['required', 'boolean'],
-            'push_notifications' => ['required', 'boolean'],
-            'preferences' => ['required', 'array'],
-            'preferences.report_updates' => ['required', 'boolean'],
-            'preferences.schedule_reminders' => ['required', 'boolean'],
-            'preferences.community_posts' => ['required', 'boolean'],
-            'preferences.truck_tracking' => ['required', 'boolean'],
-        ]);
+        ];
+
+        if ($canonicalPayload) {
+            $rules['report_updates'] = ['required', 'boolean'];
+            $rules['schedule_reminders'] = ['required', 'boolean'];
+        } else {
+            // Temporary compatibility for the installed app's previous nested payload.
+            $rules['preferences'] = ['required', 'array'];
+            $rules['preferences.report_updates'] = ['required', 'boolean'];
+            $rules['preferences.schedule_reminders'] = ['required', 'boolean'];
+        }
+
+        $validated = $request->validate($rules);
+        $reportUpdates = $canonicalPayload
+            ? $validated['report_updates']
+            : $validated['preferences']['report_updates'];
+        $scheduleReminders = $canonicalPayload
+            ? $validated['schedule_reminders']
+            : $validated['preferences']['schedule_reminders'];
 
         $user = $request->user();
         $user->email_notifications = $validated['email_notifications'];
         $user->sms_notifications = $validated['sms_notifications'];
-        $user->push_notifications = $validated['push_notifications'];
-        $user->notification_preferences = $validated['preferences'];
+        $user->notification_preferences = array_merge(
+            Arr::except($user->notification_preferences ?? [], ['community_posts', 'truck_tracking']),
+            [
+                'report_updates' => (bool) $reportUpdates,
+                'schedule_reminders' => (bool) $scheduleReminders,
+            ],
+        );
         $user->save();
 
         return response()->json([
