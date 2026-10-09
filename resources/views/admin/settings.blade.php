@@ -121,7 +121,7 @@
   </div>
   </div>
 
-  <div class="admin-section-card admin-settings-section bg-white rounded-xl shadow-sm p-6 mb-5">
+  <div class="admin-section-card admin-settings-section bg-white rounded-xl shadow-sm p-6">
     <div class="admin-card-heading mb-5">
       <i class="fas fa-bell" aria-hidden="true"></i>
       <div>
@@ -172,89 +172,4 @@
     </form>
   </div>
 
-  <div class="admin-table-card bg-white rounded-xl shadow-sm overflow-hidden">
-    <div>
-      <div class="border-b border-gray-100 px-4 py-3.5 sm:px-5">
-        <div class="admin-card-heading">
-          <i class="fas fa-link" aria-hidden="true"></i>
-          <div>
-            <h3>Connected Accounts</h3>
-            <p class="mt-0.5 text-xs text-gray-500">Manage the external accounts already available here</p>
-          </div>
-        </div>
-      </div>
-      @php
-        $accounts = [
-          ['service' => 'Google', 'icon' => 'fab fa-google text-red-500', 'status' => 'Connected', 'connected' => true, 'date' => 'Jan 12, 2025'],
-          ['service' => 'Facebook', 'icon' => 'fab fa-facebook text-blue-600', 'status' => 'Disconnected', 'connected' => false, 'date' => 'Feb 20, 2025'],
-          ['service' => 'Twitter', 'icon' => 'fab fa-twitter text-blue-400', 'status' => 'Connected', 'connected' => true, 'date' => 'Mar 05, 2025'],
-        ];
-      @endphp
-      <div class="overflow-x-auto">
-        <table class="w-full">
-          <thead>
-            <tr class="admin-table-header">
-              @foreach (['#','Service','Status','Connected Since','Action'] as $heading)
-                <th class="px-4 py-3 text-left text-sm font-semibold">{{ $heading }}</th>
-              @endforeach
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-200" id="connectedAccountsBody">
-            @foreach ($accounts as $index => $account)
-              <tr class="hover:bg-gray-50 transition-colors duration-200" data-account="{{ json_encode($account) }}">
-                <td class="px-4 py-3">{{ $index + 1 }}</td>
-                <td class="px-4 py-3 font-medium text-gray-900">
-                  <div class="flex items-center">
-                    <i class="{{ $account['icon'] }} mr-2"></i>
-                    <span>{{ $account['service'] }}</span>
-                  </div>
-                </td>
-                <td class="px-4 py-3">
-                  <span class="admin-status-badge {{ $account['connected'] ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800' }}">
-                    <i class="fas fa-circle text-xs mr-1"></i>{{ $account['status'] }}
-                  </span>
-                </td>
-                <td class="px-4 py-3 text-gray-600">{{ $account['date'] }}</td>
-                <td class="px-4 py-3">
-                  <button class="px-3 py-1 text-white text-sm rounded-lg transition-colors duration-300 {{ $account['connected'] ? 'bg-red-500 hover:bg-red-600' : 'bg-green-600 hover:bg-green-700' }}" onclick="toggleAccountConnection(this)">
-                    <i class="fas {{ $account['connected'] ? 'fa-times-circle' : 'fa-check-circle' }} mr-1"></i>
-                    {{ $account['connected'] ? 'Disconnect' : 'Connect' }}
-                  </button>
-                </td>
-              </tr>
-            @endforeach
-          </tbody>
-        </table>
-      </div>
-    </div>
-  </div>
 @endsection
-
-@push('scripts')
-  <script>
-    function toggleAccountConnection(button) {
-      const row = button.closest('tr');
-      const isConnected = button.textContent.trim().includes('Disconnect');
-      const statusCell = row.querySelector('td:nth-child(3) span');
-      if (isConnected) {
-        button.classList.remove('bg-red-500', 'hover:bg-red-600');
-        button.classList.add('bg-green-600', 'hover:bg-green-700');
-        button.innerHTML = '<i class="fas fa-check-circle mr-1"></i>Connect';
-        statusCell.className = 'admin-status-badge bg-gray-100 text-gray-800';
-        statusCell.innerHTML = '<i class="fas fa-circle text-xs mr-1"></i>Disconnected';
-        if (typeof showToast === 'function') {
-          showToast('info', 'Successfully disconnected account.');
-        }
-      } else {
-        button.classList.remove('bg-green-600', 'hover:bg-green-700');
-        button.classList.add('bg-red-500', 'hover:bg-red-600');
-        button.innerHTML = '<i class="fas fa-times-circle mr-1"></i>Disconnect';
-        statusCell.className = 'admin-status-badge bg-green-100 text-green-800';
-        statusCell.innerHTML = '<i class="fas fa-circle text-xs mr-1"></i>Connected';
-        if (typeof showToast === 'function') {
-          showToast('success', 'Successfully connected account.');
-        }
-      }
-    }
-  </script>
-@endpush

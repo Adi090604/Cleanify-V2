@@ -168,7 +168,7 @@
     @endslot
   </x-modal>
 
-  <x-modal id="reportUserModal" title="Report User" icon="fas fa-flag" color="red">
+  <x-modal id="reportUserModal" title="Report User" icon="fas fa-flag" color="red" variant="confirmation">
     <form id="reportUserForm" class="space-y-4">
       @csrf
       <input type="hidden" id="reportedUserId" name="reported_user_id">
@@ -194,11 +194,11 @@
       </div>
     </form>
     @slot('footer')
-      <div class="flex justify-end space-x-3">
-        <button onclick="closeModal('reportUserModal')" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-300">
+      <div class="admin-confirm-actions">
+        <button type="button" onclick="closeModal('reportUserModal')" class="admin-btn-secondary">
           <i class="fas fa-times mr-2"></i>Cancel
         </button>
-        <button type="submit" form="reportUserForm" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-300">
+        <button type="submit" form="reportUserForm" class="admin-btn-danger">
           <i class="fas fa-flag mr-2"></i>Submit Report
         </button>
       </div>
@@ -367,11 +367,7 @@
       
       // Validate reason is selected
       if (!reason) {
-        if (typeof showToast === 'function') {
-          showToast('error', 'Please select a reason for reporting this user.');
-        } else {
-          alert('Please select a reason for reporting this user.');
-        }
+        showToast('error', 'Please select a reason for reporting this user.');
         return;
       }
       
@@ -401,11 +397,7 @@
           document.getElementById('reportDescription').value = '';
           document.getElementById('originatingReportId').value = '';
         } else if (data.error) {
-          if (typeof showToast === 'function') {
-            showToast('error', data.error);
-          } else {
-            alert(data.error);
-          }
+          showToast('error', data.error);
         }
       })
       .catch(error => {
@@ -430,11 +422,7 @@
           }
         }
         
-        if (typeof showToast === 'function') {
-          showToast('error', errorMessage);
-        } else {
-          alert(errorMessage);
-        }
+        showToast('error', errorMessage);
       });
     });
 

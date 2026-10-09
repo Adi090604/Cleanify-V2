@@ -112,7 +112,7 @@
                   <i class="fas fa-check mr-1 text-green-600"></i>{{ $isUnread ? 'Mark read' : 'Read' }}
                 </button>
               </form>
-              <form method="POST" action="{{ route('notifications.destroy', $notification->id) }}">
+              <form method="POST" action="{{ route('notifications.destroy', $notification->id) }}" class="notification-dismiss-form">
                 @csrf
                 @method('DELETE')
                 <button type="submit" class="px-3 py-1.5 text-sm border border-gray-200 rounded-lg text-gray-500 hover:bg-gray-50">
@@ -171,6 +171,25 @@
     </div>
   </div>
 @endsection
+
+@push('modals')
+  <x-modal id="dismissNotificationModal" title="Dismiss Notification" icon="fas fa-times-circle" color="red" variant="confirmation">
+    <p>Are you sure you want to dismiss this notification?</p>
+    <div class="admin-confirm-warning">
+      <i class="fas fa-exclamation-circle mt-0.5" aria-hidden="true"></i>
+      <p>The notification will be removed from your inbox.</p>
+    </div>
+
+    @slot('footer')
+      <div class="admin-confirm-actions">
+        <button type="button" onclick="closeModal('dismissNotificationModal')" class="admin-btn-secondary">Cancel</button>
+        <button type="button" id="confirmNotificationDismiss" class="admin-btn-danger">
+          <i class="fas fa-times mr-2" aria-hidden="true"></i>Dismiss
+        </button>
+      </div>
+    @endslot
+  </x-modal>
+@endpush
 
 @push('scripts')
   <script>
@@ -270,18 +289,30 @@
         });
       });
       
-      // Handle notification delete/dismiss
-      document.querySelectorAll('form[action*="notifications"][method="DELETE"]').forEach(form => {
+      // Handle notification delete/dismiss with the shared confirmation modal.
+      let pendingDismissForm = null;
+
+      document.querySelectorAll('.notification-dismiss-form').forEach(form => {
         form.addEventListener('submit', function(e) {
           e.preventDefault();
-          const formData = new FormData(this);
-          const notificationCard = this.closest('.border');
-          
-          if (!confirm('Are you sure you want to dismiss this notification?')) {
-            return;
-          }
-          
-          fetch(this.action, {
+          pendingDismissForm = this;
+          openModal('dismissNotificationModal');
+        });
+      });
+
+      document.getElementById('confirmNotificationDismiss')?.addEventListener('click', function() {
+        if (!pendingDismissForm) return;
+
+        const form = pendingDismissForm;
+        const formData = new FormData(form);
+        const notificationCard = form.closest('.border');
+        const confirmButton = this;
+        pendingDismissForm = null;
+        confirmButton.disabled = true;
+        confirmButton.classList.add('cursor-wait', 'opacity-60');
+        closeModal('dismissNotificationModal');
+
+        fetch(form.action, {
             method: 'DELETE',
             headers: {
               'X-CSRF-TOKEN': csrfToken,
@@ -297,9 +328,7 @@
           })
           .then(data => {
             if (data && data.success) {
-              if (typeof showToast === 'function') {
-                showToast('success', 'Notification dismissed');
-              }
+              showToast('success', 'Notification dismissed');
               // Remove notification from UI with animation
               if (notificationCard) {
                 notificationCard.style.transition = 'opacity 0.3s, transform 0.3s';
@@ -320,13 +349,12 @@
           })
           .catch(error => {
             console.error('Error:', error);
-            if (typeof showToast === 'function') {
-              showToast('error', 'Failed to dismiss notification. Please try again.');
-            } else {
-              this.submit(); // Fallback to normal form submission
-            }
+            showToast('error', 'Failed to dismiss notification. Please try again.');
+          })
+          .finally(() => {
+            confirmButton.disabled = false;
+            confirmButton.classList.remove('cursor-wait', 'opacity-60');
           });
-        });
       });
       
       // Handle preferences form

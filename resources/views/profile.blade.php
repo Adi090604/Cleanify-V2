@@ -187,13 +187,17 @@
   </x-modal>
 
   <!-- Delete Confirmation Modal -->
-  <x-modal id="deletePostModal" title="Delete Post" icon="fas fa-trash" color="red">
-    <p class="text-gray-700 text-center">Are you sure you want to delete this post? This action cannot be undone.</p>
+  <x-modal id="deletePostModal" title="Delete Post" icon="fas fa-trash" color="red" variant="confirmation">
+    <p>Are you sure you want to delete this post? This action cannot be undone.</p>
+    <div class="admin-confirm-warning">
+      <i class="fas fa-exclamation-circle mt-0.5" aria-hidden="true"></i>
+      <p>The report and its related activity will be permanently removed.</p>
+    </div>
     
     @slot('footer')
-      <div class="flex justify-end space-x-3">
-        <button onclick="closeModal('deletePostModal')" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-300">Cancel</button>
-        <button onclick="confirmDeletePost()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-300">Delete</button>
+      <div class="admin-confirm-actions">
+        <button type="button" onclick="closeModal('deletePostModal')" class="admin-btn-secondary">Cancel</button>
+        <button type="button" onclick="confirmDeletePost()" class="admin-btn-danger"><i class="fas fa-trash mr-2"></i>Delete Report</button>
       </div>
     @endslot
   </x-modal>

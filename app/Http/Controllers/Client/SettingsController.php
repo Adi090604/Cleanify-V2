@@ -50,28 +50,12 @@ class SettingsController extends Controller
             ->latest()
             ->first();
 
-        // Get active sessions (from Laravel's sessions table)
-        $activeSessions = DB::table('sessions')
-            ->where('user_id', $user->id)
-            ->orderBy('last_activity', 'desc')
-            ->get()
-            ->map(function ($session) {
-                return [
-                    'id' => $session->id,
-                    'ip_address' => $session->ip_address,
-                    'user_agent' => $session->user_agent,
-                    'last_activity' => date('Y-m-d H:i:s', $session->last_activity),
-                    'is_current' => $session->id === session()->getId(),
-                ];
-            });
-
         return view('settings', [
             'activePage' => 'settings',
             'user' => $user,
             'userStats' => $userStats,
             'availableAreas' => $availableAreas,
             'notificationPrefs' => $notificationPrefs,
-            'activeSessions' => $activeSessions,
             'latestServiceAreaRequest' => $latestServiceAreaRequest,
             'pendingServiceAreaRequest' => $pendingServiceAreaRequest,
         ]);
@@ -254,7 +238,7 @@ class SettingsController extends Controller
             ]);
         }
 
-        return redirect()->route('welcome')->with('success', 'Your account has been permanently deleted.');
+        return redirect('/')->with('success', 'Your account has been permanently deleted.');
     }
 
     /**

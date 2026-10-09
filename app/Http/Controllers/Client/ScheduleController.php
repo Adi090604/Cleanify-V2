@@ -41,11 +41,8 @@ class ScheduleController extends Controller
             'userArea' => $userArea,
             'nextPickup' => $this->getNextPickupForArea($schedules, $userArea),
             'upcomingPickups' => $this->getUpcomingPickups($schedules, 5),
-            'notificationSettings' => [
-                'email' => (bool) $user->email_notifications,
-                'sms' => (bool) $user->sms_notifications,
-                'push' => (bool) $user->push_notifications,
-            ],
+            'scheduleRemindersEnabled' => $user->notificationPreferenceEnabled('schedule_reminders', 'schedule'),
+            'emailNotificationsEnabled' => (bool) $user->email_notifications,
             'zoneColors' => $zoneColors,
         ]);
     }
@@ -95,7 +92,7 @@ class ScheduleController extends Controller
      */
     protected function getNextPickupForArea($schedules, ?string $area): ?array
     {
-        if (!$area) {
+        if (! $area) {
             return null;
         }
 
@@ -111,13 +108,13 @@ class ScheduleController extends Controller
 
         foreach ($matchingSchedules as $schedule) {
             $scheduleDate = $this->calculateNextOccurrence($schedule, $reference);
-            if ($scheduleDate && (!$nextDate || $scheduleDate->lessThan($nextDate))) {
+            if ($scheduleDate && (! $nextDate || $scheduleDate->lessThan($nextDate))) {
                 $nextDate = $scheduleDate;
                 $nextPickup = $schedule;
             }
         }
 
-        if (!$nextDate || !$nextPickup) {
+        if (! $nextDate || ! $nextPickup) {
             return null;
         }
 
@@ -208,7 +205,7 @@ class ScheduleController extends Controller
         // Handle specific date schedules
         if ($schedule->schedule_type === 'specific_date' && $schedule->specific_date) {
             $target = Carbon::parse($schedule->specific_date);
-            
+
             // Only return if the date is today or in the future
             if ($target->lessThan($reference->startOfDay())) {
                 return null; // Past date, skip
@@ -227,7 +224,7 @@ class ScheduleController extends Controller
         }
 
         // Handle recurring schedules
-        if (!$schedule->days) {
+        if (! $schedule->days) {
             return null;
         }
 
@@ -236,7 +233,7 @@ class ScheduleController extends Controller
         $possible = collect($dayIndexes)
             ->map(function ($dayIndex) use ($reference, $schedule) {
                 $target = $this->carbonForDayIndex($dayIndex, $reference);
-                if (!$target) {
+                if (! $target) {
                     return null;
                 }
 
@@ -262,7 +259,7 @@ class ScheduleController extends Controller
      */
     protected function parseDayIndexes(?string $days): array
     {
-        if (!$days) {
+        if (! $days) {
             return [];
         }
 
@@ -279,6 +276,7 @@ class ScheduleController extends Controller
         return collect(explode(',', $days))
             ->map(function ($day) use ($dayMap) {
                 $normalized = strtolower(trim($day));
+
                 return $dayMap[$normalized] ?? null;
             })
             ->filter()
@@ -293,7 +291,7 @@ class ScheduleController extends Controller
     protected function carbonForDayIndex(int $dayIndex, Carbon $reference): ?Carbon
     {
         $dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        if (!isset($dayNames[$dayIndex])) {
+        if (! isset($dayNames[$dayIndex])) {
             return null;
         }
 
@@ -310,7 +308,7 @@ class ScheduleController extends Controller
      */
     protected function determineWasteType(Schedule $schedule): string
     {
-        $text = strtolower(($schedule->days ?? '') . ' ' . $schedule->area);
+        $text = strtolower(($schedule->days ?? '').' '.$schedule->area);
 
         return match (true) {
             str_contains($text, 'biodegradable') => 'Biodegradable',
@@ -357,7 +355,7 @@ class ScheduleController extends Controller
         // Use hash of zone name to get consistent color
         $hash = crc32($zoneName);
         $index = abs($hash) % count($colors);
-        
+
         return $colors[$index];
     }
 
@@ -368,7 +366,7 @@ class ScheduleController extends Controller
     {
         $user = Auth::user();
 
-        if (!$user instanceof User) {
+        if (! $user instanceof User) {
             abort(401, 'Unauthenticated.');
         }
 

@@ -6,10 +6,10 @@
 
 @section('content')
   <div class="space-y-6">
-    <!-- Personalized Reminder + Upcoming timeline -->
-    <div class="grid lg:grid-cols-2 gap-6">
+    <!-- Personalized schedule + Upcoming timeline -->
+    <div class="grid items-start gap-6 lg:grid-cols-2">
       <div class="bg-white rounded-2xl shadow p-6 border border-green-100">
-        <div class="flex items-start justify-between gap-4">
+        <div class="flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
           <div>
             <p class="text-sm uppercase tracking-wide text-gray-500 mb-1">Your zone this week</p>
             <h3 class="text-2xl font-semibold text-gray-800">
@@ -28,7 +28,7 @@
               <p class="text-gray-600 mt-2">Choose your area to see the next pickup reminder.</p>
             @endif
           </div>
-          <div class="w-40">
+          <div class="w-full sm:w-40">
             <label class="block text-xs font-semibold text-gray-500 mb-1">Service area</label>
             <select id="serviceAreaSelect" class="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-green-500">
               <option value="">Select area</option>
@@ -38,17 +38,18 @@
             </select>
           </div>
         </div>
-        <div class="flex flex-wrap items-center gap-3 mt-5">
-          <button id="addToCalendarBtn" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-300">
-            <i class="fas fa-calendar-plus mr-2"></i>Add to calendar
-          </button>
-          <div class="flex items-center gap-4">
-            @foreach(['email' => 'Email', 'sms' => 'SMS', 'push' => 'Push'] as $key => $label)
-              <label class="flex items-center gap-2 text-sm text-gray-600">
-                <input type="checkbox" class="reminder-toggle w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500" data-key="{{ $key }}" {{ $notificationSettings[$key] ? 'checked' : '' }}>
-                {{ $label }}
-              </label>
-            @endforeach
+        <div class="mt-4 flex items-start gap-3 rounded-lg border px-3 py-2.5 text-sm {{ $scheduleRemindersEnabled ? 'border-green-100 bg-green-50 text-gray-700' : 'border-gray-200 bg-gray-50 text-gray-600' }}">
+          <i class="fas fa-bell mt-0.5 {{ $scheduleRemindersEnabled ? 'text-green-600' : 'text-gray-400' }}" aria-hidden="true"></i>
+          <div>
+            @if($scheduleRemindersEnabled && $emailNotificationsEnabled)
+              <p>We'll remind you by email 1 day before your scheduled collection.</p>
+              <a href="{{ route('settings') }}" class="mt-1 inline-block text-xs font-medium text-green-700 hover:text-green-800 hover:underline">Manage reminder options in Settings</a>
+            @elseif(!$scheduleRemindersEnabled)
+              <p>Schedule reminders are currently turned off.</p>
+              <a href="{{ route('settings') }}" class="mt-1 inline-block text-xs font-medium text-green-700 hover:text-green-800 hover:underline">Manage reminder options in Settings</a>
+            @else
+              <p>Schedule reminders are enabled. <a href="{{ route('settings') }}" class="font-medium text-green-700 hover:text-green-800 hover:underline">Manage your reminder options in Settings.</a></p>
+            @endif
           </div>
         </div>
       </div>
@@ -86,31 +87,20 @@
       </div>
     </div>
 
-    <!-- Filters + export bar -->
-    <div class="bg-white rounded-xl shadow-sm p-4 flex flex-wrap items-center gap-4 sticky top-3 z-10 border border-green-100">
-      <div class="flex items-center gap-2">
-        <label for="areaFilter" class="text-sm font-medium text-gray-600">Filter by zone</label>
-        <select id="areaFilter" class="border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-green-500">
+    <!-- Schedule filters -->
+    <div class="sticky top-3 z-10 flex flex-col gap-4 rounded-xl border border-green-100 bg-white p-4 shadow-sm sm:flex-row sm:items-center">
+      <div class="flex w-full items-center gap-2 sm:w-auto">
+        <label for="areaFilter" class="whitespace-nowrap text-sm font-medium text-gray-600">Filter by zone</label>
+        <select id="areaFilter" class="min-w-0 flex-1 border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-green-500 sm:flex-none">
           <option value="all">All zones</option>
           @foreach($availableAreas as $area)
             <option value="{{ $area }}">{{ $area }}</option>
           @endforeach
         </select>
       </div>
-      <div class="flex items-center gap-2 flex-1 min-w-[200px]">
+      <div class="flex w-full min-w-0 flex-1 items-center gap-2">
         <i class="fas fa-search text-gray-400"></i>
-        <input type="text" id="scheduleSearch" class="flex-1 border-0 focus:ring-0 text-sm" placeholder="Search zone, truck, or day...">
-      </div>
-      <div class="flex items-center gap-2 ml-auto">
-        <button id="printScheduleBtn" class="px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">
-          <i class="fas fa-print mr-2"></i>Print
-        </button>
-        <button id="downloadIcsBtn" class="px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">
-          <i class="fas fa-file-download mr-2"></i>ICS
-        </button>
-        <button id="shareScheduleBtn" class="px-3 py-2 border border-gray-300 rounded-lg text-sm hover:bg-gray-50">
-          <i class="fas fa-share-alt mr-2"></i>Share
-        </button>
+        <input type="text" id="scheduleSearch" class="min-w-0 flex-1 border-0 text-sm focus:ring-0" placeholder="Search zone, truck, or day...">
       </div>
     </div>
 
@@ -189,17 +179,6 @@
           </div>
         </div>
 
-        <div class="bg-white rounded-2xl shadow p-6 border border-green-100">
-          <h5 class="text-green-700 font-semibold text-lg mb-4 flex items-center gap-2">
-            <i class="fas fa-bell"></i>Reminder preferences
-          </h5>
-          <p class="text-sm text-gray-600 mb-3">Enable reminders to get notified before pickups in your zone.</p>
-          <ul class="space-y-3 text-sm text-gray-600">
-            <li class="flex items-center gap-2"><i class="fas fa-envelope text-green-600"></i>Email reminders arrive the night before.</li>
-            <li class="flex items-center gap-2"><i class="fas fa-sms text-green-600"></i>SMS reminders (coming soon).</li>
-            <li class="flex items-center gap-2"><i class="fas fa-bell text-green-600"></i>Push notifications (coming soon).</li>
-          </ul>
-        </div>
       </div>
     </div>
   </div>
@@ -253,7 +232,6 @@
       const scheduleSearch = document.getElementById("scheduleSearch");
       const scheduleItems = document.querySelectorAll(".schedule-item");
       const serviceAreaSelect = document.getElementById('serviceAreaSelect');
-      const nextPickupData = @json($nextPickup);
       const schedules = @json($scheduleData);
       const zoneColorsMap = @json($zoneColors);
 
@@ -497,192 +475,6 @@
                 showToast('error', errorMessage);
               }
             });
-        });
-      }
-
-      const reminderToggles = document.querySelectorAll('.reminder-toggle');
-      const sendReminderUpdate = () => {
-        if (!csrfToken || reminderToggles.length < 3) return;
-        
-        const payload = {
-          email_notifications: reminderToggles[0]?.checked ? 1 : 0,
-          sms_notifications: reminderToggles[1]?.checked ? 1 : 0,
-          push_notifications: reminderToggles[2]?.checked ? 1 : 0,
-        };
-
-        fetch('{{ route('garbage-schedule.notifications') }}', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': csrfToken,
-            'Accept': 'application/json',
-          },
-          body: JSON.stringify(payload),
-        })
-          .then(response => {
-            if (!response.ok) {
-              return response.json().then(err => Promise.reject(err));
-            }
-            return response.json();
-          })
-          .then(() => {
-            if (typeof showToast === 'function') {
-              showToast('success', 'Reminder preferences saved.');
-            }
-          })
-          .catch((error) => {
-            console.error('Notification update error:', error);
-            if (typeof showToast === 'function') {
-              const errorMessage = error.message || 'Unable to save reminder preferences.';
-              showToast('error', errorMessage);
-            }
-          });
-      };
-      reminderToggles.forEach(toggle => toggle.addEventListener('change', sendReminderUpdate));
-
-      const formatIcsDate = (date) => {
-        try {
-          return date.toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-        } catch (e) {
-          console.error('Error formatting ICS date:', e);
-          return new Date().toISOString().replace(/[-:]/g, '').split('.')[0] + 'Z';
-        }
-      };
-
-      const generateIcs = () => {
-        if (!nextPickupData || !nextPickupData.datetime_iso) {
-          if (typeof showToast === 'function') {
-            showToast('info', 'Select your area first to add a reminder.');
-          }
-          return null;
-        }
-        
-        try {
-          const start = new Date(nextPickupData.datetime_iso);
-          if (isNaN(start.getTime())) {
-            throw new Error('Invalid date');
-          }
-          const end = new Date(start.getTime() + 60 * 60 * 1000);
-          
-          return [
-            'BEGIN:VCALENDAR',
-            'VERSION:2.0',
-            'PRODID:-//Cleanify//Schedule//EN',
-            'BEGIN:VEVENT',
-            `UID:${Date.now()}@cleanify`,
-            `DTSTAMP:${formatIcsDate(new Date())}`,
-            `DTSTART:${formatIcsDate(start)}`,
-            `DTEND:${formatIcsDate(end)}`,
-            `SUMMARY:Garbage pickup - ${nextPickupData.area || 'Your Area'}`,
-            `DESCRIPTION:Truck ${nextPickupData.truck || 'N/A'} · ${nextPickupData.waste_type || 'General'}`,
-            'END:VEVENT',
-            'END:VCALENDAR',
-          ].join('\r\n');
-        } catch (e) {
-          console.error('Error generating ICS:', e);
-          if (typeof showToast === 'function') {
-            showToast('error', 'Unable to generate calendar file.');
-          }
-          return null;
-        }
-      };
-
-      const downloadIcsFile = (filename) => {
-        const ics = generateIcs();
-        if (!ics) return;
-        
-        try {
-          const blob = new Blob([ics], { type: 'text/calendar' });
-          const url = URL.createObjectURL(blob);
-          const link = document.createElement('a');
-          link.href = url;
-          link.download = filename;
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
-          URL.revokeObjectURL(url);
-          
-          if (typeof showToast === 'function') {
-            showToast('success', 'Calendar file downloaded successfully.');
-          }
-        } catch (e) {
-          console.error('Error downloading ICS:', e);
-          if (typeof showToast === 'function') {
-            showToast('error', 'Unable to download calendar file.');
-          }
-        }
-      };
-
-      const addToCalendarBtn = document.getElementById('addToCalendarBtn');
-      if (addToCalendarBtn) {
-        addToCalendarBtn.addEventListener('click', () => {
-          downloadIcsFile('cleanify-pickup.ics');
-        });
-      }
-
-      const downloadIcsBtn = document.getElementById('downloadIcsBtn');
-      if (downloadIcsBtn) {
-        downloadIcsBtn.addEventListener('click', () => {
-          downloadIcsFile('cleanify-schedule.ics');
-        });
-      }
-
-      const printScheduleBtn = document.getElementById('printScheduleBtn');
-      if (printScheduleBtn) {
-        printScheduleBtn.addEventListener('click', () => {
-          window.print();
-        });
-      }
-
-      const shareScheduleBtn = document.getElementById('shareScheduleBtn');
-      if (shareScheduleBtn) {
-        shareScheduleBtn.addEventListener('click', async () => {
-          const shareData = {
-            title: 'Cleanify Schedule',
-            text: 'Here is the latest garbage collection schedule.',
-            url: window.location.href,
-          };
-          
-          if (navigator.share) {
-            try {
-              await navigator.share(shareData);
-            } catch (err) {
-              // User cancelled or error occurred
-              if (err.name !== 'AbortError' && typeof showToast === 'function') {
-                showToast('error', 'Unable to share schedule.');
-              }
-            }
-          } else if (navigator.clipboard) {
-            try {
-              await navigator.clipboard.writeText(window.location.href);
-              if (typeof showToast === 'function') {
-                showToast('success', 'Link copied to clipboard.');
-              }
-            } catch (err) {
-              console.error('Clipboard error:', err);
-              if (typeof showToast === 'function') {
-                showToast('error', 'Unable to copy link to clipboard.');
-              }
-            }
-          } else {
-            // Fallback: select text in a temporary input
-            const input = document.createElement('input');
-            input.value = window.location.href;
-            document.body.appendChild(input);
-            input.select();
-            try {
-              document.execCommand('copy');
-              document.body.removeChild(input);
-              if (typeof showToast === 'function') {
-                showToast('success', 'Link copied to clipboard.');
-              }
-            } catch (err) {
-              document.body.removeChild(input);
-              if (typeof showToast === 'function') {
-                showToast('error', 'Unable to copy link. Please copy manually.');
-              }
-            }
-          }
         });
       }
 
