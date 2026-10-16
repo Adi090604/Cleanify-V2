@@ -10,7 +10,7 @@
   
   @stack('styles')
 </head>
-<body class="user-page bg-gray-50 overflow-hidden">
+<body class="user-page resident-shell bg-gray-50 overflow-hidden">
   @php
     $navigationUnreadCount = auth()->check()
       ? auth()->user()->unreadNotifications()->count()
@@ -25,8 +25,8 @@
     <x-sidebar :active="$activePage ?? 'home'" :unread-count="$navigationUnreadCount" />
     
     <!-- Main Content -->
-    <div class="cleanify-main lg:ml-64 flex-1 overflow-y-auto">
-      <main class="p-3 sm:p-4 lg:p-4">
+    <div class="cleanify-main resident-main lg:ml-64 flex-1 overflow-y-auto">
+      <main class="resident-content-shell p-3 sm:p-4 lg:p-4">
         @yield('content')
       </main>
     </div>
@@ -57,6 +57,5 @@
   
   <!-- Scripts -->
   @stack('scripts')
-  @vite(['resources/js/app.js'])
 </body>
 </html>

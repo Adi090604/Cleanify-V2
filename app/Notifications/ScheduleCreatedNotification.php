@@ -51,7 +51,7 @@ class ScheduleCreatedNotification extends Notification
             ->line('A new garbage collection schedule has been created for your area.')
             ->line('**Schedule Details:**')
             ->line('📍 Area: '.$this->schedule->area)
-            ->line('📅 Days: '.($this->schedule->schedule_type === 'specific_date' ? $this->schedule->specific_date?->format('M d, Y') : $this->schedule->days))
+            ->line('📅 Collection: '.$this->schedule->collection_label)
             ->line('⏰ Time: '.$this->schedule->time_range)
             ->line('🚛 Truck: '.$this->schedule->truck)
             ->line('✅ Status: '.ucfirst($this->schedule->status))
@@ -66,9 +66,7 @@ class ScheduleCreatedNotification extends Notification
      */
     public function toArray(object $notifiable): array
     {
-        $daysOrDate = $this->schedule->schedule_type === 'specific_date'
-            ? $this->schedule->specific_date?->format('M d, Y')
-            : $this->schedule->days;
+        $daysOrDate = $this->schedule->collection_label;
 
         return [
             'schedule_id' => $this->schedule->id,
@@ -77,6 +75,8 @@ class ScheduleCreatedNotification extends Notification
             'schedule_type' => $this->schedule->schedule_type,
             'days' => $this->schedule->days,
             'specific_date' => $this->schedule->specific_date?->format('Y-m-d'),
+            'recurrence_start_date' => $this->schedule->recurrence_start_date?->format('Y-m-d'),
+            'recurrence_interval_days' => $this->schedule->recurrence_interval_days,
             'time_start' => $this->schedule->time_start,
             'time_end' => $this->schedule->time_end,
             'truck' => $this->schedule->truck,

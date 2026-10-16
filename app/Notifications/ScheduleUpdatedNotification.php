@@ -89,6 +89,8 @@ class ScheduleUpdatedNotification extends Notification
             'schedule_type' => $this->schedule->schedule_type,
             'days' => $this->schedule->days,
             'specific_date' => $this->schedule->specific_date?->format('Y-m-d'),
+            'recurrence_start_date' => $this->schedule->recurrence_start_date?->format('Y-m-d'),
+            'recurrence_interval_days' => $this->schedule->recurrence_interval_days,
             'time_start' => $this->schedule->time_start?->format('H:i'),
             'time_end' => $this->schedule->time_end?->format('H:i'),
             'time_range' => $this->schedule->time_range,
@@ -107,11 +109,7 @@ class ScheduleUpdatedNotification extends Notification
 
     private function collectionLabel(): string
     {
-        if ($this->schedule->schedule_type === 'specific_date') {
-            return $this->schedule->specific_date?->format('l, F j, Y') ?? 'Date not set';
-        }
-
-        return $this->schedule->days ?: 'Days not set';
+        return $this->schedule->collection_label;
     }
 
     private function displayArea(): string

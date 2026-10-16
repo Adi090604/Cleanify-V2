@@ -103,7 +103,7 @@
       </form>
     </div>
 
-    <div class="space-y-4" id="reportsFeed">
+    <div class="resident-community-reports-feed space-y-4" id="reportsFeed">
       @forelse($reports as $report)
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 report-card" data-report-id="{{ $report->id }}">
           <div class="flex items-center gap-3 mb-3">
@@ -125,7 +125,7 @@
           </div>
           <p class="text-gray-700 mb-3">{{ Str::limit($report->description, 160) }}</p>
           @if($report->image_path)
-            <img src="{{ asset('storage/' . $report->image_path) }}" class="w-full rounded-lg mb-3" alt="Report image">
+            <img src="{{ asset('storage/' . $report->image_path) }}" class="resident-report-media resident-community-report-media mb-3" alt="Report image">
           @endif
           <div class="flex items-center justify-between text-sm text-gray-500">
             <div class="flex items-center gap-4">

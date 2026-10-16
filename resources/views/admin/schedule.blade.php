@@ -57,6 +57,9 @@
               'area' => $schedule->area,
               'schedule_type' => $schedule->schedule_type,
               'specific_date' => $schedule->specific_date?->format('Y-m-d'),
+              'recurrence_mode' => $schedule->usesIntervalRecurrence() ? 'interval' : 'weekly',
+              'recurrence_start_date' => $schedule->recurrence_start_date?->format('Y-m-d'),
+              'recurrence_interval_days' => $schedule->recurrence_interval_days,
               'days' => $schedule->days,
               'time_start' => $schedule->time_start->format('H:i'),
               'time_end' => $schedule->time_end->format('H:i'),
@@ -72,7 +75,7 @@
                     {{ $schedule->specific_date?->format('M d, Y') }}
                   </span>
                 @else
-                  {{ $schedule->days }}
+                  {{ $schedule->collection_label }}
                 @endif
               </td>
               <td class="px-4 py-3 text-gray-600">{{ $schedule->time_range }}</td>
@@ -152,19 +155,34 @@
           <i class="fas fa-calendar-check mr-2 text-green-600"></i>Schedule Type
         </label>
         <select name="schedule_type" id="addScheduleType" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" required>
-          <option value="recurring">Recurring (By Day of Week)</option>
+          <option value="recurring">Recurring</option>
           <option value="specific_date">Specific Date</option>
         </select>
       </div>
-      <div id="addRecurringDays" class="schedule-type-field">
-        <label class="block text-gray-700 mb-2">
-          <i class="fas fa-calendar-day mr-2 text-green-600"></i>Collection Days
-        </label>
-        <select name="days" id="addScheduleDays" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
-          @foreach (['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday','Monday & Thursday','Tuesday & Friday'] as $option)
-            <option value="{{ $option }}">{{ $option }}</option>
-          @endforeach
-        </select>
+      <div id="addRecurringFields" class="schedule-type-field space-y-4">
+        <div>
+          <label class="block text-gray-700 mb-2"><i class="fas fa-redo mr-2 text-green-600"></i>Repeat Pattern</label>
+          <select name="recurrence_mode" id="addRecurrenceMode" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
+            <option value="weekly">By day of week</option>
+            <option value="interval">Every N days</option>
+          </select>
+        </div>
+        <div id="addRecurringDays">
+          <label class="block text-gray-700 mb-2"><i class="fas fa-calendar-day mr-2 text-green-600"></i>Collection Days</label>
+          <select name="days" id="addScheduleDays" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent">
+            @foreach (['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday','Monday & Thursday','Tuesday & Friday'] as $option)
+              <option value="{{ $option }}">{{ $option }}</option>
+            @endforeach
+          </select>
+        </div>
+        <div id="addIntervalFields" class="hidden grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label class="block text-gray-700">Start Date
+            <input type="date" name="recurrence_start_date" id="addRecurrenceStartDate" class="mt-2 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500">
+          </label>
+          <label class="block text-gray-700">Repeat every
+            <span class="mt-2 flex items-center gap-2"><input type="number" name="recurrence_interval_days" id="addRecurrenceIntervalDays" min="1" max="365" value="3" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500"><span>days</span></span>
+          </label>
+        </div>
       </div>
       <div id="addSpecificDate" class="schedule-type-field hidden">
         <label class="block text-gray-700 mb-2">
@@ -269,19 +287,34 @@
           <i class="fas fa-calendar-check mr-2 text-blue-600"></i>Schedule Type
         </label>
         <select name="schedule_type" id="editScheduleType" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" required>
-          <option value="recurring">Recurring (By Day of Week)</option>
+          <option value="recurring">Recurring</option>
           <option value="specific_date">Specific Date</option>
         </select>
       </div>
-      <div id="editRecurringDays" class="schedule-type-field">
-        <label class="block text-gray-700 mb-2">
-          <i class="fas fa-calendar-day mr-2 text-blue-600"></i>Collection Days
-        </label>
-        <select name="days" id="editScheduleDays" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-          @foreach (['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday','Monday & Thursday','Tuesday & Friday'] as $option)
-            <option value="{{ $option }}">{{ $option }}</option>
-          @endforeach
-        </select>
+      <div id="editRecurringFields" class="schedule-type-field space-y-4">
+        <div>
+          <label class="block text-gray-700 mb-2"><i class="fas fa-redo mr-2 text-blue-600"></i>Repeat Pattern</label>
+          <select name="recurrence_mode" id="editRecurrenceMode" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            <option value="weekly">By day of week</option>
+            <option value="interval">Every N days</option>
+          </select>
+        </div>
+        <div id="editRecurringDays">
+          <label class="block text-gray-700 mb-2"><i class="fas fa-calendar-day mr-2 text-blue-600"></i>Collection Days</label>
+          <select name="days" id="editScheduleDays" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
+            @foreach (['Monday','Tuesday','Wednesday','Thursday','Friday','Saturday','Sunday','Monday & Thursday','Tuesday & Friday'] as $option)
+              <option value="{{ $option }}">{{ $option }}</option>
+            @endforeach
+          </select>
+        </div>
+        <div id="editIntervalFields" class="hidden grid grid-cols-1 gap-4 sm:grid-cols-2">
+          <label class="block text-gray-700">Start Date
+            <input type="date" name="recurrence_start_date" id="editRecurrenceStartDate" class="mt-2 w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+          </label>
+          <label class="block text-gray-700">Repeat every
+            <span class="mt-2 flex items-center gap-2"><input type="number" name="recurrence_interval_days" id="editRecurrenceIntervalDays" min="1" max="365" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"><span>days</span></span>
+          </label>
+        </div>
       </div>
       <div id="editSpecificDate" class="schedule-type-field hidden">
         <label class="block text-gray-700 mb-2">
@@ -554,6 +587,8 @@
     function openAddScheduleModal() {
       const form = document.getElementById('addScheduleForm');
       form.reset();
+      toggleScheduleTypeFields('add', 'recurring');
+      toggleRecurrenceFields('add', 'weekly');
       syncTimePickersInForm(form);
       closeTimePicker();
       openModal('addScheduleModal');
@@ -573,6 +608,9 @@
       form.action = `/admin/schedule/${id}`;
       document.getElementById('editScheduleId').value = schedule.id;
       document.getElementById('editScheduleType').value = schedule.schedule_type || 'recurring';
+      document.getElementById('editRecurrenceMode').value = schedule.recurrence_mode || 'weekly';
+      document.getElementById('editRecurrenceStartDate').value = schedule.recurrence_start_date || '';
+      document.getElementById('editRecurrenceIntervalDays').value = schedule.recurrence_interval_days || 3;
       setTimePickerValue(document.getElementById('editScheduleTimeStart').closest('[data-time-picker]'), schedule.time_start);
       setTimePickerValue(document.getElementById('editScheduleTimeEnd').closest('[data-time-picker]'), schedule.time_end);
       document.getElementById('editScheduleTruck').value = schedule.truck;
@@ -589,6 +627,7 @@
       
       // Handle schedule type fields
       toggleScheduleTypeFields('edit', schedule.schedule_type || 'recurring');
+      toggleRecurrenceFields('edit', schedule.recurrence_mode || 'weekly');
       
       if (schedule.schedule_type === 'specific_date') {
         document.getElementById('editScheduleSpecificDate').value = schedule.specific_date || '';
@@ -600,7 +639,7 @@
     }
     
     function toggleScheduleTypeFields(prefix, scheduleType) {
-      const recurringField = document.getElementById(`${prefix}RecurringDays`);
+      const recurringField = document.getElementById(`${prefix}RecurringFields`);
       const specificDateField = document.getElementById(`${prefix}SpecificDate`);
       const daysInput = document.getElementById(`${prefix}ScheduleDays`);
       const specificDateInput = document.getElementById(`${prefix}ScheduleSpecificDate`);
@@ -609,19 +648,38 @@
         recurringField.classList.add('hidden');
         specificDateField.classList.remove('hidden');
         if (daysInput) daysInput.removeAttribute('required');
+        document.getElementById(`${prefix}RecurrenceStartDate`)?.removeAttribute('required');
+        document.getElementById(`${prefix}RecurrenceIntervalDays`)?.removeAttribute('required');
         if (specificDateInput) specificDateInput.setAttribute('required', 'required');
       } else {
         recurringField.classList.remove('hidden');
         specificDateField.classList.add('hidden');
-        if (daysInput) daysInput.setAttribute('required', 'required');
         if (specificDateInput) specificDateInput.removeAttribute('required');
+        toggleRecurrenceFields(prefix, document.getElementById(`${prefix}RecurrenceMode`)?.value || 'weekly');
       }
+    }
+
+    function toggleRecurrenceFields(prefix, recurrenceMode) {
+      const daysField = document.getElementById(`${prefix}RecurringDays`);
+      const intervalFields = document.getElementById(`${prefix}IntervalFields`);
+      const daysInput = document.getElementById(`${prefix}ScheduleDays`);
+      const startInput = document.getElementById(`${prefix}RecurrenceStartDate`);
+      const intervalInput = document.getElementById(`${prefix}RecurrenceIntervalDays`);
+      const usesInterval = recurrenceMode === 'interval';
+
+      daysField.classList.toggle('hidden', usesInterval);
+      intervalFields.classList.toggle('hidden', !usesInterval);
+      daysInput.toggleAttribute('required', !usesInterval);
+      startInput.toggleAttribute('required', usesInterval);
+      intervalInput.toggleAttribute('required', usesInterval);
     }
     
     document.addEventListener('DOMContentLoaded', function() {
       initializeTimePickers();
       const addScheduleType = document.getElementById('addScheduleType');
       const editScheduleType = document.getElementById('editScheduleType');
+      const addRecurrenceMode = document.getElementById('addRecurrenceMode');
+      const editRecurrenceMode = document.getElementById('editRecurrenceMode');
       
       if (addScheduleType) {
         addScheduleType.addEventListener('change', function() {
@@ -634,6 +692,13 @@
           toggleScheduleTypeFields('edit', this.value);
         });
       }
+
+      addRecurrenceMode?.addEventListener('change', function() {
+        toggleRecurrenceFields('add', this.value);
+      });
+      editRecurrenceMode?.addEventListener('change', function() {
+        toggleRecurrenceFields('edit', this.value);
+      });
     });
 
     function openDeleteScheduleModal(id) {

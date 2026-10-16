@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Schedule;
 use App\Models\ServiceZone;
 use App\Models\User;
+use App\Services\ScheduleReminderService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -14,36 +15,35 @@ use Illuminate\View\View;
 
 class ScheduleController extends Controller
 {
+    public function __construct(private readonly ScheduleReminderService $scheduleReminders) {}
+
     /**
      * Display the garbage schedule page with enhanced data.
      */
     public function index(): View
     {
-        $schedules = Schedule::where('status', 'active')
-            ->orderBy('area')
-            ->get();
-
         $user = $this->currentUser();
-        $availableAreas = ServiceZone::where('status', 'active')->orderBy('name')->get()->map->display_name
-            ->merge($schedules->pluck('area'))->unique()->values();
-        $userArea = $user->service_area ?: ($availableAreas->first() ?? null);
-
-        // Generate zone colors
-        $zoneColors = [];
-        foreach ($availableAreas as $area) {
-            $zoneColors[$area] = $this->getZoneColor($area);
-        }
+        $userArea = $user->service_area && ServiceZone::where('status', 'active')
+            ->get()
+            ->contains(fn (ServiceZone $zone) => $zone->display_name === $user->service_area)
+                ? $user->service_area
+                : null;
+        $schedules = $userArea
+            ? Schedule::where('status', 'active')
+                ->where('area', $userArea)
+                ->orderBy('schedule_type')
+                ->orderBy('specific_date')
+                ->get()
+            : collect();
 
         return view('garbage-schedule', [
             'activePage' => 'schedule',
             'schedules' => $schedules,
-            'availableAreas' => $availableAreas,
             'userArea' => $userArea,
             'nextPickup' => $this->getNextPickupForArea($schedules, $userArea),
             'upcomingPickups' => $this->getUpcomingPickups($schedules, 5),
             'scheduleRemindersEnabled' => $user->notificationPreferenceEnabled('schedule_reminders', 'schedule'),
             'emailNotificationsEnabled' => (bool) $user->email_notifications,
-            'zoneColors' => $zoneColors,
         ]);
     }
 
@@ -107,7 +107,7 @@ class ScheduleController extends Controller
         $nextDate = null;
 
         foreach ($matchingSchedules as $schedule) {
-            $scheduleDate = $this->calculateNextOccurrence($schedule, $reference);
+            $scheduleDate = $this->scheduleReminders->nextOccurrence($schedule, $reference);
             if ($scheduleDate && (! $nextDate || $scheduleDate->lessThan($nextDate))) {
                 $nextDate = $scheduleDate;
                 $nextPickup = $schedule;
@@ -138,169 +138,30 @@ class ScheduleController extends Controller
     protected function getUpcomingPickups($schedules, int $limit = 5): array
     {
         $reference = Carbon::now();
-        $entries = [];
+        $entries = $schedules->flatMap(function (Schedule $schedule) use ($reference, $limit) {
+            return $this->scheduleReminders->nextOccurrences($schedule, $reference, $limit)
+                ->map(function (Carbon $nextDate) use ($schedule): array {
+                    $wasteType = $this->determineWasteType($schedule);
 
-        foreach ($schedules as $schedule) {
-            if ($schedule->schedule_type === 'specific_date') {
-                // Handle specific date schedules
-                if ($schedule->specific_date && $schedule->specific_date->greaterThanOrEqualTo($reference->startOfDay())) {
-                    $nextDate = Carbon::parse($schedule->specific_date);
-                    if ($schedule->time_start) {
-                        $nextDate->setTimeFromTimeString($schedule->time_start);
-                    }
-                    if ($nextDate->greaterThanOrEqualTo($reference)) {
-                        $wasteType = $this->determineWasteType($schedule);
-                        $entries[] = [
-                            'area' => $schedule->area,
-                            'day_label' => $nextDate->format('l'),
-                            'date_display' => $nextDate->format('M d'),
-                            'time_display' => $nextDate->format('g:i A'),
-                            'time_range' => $schedule->time_range,
-                            'truck' => $schedule->truck,
-                            'waste_type' => $wasteType,
-                            'badge' => $this->wasteBadgeClass($wasteType),
-                            'datetime_iso' => $nextDate->toIso8601String(),
-                        ];
-                    }
-                }
-            } else {
-                // Handle recurring schedules
-                if ($schedule->days) {
-                    $dayIndexes = $this->parseDayIndexes($schedule->days);
-                    foreach ($dayIndexes as $dayIndex) {
-                        $nextDate = $this->calculateNextOccurrence($schedule, $reference, $dayIndex);
-                        if ($nextDate) {
-                            $wasteType = $this->determineWasteType($schedule);
-                            $entries[] = [
-                                'area' => $schedule->area,
-                                'day_label' => $nextDate->format('l'),
-                                'date_display' => $nextDate->format('M d'),
-                                'time_display' => $nextDate->format('g:i A'),
-                                'time_range' => $schedule->time_range,
-                                'truck' => $schedule->truck,
-                                'waste_type' => $wasteType,
-                                'badge' => $this->wasteBadgeClass($wasteType),
-                                'datetime_iso' => $nextDate->toIso8601String(),
-                            ];
-                        }
-                    }
-                }
-            }
-        }
+                    return [
+                        'area' => $schedule->area,
+                        'day_label' => $nextDate->format('l'),
+                        'date_display' => $nextDate->format('M d'),
+                        'time_display' => $nextDate->format('g:i A'),
+                        'time_range' => $schedule->time_range,
+                        'truck' => $schedule->truck,
+                        'waste_type' => $wasteType,
+                        'badge' => $this->wasteBadgeClass($wasteType),
+                        'datetime_iso' => $nextDate->toIso8601String(),
+                    ];
+                });
+        });
 
-        return collect($entries)
+        return $entries
             ->sortBy('datetime_iso')
             ->take($limit)
             ->values()
             ->all();
-    }
-
-    /**
-     * Calculate the next occurrence for a schedule and optional specific day.
-     */
-    protected function calculateNextOccurrence(Schedule $schedule, ?Carbon $reference = null, ?int $specificDayIndex = null): ?Carbon
-    {
-        $reference = $reference ? $reference->copy() : Carbon::now();
-
-        // Handle specific date schedules
-        if ($schedule->schedule_type === 'specific_date' && $schedule->specific_date) {
-            $target = Carbon::parse($schedule->specific_date);
-
-            // Only return if the date is today or in the future
-            if ($target->lessThan($reference->startOfDay())) {
-                return null; // Past date, skip
-            }
-
-            if ($schedule->time_start) {
-                $target->setTimeFromTimeString($schedule->time_start);
-            }
-
-            // Only return if the datetime is in the future
-            if ($target->greaterThanOrEqualTo($reference)) {
-                return $target;
-            }
-
-            return null;
-        }
-
-        // Handle recurring schedules
-        if (! $schedule->days) {
-            return null;
-        }
-
-        $dayIndexes = $specificDayIndex !== null ? [$specificDayIndex] : $this->parseDayIndexes($schedule->days);
-
-        $possible = collect($dayIndexes)
-            ->map(function ($dayIndex) use ($reference, $schedule) {
-                $target = $this->carbonForDayIndex($dayIndex, $reference);
-                if (! $target) {
-                    return null;
-                }
-
-                if ($schedule->time_start) {
-                    $target->setTimeFromTimeString($schedule->time_start);
-                }
-
-                if ($target->lessThanOrEqualTo($reference)) {
-                    $target->addWeek();
-                }
-
-                return $target;
-            })
-            ->filter()
-            ->sort()
-            ->values();
-
-        return $possible->first();
-    }
-
-    /**
-     * Convert schedule days string to an array of week day indexes.
-     */
-    protected function parseDayIndexes(?string $days): array
-    {
-        if (! $days) {
-            return [];
-        }
-
-        $dayMap = [
-            'sunday' => 0,
-            'monday' => 1,
-            'tuesday' => 2,
-            'wednesday' => 3,
-            'thursday' => 4,
-            'friday' => 5,
-            'saturday' => 6,
-        ];
-
-        return collect(explode(',', $days))
-            ->map(function ($day) use ($dayMap) {
-                $normalized = strtolower(trim($day));
-
-                return $dayMap[$normalized] ?? null;
-            })
-            ->filter()
-            ->unique()
-            ->values()
-            ->all();
-    }
-
-    /**
-     * Create a Carbon instance for the next occurrence of a day index.
-     */
-    protected function carbonForDayIndex(int $dayIndex, Carbon $reference): ?Carbon
-    {
-        $dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-        if (! isset($dayNames[$dayIndex])) {
-            return null;
-        }
-
-        $target = Carbon::parse("this {$dayNames[$dayIndex]}", $reference->timezone);
-        if ($target->lessThan($reference->copy()->startOfDay())) {
-            $target->addWeek();
-        }
-
-        return $target;
     }
 
     /**
@@ -326,37 +187,6 @@ class ScheduleController extends Controller
             'Recyclables' => 'bg-cyan-100 text-cyan-800',
             default => 'bg-gray-100 text-gray-700',
         };
-    }
-
-    /**
-     * Get a consistent color for a zone based on its name.
-     */
-    protected function getZoneColor(string $zoneName): array
-    {
-        // Predefined color palette - 15 distinct colors for zones
-        $colors = [
-            ['bg' => '#EF4444', 'text' => '#FFFFFF', 'border' => '#DC2626'], // Red
-            ['bg' => '#F97316', 'text' => '#FFFFFF', 'border' => '#EA580C'], // Orange
-            ['bg' => '#F59E0B', 'text' => '#FFFFFF', 'border' => '#D97706'], // Amber
-            ['bg' => '#EAB308', 'text' => '#FFFFFF', 'border' => '#CA8A04'], // Yellow
-            ['bg' => '#84CC16', 'text' => '#FFFFFF', 'border' => '#65A30D'], // Lime
-            ['bg' => '#22C55E', 'text' => '#FFFFFF', 'border' => '#16A34A'], // Green
-            ['bg' => '#10B981', 'text' => '#FFFFFF', 'border' => '#059669'], // Emerald
-            ['bg' => '#14B8A6', 'text' => '#FFFFFF', 'border' => '#0D9488'], // Teal
-            ['bg' => '#06B6D4', 'text' => '#FFFFFF', 'border' => '#0891B2'], // Cyan
-            ['bg' => '#3B82F6', 'text' => '#FFFFFF', 'border' => '#2563EB'], // Blue
-            ['bg' => '#6366F1', 'text' => '#FFFFFF', 'border' => '#4F46E5'], // Indigo
-            ['bg' => '#8B5CF6', 'text' => '#FFFFFF', 'border' => '#7C3AED'], // Violet
-            ['bg' => '#A855F7', 'text' => '#FFFFFF', 'border' => '#9333EA'], // Purple
-            ['bg' => '#D946EF', 'text' => '#FFFFFF', 'border' => '#C026D3'], // Fuchsia
-            ['bg' => '#EC4899', 'text' => '#FFFFFF', 'border' => '#DB2777'], // Pink
-        ];
-
-        // Use hash of zone name to get consistent color
-        $hash = crc32($zoneName);
-        $index = abs($hash) % count($colors);
-
-        return $colors[$index];
     }
 
     /**

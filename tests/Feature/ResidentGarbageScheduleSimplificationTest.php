@@ -14,10 +14,15 @@ afterEach(function () {
     Carbon::setTestNow();
 });
 
-test('resident garbage schedule keeps core schedule tools without secondary controls', function () {
+test('resident garbage schedule only presents the authenticated residents official area', function () {
     $zone = ServiceZone::create([
         'name' => 'Zone 1',
         'barangay' => 'Barangay Washington',
+        'status' => 'active',
+    ]);
+    $otherZone = ServiceZone::create([
+        'name' => 'Zone 2',
+        'barangay' => 'Barangay Libertad',
         'status' => 'active',
     ]);
     $user = User::factory()->create(['service_area' => $zone->display_name]);
@@ -32,25 +37,41 @@ test('resident garbage schedule keeps core schedule tools without secondary cont
         'truck' => 'TRK-01',
         'status' => 'active',
     ]);
+    Schedule::create([
+        'area' => $otherZone->display_name,
+        'schedule_type' => 'specific_date',
+        'specific_date' => '2026-10-13',
+        'days' => null,
+        'time_start' => '14:00',
+        'time_end' => '16:00',
+        'truck' => 'OTHER-TRUCK',
+        'status' => 'active',
+    ]);
 
     $response = $this->actingAs($user)->get(route('garbage-schedule'));
 
     $response->assertOk()
-        ->assertSee('Your zone this week')
+        ->assertSee('Garbage Schedule')
+        ->assertSee('Official service area')
         ->assertSee($zone->display_name)
         ->assertSee('October')
         ->assertSee('6:00 AM')
         ->assertSee('Truck TRK-01')
         ->assertSee('Upcoming pickups')
-        ->assertSee('Filter by zone')
-        ->assertSee('Search zone, truck, or day...')
+        ->assertSee('Collection calendar')
         ->assertSee('id="calendar"', false)
         ->assertSee('id="prevMonth"', false)
         ->assertSee('id="nextMonth"', false)
-        ->assertSee('Zone schedule directory')
-        ->assertSee('applyScheduleFilters', false)
-        ->assertSee("areaFilter.addEventListener('change'", false)
-        ->assertSee("scheduleSearch.addEventListener('input'", false)
+        ->assertSee('specificDateSchedules')
+        ->assertSee('scheduleDayMap')
+        ->assertDontSee($otherZone->display_name)
+        ->assertDontSee('OTHER-TRUCK')
+        ->assertDontSee('serviceAreaSelect', false)
+        ->assertDontSee('areaFilter', false)
+        ->assertDontSee('scheduleSearch', false)
+        ->assertDontSee('Zone schedule directory')
+        ->assertDontSee('Zone Color Legend')
+        ->assertDontSee('applyScheduleFilters', false)
         ->assertDontSee('addToCalendarBtn', false)
         ->assertDontSee('reminder-toggle', false)
         ->assertDontSee('Reminder preferences')
@@ -64,6 +85,56 @@ test('resident garbage schedule keeps core schedule tools without secondary cont
         ->assertDontSee('BEGIN:VCALENDAR', false)
         ->assertDontSee('window.print()', false)
         ->assertDontSee('navigator.share', false);
+});
+
+test('resident garbage schedule does not fall back to another area when no official area is valid', function (?string $serviceArea) {
+    $zone = ServiceZone::create([
+        'name' => 'Zone 1',
+        'barangay' => 'Barangay Washington',
+        'status' => 'active',
+    ]);
+    $user = User::factory()->create(['service_area' => $serviceArea]);
+
+    Schedule::create([
+        'area' => $zone->display_name,
+        'schedule_type' => 'recurring',
+        'days' => 'Monday',
+        'time_start' => '06:00',
+        'time_end' => '09:00',
+        'truck' => 'TRK-01',
+        'status' => 'active',
+    ]);
+
+    $this->actingAs($user)
+        ->get(route('garbage-schedule'))
+        ->assertOk()
+        ->assertSee('No official service area assigned')
+        ->assertSee('Open Settings')
+        ->assertSee('href="'.route('settings').'"', false)
+        ->assertDontSee($zone->display_name)
+        ->assertDontSee('TRK-01')
+        ->assertDontSee('id="calendar"', false);
+})->with([
+    'missing assignment' => null,
+    'stale assignment' => 'Deleted Zone',
+]);
+
+test('resident garbage schedule shows a clean state when the official area has no active schedule', function () {
+    $zone = ServiceZone::create([
+        'name' => 'Zone 1',
+        'barangay' => 'Barangay Washington',
+        'status' => 'active',
+    ]);
+    $user = User::factory()->create(['service_area' => $zone->display_name]);
+
+    $this->actingAs($user)
+        ->get(route('garbage-schedule'))
+        ->assertOk()
+        ->assertSee('Official service area')
+        ->assertSee($zone->display_name)
+        ->assertSee('No collection scheduled')
+        ->assertSee('No schedule published yet')
+        ->assertDontSee('id="calendar"', false);
 });
 
 test('schedule service area and notification preference backends remain available', function () {
@@ -111,7 +182,13 @@ test('schedule reminder reference reflects the resident saved preferences', func
     string $expectedMessage,
     ?string $secondaryMessage,
 ) {
+    $zone = ServiceZone::create([
+        'name' => 'Zone 1',
+        'barangay' => 'Barangay Washington',
+        'status' => 'active',
+    ]);
     $user = User::factory()->create([
+        'service_area' => $zone->display_name,
         'email_notifications' => $emailNotifications,
         'notification_preferences' => ['schedule_reminders' => $scheduleReminders],
     ]);

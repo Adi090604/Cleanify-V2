@@ -3,28 +3,38 @@
 @section('title', 'Home')
 
 @section('content')
-  @if(session('success'))
-    <x-alert type="success" dismissible class="mb-4">
-      {{ session('success') }}
-    </x-alert>
-  @endif
+  <div class="resident-home">
+    @if(session('success'))
+      <x-alert type="success" dismissible class="mb-4">
+        {{ session('success') }}
+      </x-alert>
+    @endif
 
-  <!-- Topbar -->
-  <div class="dashboard-toolbar bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-wrap items-center justify-between gap-4">
-    <div>
-      <h4 class="font-semibold text-gray-800">Welcome back, <strong>{{ $user->name }}</strong> 👋</h4>
-      <p class="text-gray-500 text-sm">See the latest updates from your community.</p>
-    </div>
-    <div class="flex items-center gap-2">
-      <input type="text" id="searchInput" class="w-72 px-4 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Search community reports...">
-      <button onclick="searchReports()" class="px-4 py-2 border border-green-600 text-green-600 rounded-lg hover:bg-green-600 hover:text-white transition-colors duration-300">
-        <i class="fas fa-search"></i>
-      </button>
-    </div>
-  </div>
+    <!-- Home heading and report search -->
+    <header class="dashboard-toolbar resident-home-header mb-6 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+      <div class="resident-home-heading">
+        <p class="resident-eyebrow">Community feed</p>
+        <h1 class="resident-page-title">Welcome back, {{ $user->name }}</h1>
+        <p class="resident-page-subtitle">See the latest updates from your community.</p>
+      </div>
+      <div class="resident-home-search flex w-full items-center gap-2 lg:w-auto">
+        <label for="searchInput" class="sr-only">Search community reports</label>
+        <input type="text" id="searchInput" class="resident-search min-w-0 flex-1 lg:w-80" placeholder="Search community reports...">
+        <button type="button" onclick="searchReports()" class="resident-btn-primary resident-home-search-button" aria-label="Search community reports">
+          <i class="fas fa-search" aria-hidden="true"></i>
+        </button>
+      </div>
+    </header>
 
-  <!-- Feeds -->
-  <div class="space-y-4">
+    <div class="resident-home-section-heading">
+      <div>
+        <h2 class="resident-section-title">Community updates</h2>
+        <p class="resident-page-subtitle">Recent reports and conversations from Cleanify residents.</p>
+      </div>
+    </div>
+
+    <!-- Feeds -->
+    <div class="resident-home-feed grid items-start gap-4 xl:grid-cols-2">
     @forelse($recentReports as $report)
       @php
         $reportUser = $report->user;
@@ -33,78 +43,81 @@
         $authorName = $reportUser->name ?? 'Cleanify User';
         $userLiked = $report->likes->contains('user_id', $user->id);
       @endphp
-      <article class="dashboard-card bg-white rounded-xl shadow-sm p-6">
-        <div class="flex items-center mb-4">
-          <div class="w-12 h-12 rounded-full {{ $avatarClasses }} flex items-center justify-center text-white font-bold mr-4">
+      <article class="dashboard-card resident-card resident-home-report-card">
+        <div class="resident-home-report-header flex items-center">
+          <div class="resident-home-report-avatar {{ $avatarClasses }} flex items-center justify-center text-white font-bold">
             {{ $avatarInitial }}
           </div>
-          <div>
-            <h6 class="font-semibold text-gray-800 mb-0">{{ $authorName }}</h6>
-            <small class="text-gray-500">{{ $report->created_at?->diffForHumans() }}</small>
+          <div class="resident-home-report-author-wrap">
+            <h3 class="resident-home-report-author">{{ $authorName }}</h3>
+            <p class="resident-home-report-time">{{ $report->created_at?->diffForHumans() }}</p>
           </div>
           <div class="ml-auto">
-            <span class="text-sm font-medium px-3 py-1 rounded-full {{ $report->getStatusBadgeBgClass() }}">
+            <span class="resident-home-status {{ $report->getStatusBadgeBgClass() }}" data-status="{{ $report->status }}">
               {{ ucfirst($report->status) }}
             </span>
           </div>
         </div>
-        <p class="text-gray-700 mb-4">{{ \Illuminate\Support\Str::limit($report->description, 240) }}</p>
+        <p class="resident-home-report-description">{{ \Illuminate\Support\Str::limit($report->description, 240) }}</p>
         @if($report->image_path)
-          <img src="{{ asset('storage/' . $report->image_path) }}" alt="Report Image" class="w-full rounded-lg mb-4" onerror="this.style.display='none'">
+          <img src="{{ asset('storage/' . $report->image_path) }}" alt="Report Image" class="resident-report-media resident-home-report-image" onerror="this.style.display='none'">
         @endif
-        <div class="flex items-center mt-4 text-sm text-gray-500 gap-4">
-          <button type="button" class="flex items-center gap-2 like-button {{ $userLiked ? 'text-green-600' : 'hover:text-green-600' }} transition-colors duration-300" data-report-id="{{ $report->id }}">
-            <i class="fas fa-heart"></i>
+        <div class="resident-home-report-actions flex items-center gap-2">
+          <button type="button" class="resident-home-action like-button {{ $userLiked ? 'text-green-600' : 'hover:text-green-600' }}" data-report-id="{{ $report->id }}">
+            <i class="fas fa-heart" aria-hidden="true"></i>
             <span class="like-label">{{ $userLiked ? 'Liked' : 'Like' }}</span>
-            <span class="like-count text-gray-600">({{ $report->likes_count }})</span>
+            <span class="like-count">({{ $report->likes_count }})</span>
           </button>
-          <button type="button" class="flex items-center gap-2 text-gray-500 hover:text-blue-500 transition-colors duration-300" onclick="window.location.href='{{ route('community-reports') }}?highlight={{ $report->id }}';">
-            <i class="fas fa-eye"></i> View details
+          <button type="button" class="resident-home-action" onclick="window.location.href='{{ route('community-reports') }}?highlight={{ $report->id }}';">
+            <i class="fas fa-eye" aria-hidden="true"></i>
+            <span>View details</span>
           </button>
         </div>
 
-        <div class="mt-4 space-y-3" id="comments-list-{{ $report->id }}">
+        <div class="resident-home-comments" id="comments-list-{{ $report->id }}">
           @foreach($report->comments as $comment)
             @php
               $commentUser = $comment->user;
               $commentClasses = $commentUser?->getAvatarBgClasses() ?? 'bg-gray-400';
               $commentInitial = $commentUser?->getAvatarInitial() ?? '?';
             @endphp
-            <div class="flex items-start gap-3">
-              <div class="w-9 h-9 rounded-full {{ $commentClasses }} flex items-center justify-center text-white font-semibold text-sm">
+            <div class="resident-home-comment flex items-start gap-3">
+              <div class="resident-home-comment-avatar {{ $commentClasses }} flex items-center justify-center text-white font-semibold text-sm">
                 {{ $commentInitial }}
               </div>
-              <div class="flex-1 bg-gray-50 rounded-2xl px-4 py-2">
-                <div class="flex items-center justify-between">
-                  <p class="text-sm font-semibold text-gray-800">{{ $commentUser->name ?? 'Cleanify User' }}</p>
-                  <span class="text-xs text-gray-500">{{ $comment->created_at?->diffForHumans() }}</span>
+              <div class="resident-home-comment-bubble flex-1">
+                <div class="flex items-start justify-between gap-3">
+                  <p class="resident-home-comment-author">{{ $commentUser->name ?? 'Cleanify User' }}</p>
+                  <span class="resident-home-comment-time">{{ $comment->created_at?->diffForHumans() }}</span>
                 </div>
-                <p class="text-sm text-gray-700">{{ $comment->comment }}</p>
+                <p class="resident-home-comment-copy">{{ $comment->comment }}</p>
               </div>
             </div>
           @endforeach
         </div>
 
-        <form class="mt-4 comment-form" data-report-id="{{ $report->id }}">
-          <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-full {{ $user->getAvatarBgClasses() }} flex items-center justify-center text-white font-bold text-sm">
+        <form class="comment-form resident-home-comment-form" data-report-id="{{ $report->id }}">
+          <div class="flex items-center gap-2">
+            <div class="resident-home-comment-avatar resident-home-comment-avatar--current {{ $user->getAvatarBgClasses() }} flex items-center justify-center text-white font-bold text-sm">
               {{ $user->getAvatarInitial() }}
             </div>
-            <div class="flex-1 flex gap-2">
-              <input type="text" name="comment" class="flex-1 border border-gray-200 rounded-full px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 text-sm" placeholder="Write a comment..." required>
-              <button type="submit" class="px-4 py-2 bg-green-600 text-white rounded-full text-sm hover:bg-green-700 transition-colors duration-300">
-                <i class="fas fa-paper-plane"></i>
+            <div class="resident-home-comment-composer flex min-w-0 flex-1 gap-2">
+              <input type="text" name="comment" class="resident-home-comment-input min-w-0 flex-1" placeholder="Write a comment..." required>
+              <button type="submit" class="resident-home-comment-submit" aria-label="Post comment">
+                <i class="fas fa-paper-plane" aria-hidden="true"></i>
               </button>
             </div>
           </div>
         </form>
       </article>
     @empty
-      <div class="bg-white rounded-xl shadow-sm p-12 text-center">
-        <i class="fas fa-inbox text-gray-300 text-6xl mb-4"></i>
-        <p class="text-gray-600 text-lg">No community updates yet. Be the first to report something! 🌿</p>
+      <div class="resident-empty-state resident-home-empty xl:col-span-2">
+        <span class="resident-home-empty-icon"><i class="fas fa-inbox" aria-hidden="true"></i></span>
+        <h3>No community updates yet</h3>
+        <p>Be the first to share a report with your community.</p>
       </div>
     @endforelse
+    </div>
   </div>
 @endsection
 
@@ -226,17 +239,17 @@
                 const list = document.getElementById(`comments-list-${reportId}`);
                 if (list) {
                   const wrapper = document.createElement('div');
-                  wrapper.className = 'flex items-start gap-3';
+                  wrapper.className = 'resident-home-comment flex items-start gap-3';
                   wrapper.innerHTML = `
-                    <div class="w-9 h-9 rounded-full ${data.comment.avatar ?? 'bg-gray-400'} flex items-center justify-center text-white font-semibold text-sm">
+                    <div class="resident-home-comment-avatar ${data.comment.avatar ?? 'bg-gray-400'} flex items-center justify-center text-white font-semibold text-sm">
                       ${data.comment.initial ?? '?'}
                     </div>
-                    <div class="flex-1 bg-gray-50 rounded-2xl px-4 py-2">
-                      <div class="flex items-center justify-between">
-                        <p class="text-sm font-semibold text-gray-800">${data.comment.author ?? 'You'}</p>
-                        <span class="text-xs text-gray-500">${data.comment.timestamp ?? 'Just now'}</span>
+                    <div class="resident-home-comment-bubble flex-1">
+                      <div class="flex items-start justify-between gap-3">
+                        <p class="resident-home-comment-author">${data.comment.author ?? 'You'}</p>
+                        <span class="resident-home-comment-time">${data.comment.timestamp ?? 'Just now'}</span>
                       </div>
-                      <p class="text-sm text-gray-700">${data.comment.comment}</p>
+                      <p class="resident-home-comment-copy">${data.comment.comment}</p>
                     </div>
                   `;
                   list.prepend(wrapper);

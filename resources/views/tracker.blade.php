@@ -1,169 +1,136 @@
 @extends('layouts.app')
 
-@section('title', 'Garbage Truck Tracker')
+@section('title', 'Truck Tracker')
 
 @push('styles')
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
-  <style>
-    #map {
-      height: 60vh;
-      z-index: 10;
-    }
-    .zone-chip {
-      @apply px-3 py-1 rounded-full border text-sm transition;
-    }
-    .zone-chip-active {
-      @apply bg-green-600 border-green-600 text-white;
-    }
-  </style>
 @endpush
 
 @section('content')
-  <div class="space-y-6">
-    <div class="flex flex-wrap gap-4 items-center justify-between">
-      <div>
-        <h4 class="text-green-600 font-semibold text-2xl flex items-center gap-2">
-          <i class="fas fa-route"></i> Live Truck Tracker
-        </h4>
-        <p class="text-sm text-gray-500">See where each truck is right now and follow their routes.</p>
+  <div class="resident-tracker">
+    <header class="resident-tracker-header">
+      <p class="resident-eyebrow">Collection fleet</p>
+      <h1 class="resident-page-title">Truck Tracker</h1>
+      <p class="resident-page-subtitle">View current truck locations and service assignments.</p>
+    </header>
+
+    <section class="resident-tracker-controls" aria-label="Filter trucks">
+      <div class="resident-tracker-search">
+        <i class="fas fa-search" aria-hidden="true"></i>
+        <label for="truckSearch" class="sr-only">Search trucks</label>
+        <input type="search" id="truckSearch" placeholder="Search by truck, driver, or service assignment">
       </div>
-      <div class="flex flex-wrap gap-3 items-center">
-        <div class="relative w-72">
-          <input type="text" id="truckSearch" placeholder="Search by truck, driver, route..." class="w-full pl-4 pr-10 py-2 border border-gray-300 rounded-full focus:outline-none focus:ring-2 focus:ring-green-500">
-          <i class="fas fa-search absolute right-3 top-1/2 -translate-y-1/2 text-gray-400"></i>
-        </div>
-        <select id="statusFilter" class="border border-gray-300 rounded-full px-4 py-2 text-sm focus:ring-green-500">
+      <select id="statusFilter" class="sr-only" aria-label="Filter by status">
           <option value="all">All statuses</option>
           @foreach($statusCounts as $status => $count)
             <option value="{{ $status }}">{{ ucfirst(str_replace('_', ' ', $status)) }} ({{ $count }})</option>
           @endforeach
-        </select>
-      </div>
-    </div>
-
-    <div class="grid md:grid-cols-3 gap-4">
-      @foreach($statusCounts as $status => $count)
-        <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-4 flex items-center gap-3">
-          <span class="w-3 h-3 rounded-full {{ $status === 'active' ? 'bg-green-500' : ($status === 'on_break' ? 'bg-yellow-500' : ($status === 'maintenance' ? 'bg-blue-500' : 'bg-gray-400')) }}"></span>
-          <div>
-            <p class="text-xs uppercase tracking-wide text-gray-500">{{ ucfirst(str_replace('_', ' ', $status)) }}</p>
-            <p class="text-xl font-semibold text-gray-800">{{ $count }}</p>
-          </div>
-        </div>
-      @endforeach
-    </div>
-
-    <div class="bg-white border border-green-100 rounded-2xl p-4 flex flex-wrap items-center gap-3">
-      <p class="text-sm text-gray-600 font-semibold">Highlight a service zone:</p>
-      <div class="flex flex-wrap gap-2 flex-1" id="zoneFilterGroup">
-        @foreach($zones as $zoneName => $coords)
-          <button class="zone-chip border-gray-200 text-gray-600 hover:border-green-500" data-zone="{{ $zoneName }}">{{ $zoneName }}</button>
+      </select>
+      <div class="resident-tracker-filter-chips" role="group" aria-label="Truck status">
+        <button type="button" class="resident-tracker-filter-chip is-active" data-status-value="all">All</button>
+        @foreach($statusCounts as $status => $count)
+          <button type="button" class="resident-tracker-filter-chip" data-status-value="{{ $status }}">{{ ucfirst(str_replace('_', ' ', $status)) }}</button>
         @endforeach
       </div>
-      <button id="clearZoneHighlight" class="text-sm text-gray-500 hover:text-green-600">Clear</button>
-    </div>
+    </section>
 
-    <div class="grid lg:grid-cols-3 gap-6 items-start">
-      <div class="lg:col-span-2 bg-white rounded-2xl shadow-lg p-4 border border-green-100">
-        <div class="flex items-center justify-between mb-3 text-sm text-gray-500">
-          <div class="flex items-center gap-2">
-            <span class="flex items-center gap-1 text-green-600">
-              <span class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span> Live updating
+    <div class="resident-tracker-content">
+      <section class="resident-tracker-map-card" aria-labelledby="tracker-map-title">
+        <div class="resident-tracker-map-header">
+          <div>
+            <p class="resident-tracker-section-eyebrow">Current positions</p>
+            <h2 id="tracker-map-title">Truck locations</h2>
+          </div>
+          <div class="resident-tracker-refresh">
+            <span class="resident-tracker-refresh-status">
+              <i class="fas fa-sync-alt" aria-hidden="true"></i>Auto-refreshing
             </span>
             <span class="text-gray-400">·</span>
             <span>Refresh in <span id="refreshCountdown">30</span>s</span>
+            <button id="manualRefreshBtn" type="button">Refresh now</button>
           </div>
-          <button id="manualRefreshBtn" class="text-green-600 hover:underline">Refresh now</button>
         </div>
-        <div id="map" class="rounded-xl overflow-hidden"></div>
-      </div>
+        <div id="map" class="resident-tracker-map"></div>
+      </section>
 
-      <div class="space-y-4">
-        <div id="zoneEtaPanel" class="bg-white rounded-2xl shadow border border-green-100 p-4 hidden">
-          <div class="flex items-center justify-between mb-2">
-            <h5 class="text-lg font-semibold text-gray-800" id="zoneEtaTitle"></h5>
-            <span class="text-xs text-gray-400" id="zoneEtaSubtitle"></span>
+      <div class="resident-tracker-sections">
+        <section id="truckDetailPanel" class="resident-tracker-selected hidden" aria-labelledby="selected-truck-heading">
+          <div class="resident-tracker-selected-header">
+            <div>
+              <p class="resident-tracker-section-eyebrow">Selected truck</p>
+              <h2 id="selected-truck-heading"><i class="fas fa-truck" aria-hidden="true"></i><span id="detailTruckName"></span></h2>
+            </div>
+            <span id="detailStatusBadge" class="resident-tracker-status-badge bg-gray-100 text-gray-700"></span>
           </div>
-          <div id="zoneEtaList" class="space-y-2"></div>
-        </div>
-
-        <div id="truckDetailPanel" class="bg-white rounded-2xl shadow border border-green-100 p-4 hidden">
-          <div class="flex items-center justify-between mb-3">
-            <h5 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
-              <i class="fas fa-truck text-green-600"></i><span id="detailTruckName"></span>
-            </h5>
-            <span id="detailStatusBadge" class="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-700"></span>
+          <div class="resident-tracker-selected-grid">
+            <div><span>Driver</span><strong id="detailDriver"></strong></div>
+            <div><span>Service assignment</span><strong id="detailRoute"></strong></div>
+            <div><span>Last updated</span><strong id="detailLastUpdated"></strong></div>
+            <div><span>Map location</span><strong id="detailLocation"></strong></div>
           </div>
-          <div class="space-y-2 text-sm text-gray-600">
-            <p><strong>Driver:</strong> <span id="detailDriver"></span></p>
-            <p><strong>Route:</strong> <span id="detailRoute"></span></p>
-            <p><strong>Last update:</strong> <span id="detailLastUpdated"></span></p>
-            <p><strong>ETA to highlighted zone:</strong> <span id="detailEta">Select a zone</span></p>
-          </div>
-          <div class="flex items-center gap-2 mt-4">
-            <button id="detailFocusBtn" class="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">
-              <i class="fas fa-crosshairs text-green-600 mr-1"></i>Center map
+          <div class="resident-tracker-selected-actions">
+            <button id="detailFocusBtn" type="button" class="resident-tracker-focus-button">
+              <i class="fas fa-crosshairs" aria-hidden="true"></i>Focus
             </button>
           </div>
-        </div>
+        </section>
 
-        <div class="bg-white rounded-2xl shadow-lg p-4 border border-green-100">
-        <div class="flex items-center justify-between mb-3">
-          <h5 class="text-lg font-semibold text-gray-800 flex items-center gap-2">
-            <i class="fas fa-list-ul text-green-600"></i> Active Trucks
-          </h5>
-          <span class="text-sm text-gray-500">{{ $trucks->count() }} total</span>
-        </div>
-        <div id="truckList" class="space-y-3 max-h-[65vh] overflow-y-auto pr-1">
-          @forelse($trucks as $truck)
-            <div class="border border-gray-100 rounded-xl p-3 truck-item hover:border-green-300 transition-colors duration-200" data-id="{{ $truck->id }}" data-status="{{ $truck->status }}" data-search="{{ strtolower($truck->code . ' ' . $truck->driver . ' ' . $truck->route) }}">
-              <div class="flex items-center justify-between mb-2">
-                <div class="flex items-center gap-2">
-                  <div class="w-3 h-3 rounded-full {{ $truck->status === 'active' ? 'bg-green-500' : ($truck->status === 'on_break' ? 'bg-yellow-500' : ($truck->status === 'maintenance' ? 'bg-blue-500' : 'bg-gray-400')) }}"></div>
+        <section class="resident-tracker-trucks" aria-labelledby="tracker-trucks-title">
+          <div class="resident-tracker-section-header">
+            <div>
+              <p class="resident-tracker-section-eyebrow">Service fleet</p>
+              <h2 id="tracker-trucks-title">Trucks</h2>
+            </div>
+            <span id="truckCountSummary">{{ $trucks->count() }} total</span>
+          </div>
+          <div id="truckList" class="resident-tracker-grid">
+            @forelse($trucks as $truck)
+              <article class="resident-tracker-truck-card truck-item" data-id="{{ $truck->id }}" data-status="{{ $truck->status }}" data-search="{{ strtolower($truck->code . ' ' . $truck->driver . ' ' . $truck->route) }}">
+                <div class="resident-tracker-truck-header">
+                  <span class="resident-tracker-status-dot" data-status="{{ $truck->status }}" aria-hidden="true"></span>
+                  <div class="resident-tracker-truck-heading">
+                    <h3 class="resident-tracker-truck-code">{{ $truck->code }}</h3>
+                    <p class="resident-tracker-driver">{{ $truck->driver ?? 'No driver assigned' }}</p>
+                  </div>
+                  <span class="resident-tracker-status-badge truck-status-badge {{ $truck->getStatusBadgeClass() }}">{{ $truck->formatted_status }}</span>
+                </div>
+                <div class="resident-tracker-assignment">
+                  <i class="fas fa-route" aria-hidden="true"></i>
                   <div>
-                    <p class="font-semibold text-gray-800">{{ $truck->code }}</p>
-                    <p class="text-sm text-gray-500">{{ $truck->driver ?? 'No driver assigned' }}</p>
+                    <span>Service assignment</span>
+                    <strong class="resident-tracker-assignment-value">{{ $truck->route ?? 'No assignment' }}</strong>
                   </div>
                 </div>
-                <span class="text-xs font-semibold px-2.5 py-0.5 rounded-full {{ $truck->getStatusBadgeClass() }}">{{ $truck->formatted_status }}</span>
+                <div class="resident-tracker-truck-meta">
+                  @if($truck->latitude && $truck->longitude)
+                    <span class="resident-tracker-location-indicator is-located"><i class="fas fa-map-marker-alt" aria-hidden="true"></i>On map</span>
+                  @else
+                    <span class="resident-tracker-location-indicator"><i class="fas fa-map-marker-alt" aria-hidden="true"></i>No location</span>
+                  @endif
+                  <span class="resident-tracker-last-updated">Last updated: {{ $truck->last_updated ? $truck->last_updated->diffForHumans() : 'Never' }}</span>
+                </div>
+                <div class="resident-tracker-truck-actions">
+                  @if($truck->latitude && $truck->longitude)
+                    <button type="button" class="resident-tracker-focus-button center-truck-btn" data-id="{{ $truck->id }}">
+                      <i class="fas fa-crosshairs" aria-hidden="true"></i>Focus
+                    </button>
+                  @else
+                    <button type="button" class="resident-tracker-focus-button" disabled title="No location data available">
+                      <i class="fas fa-map-marker-alt" aria-hidden="true"></i>No location
+                    </button>
+                  @endif
+                </div>
+              </article>
+            @empty
+              <div class="resident-tracker-empty">
+                <i class="fas fa-truck" aria-hidden="true"></i>
+                <p>No trucks available</p>
               </div>
-              <div class="flex items-center gap-4 text-sm text-gray-600 mt-2">
-                <p>
-                  <i class="fas fa-route text-green-600 mr-1"></i>{{ $truck->route ?? 'No route' }}
-                </p>
-                @if($truck->latitude && $truck->longitude)
-                  <p class="text-green-600">
-                    <i class="fas fa-map-marker-alt mr-1"></i>On map
-                  </p>
-                @else
-                  <p class="text-gray-400">
-                    <i class="fas fa-map-marker-alt mr-1"></i>No location
-                  </p>
-                @endif
-              </div>
-              <p class="text-xs text-gray-400 mt-2">Last updated: {{ $truck->last_updated ? $truck->last_updated->diffForHumans() : 'Never' }}</p>
-              <div class="flex items-center gap-2 mt-3 text-sm">
-                @if($truck->latitude && $truck->longitude)
-                  <button class="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-gray-600 hover:bg-gray-50 center-truck-btn" data-id="{{ $truck->id }}">
-                    <i class="fas fa-crosshairs text-green-600 mr-1"></i>Focus
-                  </button>
-                @else
-                  <button class="flex-1 border border-gray-200 rounded-lg px-3 py-1.5 text-gray-400 cursor-not-allowed" disabled title="No location data available">
-                    <i class="fas fa-map-marker-alt mr-1"></i>No location
-                  </button>
-                @endif
-              </div>
-            </div>
-          @empty
-            <div class="text-center py-8 text-gray-500">
-              <i class="fas fa-truck text-4xl mb-3 block text-gray-300"></i>
-              <p>No trucks available</p>
-            </div>
-          @endforelse
-        </div>
-        </div>
+            @endforelse
+          </div>
+        </section>
       </div>
     </div>
   </div>
@@ -224,20 +191,13 @@
     const clusterGroup = L.markerClusterGroup({ showCoverageOnHover: false });
     map.addLayer(clusterGroup);
     const zoneLayers = {};
-    let selectedZone = null;
-    let zoneEtaEntries = [];
-    const zoneEtaPanel = document.getElementById('zoneEtaPanel');
-    const zoneEtaTitle = document.getElementById('zoneEtaTitle');
-    const zoneEtaSubtitle = document.getElementById('zoneEtaSubtitle');
-    const zoneEtaList = document.getElementById('zoneEtaList');
-    const zoneFilterGroup = document.getElementById('zoneFilterGroup');
     const truckDetailPanel = document.getElementById('truckDetailPanel');
     const detailTruckName = document.getElementById('detailTruckName');
     const detailStatusBadge = document.getElementById('detailStatusBadge');
     const detailDriver = document.getElementById('detailDriver');
     const detailRoute = document.getElementById('detailRoute');
     const detailLastUpdated = document.getElementById('detailLastUpdated');
-    const detailEta = document.getElementById('detailEta');
+    const detailLocation = document.getElementById('detailLocation');
     const detailFocusBtn = document.getElementById('detailFocusBtn');
     let selectedTruckId = null;
     let truckCache = {};
@@ -274,7 +234,7 @@
       if (!markers[truck.id]) {
         const marker = L.marker([truck.latitude, truck.longitude], { icon: icon })
           .bindPopup(makePopup(truck));
-        marker.on('click', () => showTruckDetail(truck));
+        marker.on('click', () => showTruckDetail(truckCache[truck.id] ?? truck));
         markers[truck.id] = marker;
         clusterGroup.addLayer(marker);
       } else {
@@ -305,42 +265,54 @@
         
         // Update status
         el.setAttribute('data-status', truck.status);
+        el.setAttribute('data-search', [truck.code, truck.driver, truck.route].filter(Boolean).join(' ').toLowerCase());
+
+        const driver = el.querySelector('.resident-tracker-driver');
+        if (driver) {
+          driver.textContent = truck.driver ?? 'No driver assigned';
+        }
+
+        const assignment = el.querySelector('.resident-tracker-assignment-value');
+        if (assignment) {
+          assignment.textContent = truck.route ?? 'No assignment';
+        }
         
         // Update status badge
-        const statusBadge = el.querySelector('span.text-xs.font-semibold.px-2\\.5');
+        const statusBadge = el.querySelector('.truck-status-badge');
         if (statusBadge) {
           statusBadge.textContent = truck.formatted_status;
-          statusBadge.className = `text-xs font-semibold px-2.5 py-0.5 rounded-full ${truck.status_badge}`;
+          statusBadge.className = `resident-tracker-status-badge truck-status-badge ${truck.status_badge}`;
         }
         
         // Update status indicator dot
-        const statusDot = el.querySelector('.w-3.h-3.rounded-full');
+        const statusDot = el.querySelector('.resident-tracker-status-dot');
         if (statusDot) {
-          const statusColors = {
-            'active': 'bg-green-500',
-            'on_break': 'bg-yellow-500',
-            'maintenance': 'bg-blue-500',
-            'offline': 'bg-red-500',
-          };
-          statusDot.className = `w-3 h-3 rounded-full ${statusColors[truck.status] || 'bg-gray-400'}`;
+          statusDot.dataset.status = truck.status;
         }
         
         // Update last updated text
-        const lastUpdatedEl = el.querySelector('.text-xs.text-gray-400');
+        const lastUpdatedEl = el.querySelector('.resident-tracker-last-updated');
         if (lastUpdatedEl) {
           lastUpdatedEl.textContent = `Last updated: ${truck.last_updated_human ?? 'Never'}`;
         }
         
         // Update location indicator
-        const locationIndicator = el.querySelector('.fa-map-marker-alt')?.parentElement;
+        const locationIndicator = el.querySelector('.resident-tracker-location-indicator');
         if (locationIndicator) {
           if (truck.latitude && truck.longitude) {
-            locationIndicator.className = 'text-green-600';
-            locationIndicator.innerHTML = '<i class="fas fa-map-marker-alt mr-1"></i>On map';
+            locationIndicator.className = 'resident-tracker-location-indicator is-located';
+            locationIndicator.innerHTML = '<i class="fas fa-map-marker-alt" aria-hidden="true"></i>On map';
           } else {
-            locationIndicator.className = 'text-gray-400';
-            locationIndicator.innerHTML = '<i class="fas fa-map-marker-alt mr-1"></i>No location';
+            locationIndicator.className = 'resident-tracker-location-indicator';
+            locationIndicator.innerHTML = '<i class="fas fa-map-marker-alt" aria-hidden="true"></i>No location';
           }
+        }
+
+        const actions = el.querySelector('.resident-tracker-truck-actions');
+        if (actions) {
+          actions.innerHTML = truck.latitude && truck.longitude
+            ? `<button type="button" class="resident-tracker-focus-button center-truck-btn" data-id="${truck.id}"><i class="fas fa-crosshairs" aria-hidden="true"></i>Focus</button>`
+            : '<button type="button" class="resident-tracker-focus-button" disabled title="No location data available"><i class="fas fa-map-marker-alt" aria-hidden="true"></i>No location</button>';
         }
       });
     };
@@ -349,9 +321,6 @@
       data.forEach(truck => { truckCache[truck.id] = truck; });
       if (selectedTruckId && truckCache[selectedTruckId]) {
         showTruckDetail(truckCache[selectedTruckId]);
-      }
-      if (selectedZone) {
-        updateZoneEta(selectedZone);
       }
     };
 
@@ -362,6 +331,7 @@
           data.trucks.forEach(upsertMarker);
           removeMissingMarkers(data.trucks.map(t => t.id));
           refreshList(data.trucks);
+          filterList();
         })
         .catch(() => showToast?.('error', 'Unable to refresh tracker data.'));
     };
@@ -382,88 +352,39 @@
 
     document.getElementById('manualRefreshBtn')?.addEventListener('click', fetchTrucks);
 
-    document.querySelectorAll('.center-truck-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = Number(btn.dataset.id);
+    document.getElementById('truckList')?.addEventListener('click', event => {
+      const button = event.target.closest('.center-truck-btn');
+      if (button) {
+        event.stopPropagation();
+        const id = Number(button.dataset.id);
         const marker = markers[id];
         if (marker) {
+          showTruckDetail(truckCache[id]);
           map.setView(marker.getLatLng(), 15);
           marker.openPopup();
         } else {
-          showToast?.('info', 'No live location for this truck yet.');
+          showToast?.('info', 'No current location is available for this truck.');
         }
-      });
+      }
     });
 
     const filterList = () => {
       const search = document.getElementById('truckSearch').value.toLowerCase();
       const status = document.getElementById('statusFilter').value;
+      let visibleCount = 0;
       document.querySelectorAll('.truck-item').forEach(item => {
         const matchesSearch = item.dataset.search.includes(search);
         const matchesStatus = status === 'all' || item.dataset.status === status;
         item.style.display = matchesSearch && matchesStatus ? 'block' : 'none';
+        if (matchesSearch && matchesStatus) {
+          visibleCount++;
+        }
       });
-    };
-
-    const calculateDistanceKm = (lat1, lon1, lat2, lon2) => {
-      const toRad = (deg) => deg * Math.PI / 180;
-      const R = 6371;
-      const dLat = toRad(lat2 - lat1);
-      const dLon = toRad(lon2 - lon1);
-      const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    };
-
-    const estimateEta = (truck, zone) => {
-      if (!truck.latitude || !truck.longitude) return null;
-      const distance = calculateDistanceKm(truck.latitude, truck.longitude, zone.lat, zone.lng);
-      const assumedSpeed = 20;
-      const hours = distance / assumedSpeed;
-      return {
-        distance: distance.toFixed(2),
-        minutes: Math.round(hours * 60),
-      };
-    };
-
-    const updateZoneEta = (zoneName) => {
-      const zone = zones[zoneName];
-      if (!zone) return;
-      const entries = Object.values(truckCache)
-        .map(truck => {
-          const eta = estimateEta(truck, zone);
-          if (!eta) {
-            return null;
-          }
-          return {
-            truck,
-            eta,
-          };
-        })
-        .filter(Boolean)
-        .sort((a, b) => a.eta.minutes - b.eta.minutes)
-        .slice(0, 3);
-
-      zoneEtaPanel.classList.remove('hidden');
-      zoneEtaTitle.textContent = `${zoneName} arrivals`;
-      zoneEtaSubtitle.textContent = `Highlighting ${entries.length} truck(s)`;
-
-      if (!entries.length) {
-        zoneEtaList.innerHTML = '<p class="text-sm text-gray-500">No active trucks with location data for this zone.</p>';
-        return;
+      const countSummary = document.getElementById('truckCountSummary');
+      if (countSummary) {
+        const total = document.querySelectorAll('.truck-item').length;
+        countSummary.textContent = visibleCount === total ? `${total} total` : `${visibleCount} shown · ${total} total`;
       }
-
-      zoneEtaList.innerHTML = entries.map(entry => `
-        <div class="border border-gray-100 rounded-xl p-3 flex items-center justify-between">
-          <div>
-            <p class="font-semibold text-gray-800">${entry.truck.code}</p>
-            <p class="text-xs text-gray-500">${entry.truck.route ?? 'No route'} · ${entry.truck.formatted_status}</p>
-          </div>
-          <div class="text-right">
-            <p class="text-lg font-bold text-green-600">${entry.eta.minutes} min</p>
-            <p class="text-xs text-gray-400">${entry.eta.distance} km</p>
-          </div>
-        </div>
-      `).join('');
     };
 
     const showTruckDetail = (truck) => {
@@ -472,16 +393,16 @@
       truckDetailPanel.classList.remove('hidden');
       detailTruckName.textContent = truck.code;
       detailStatusBadge.textContent = truck.formatted_status;
-      detailStatusBadge.className = `text-xs font-semibold px-2.5 py-0.5 rounded-full ${truck.status_badge}`;
+      detailStatusBadge.className = `resident-tracker-status-badge ${truck.status_badge}`;
       detailDriver.textContent = truck.driver ?? 'No driver assigned';
       detailRoute.textContent = truck.route ?? 'No route assigned';
       detailLastUpdated.textContent = truck.last_updated_human ?? 'Never';
-      if (selectedZone && zones[selectedZone]) {
-        const eta = estimateEta(truck, zones[selectedZone]);
-        detailEta.textContent = eta ? `${eta.minutes} minutes (${eta.distance} km)` : 'Not available';
-      } else {
-        detailEta.textContent = 'Select a zone';
-      }
+      const hasLocation = Boolean(truck.latitude && truck.longitude);
+      detailLocation.textContent = hasLocation ? 'Available on map' : 'Not available';
+      detailFocusBtn.disabled = !hasLocation;
+      document.querySelectorAll('.truck-item').forEach(item => {
+        item.classList.toggle('is-selected', Number(item.dataset.id) === Number(truck.id));
+      });
       detailFocusBtn.onclick = () => {
         const marker = markers[truck.id];
         if (marker) {
@@ -500,34 +421,6 @@
       });
     });
 
-    const highlightZone = (zoneName) => {
-      Object.values(zoneLayers).forEach(layer => layer.setStyle({ fillOpacity: 0.1, opacity: 0.2 }));
-      if (zoneLayers[zoneName]) {
-        zoneLayers[zoneName].setStyle({ fillOpacity: 0.3, opacity: 0.6 });
-        map.setView(zoneLayers[zoneName].getLatLng(), 14);
-      }
-      selectedZone = zoneName;
-      document.querySelectorAll('.zone-chip').forEach(btn => btn.classList.remove('zone-chip-active'));
-      const activeBtn = document.querySelector(`.zone-chip[data-zone="${zoneName}"]`);
-      activeBtn?.classList.add('zone-chip-active');
-      updateZoneEta(zoneName);
-      if (selectedTruckId && truckCache[selectedTruckId]) {
-        showTruckDetail(truckCache[selectedTruckId]);
-      }
-    };
-
-    document.getElementById('clearZoneHighlight').addEventListener('click', () => {
-      selectedZone = null;
-      zoneEtaPanel.classList.add('hidden');
-      document.querySelectorAll('.zone-chip').forEach(btn => btn.classList.remove('zone-chip-active'));
-      Object.values(zoneLayers).forEach(layer => layer.setStyle({ fillOpacity: 0.1, opacity: 0.3 }));
-      detailEta.textContent = 'Select a zone';
-    });
-
-    zoneFilterGroup.querySelectorAll('.zone-chip').forEach(btn => {
-      btn.addEventListener('click', () => highlightZone(btn.dataset.zone));
-    });
-
     const drawZones = () => {
       Object.entries(zones).forEach(([name, coords], index) => {
         const hue = (index * 60) % 360;
@@ -540,13 +433,22 @@
           weight: 1,
         }).bindPopup(`<strong>${name}</strong>`);
         circle.addTo(map);
-        circle.on('click', () => highlightZone(name));
         zoneLayers[name] = circle;
       });
     };
 
     document.getElementById('truckSearch').addEventListener('input', filterList);
     document.getElementById('statusFilter').addEventListener('change', filterList);
+    document.querySelectorAll('.resident-tracker-filter-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const statusFilter = document.getElementById('statusFilter');
+        statusFilter.value = chip.dataset.statusValue;
+        document.querySelectorAll('.resident-tracker-filter-chip').forEach(item => {
+          item.classList.toggle('is-active', item === chip);
+        });
+        filterList();
+      });
+    });
 
     initialTrucks.forEach(truck => {
       truckCache[truck.id] = truck;

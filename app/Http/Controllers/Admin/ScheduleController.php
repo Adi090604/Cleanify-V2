@@ -75,11 +75,14 @@ class ScheduleController extends Controller
      */
     public function store(StoreScheduleRequest $request): RedirectResponse
     {
+        $usesInterval = $request->schedule_type === 'recurring' && $request->recurrence_mode === 'interval';
         $schedule = Schedule::create([
             'area' => $request->area,
             'schedule_type' => $request->schedule_type,
             'specific_date' => $request->schedule_type === 'specific_date' ? $request->specific_date : null,
-            'days' => $request->schedule_type === 'recurring' ? $request->days : null,
+            'recurrence_start_date' => $usesInterval ? $request->recurrence_start_date : null,
+            'recurrence_interval_days' => $usesInterval ? $request->recurrence_interval_days : null,
+            'days' => $request->schedule_type === 'recurring' && ! $usesInterval ? $request->days : null,
             'time_start' => $request->time_start,
             'time_end' => $request->time_end,
             'truck' => $request->truck,
@@ -100,11 +103,14 @@ class ScheduleController extends Controller
     {
         $schedule = Schedule::findOrFail($id);
         $oldArea = (string) $schedule->area;
+        $usesInterval = $request->schedule_type === 'recurring' && $request->recurrence_mode === 'interval';
         $schedule->fill([
             'area' => $request->area,
             'schedule_type' => $request->schedule_type,
             'specific_date' => $request->schedule_type === 'specific_date' ? $request->specific_date : null,
-            'days' => $request->schedule_type === 'recurring' ? $request->days : null,
+            'recurrence_start_date' => $usesInterval ? $request->recurrence_start_date : null,
+            'recurrence_interval_days' => $usesInterval ? $request->recurrence_interval_days : null,
+            'days' => $request->schedule_type === 'recurring' && ! $usesInterval ? $request->days : null,
             'time_start' => $request->time_start,
             'time_end' => $request->time_end,
             'truck' => $request->truck,
@@ -115,6 +121,8 @@ class ScheduleController extends Controller
             'area',
             'schedule_type',
             'specific_date',
+            'recurrence_start_date',
+            'recurrence_interval_days',
             'days',
             'time_start',
             'time_end',
