@@ -25,6 +25,7 @@ class ReportResource extends JsonResource
                 ? $request->getSchemeAndHttpHost().'/storage/'.ltrim($this->image_path, '/')
                 : null,
             'status' => $this->status,
+            'status_label' => $this->status_label,
             'priority' => $this->priority,
             'created_at' => $this->created_at?->toIso8601String(),
             'likes_count' => $this->likes_count,

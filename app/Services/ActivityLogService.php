@@ -37,8 +37,18 @@ class ActivityLogService
         return self::log(
             'report.resolved',
             $report,
-            "Report resolved by admin" . ($adminNotes ? ": {$adminNotes}" : ""),
+            'Report resolved by admin'.($adminNotes ? ": {$adminNotes}" : ''),
             ['status' => 'resolved', 'admin_notes' => $adminNotes]
+        );
+    }
+
+    public static function logReportInProgress(Model $report): ActivityLog
+    {
+        return self::log(
+            'report.in_progress',
+            $report,
+            "Report #{$report->getKey()} marked in progress by admin",
+            ['status' => 'in_progress']
         );
     }
 
@@ -50,7 +60,7 @@ class ActivityLogService
         return self::log(
             'report.rejected',
             $report,
-            "Report rejected by admin" . ($reason ? ": {$reason}" : ""),
+            'Report rejected by admin'.($reason ? ": {$reason}" : ''),
             ['status' => 'rejected', 'rejection_reason' => $reason]
         );
     }
@@ -63,7 +73,7 @@ class ActivityLogService
         return self::log(
             'user.deleted',
             $user,
-            "User deleted by admin",
+            'User deleted by admin',
             ['deleted_user' => $user->name, 'email' => $user->email]
         );
     }
@@ -76,7 +86,7 @@ class ActivityLogService
         return self::log(
             'user.updated',
             $user,
-            "User updated by admin",
+            'User updated by admin',
             $changes
         );
     }
@@ -115,7 +125,7 @@ class ActivityLogService
         return self::log(
             'user.banned',
             $user,
-            "User banned by admin",
+            'User banned by admin',
             ['banned_user' => $user->name, 'email' => $user->email]
         );
     }
@@ -128,9 +138,8 @@ class ActivityLogService
         return self::log(
             'user.unbanned',
             $user,
-            "User unbanned by admin",
+            'User unbanned by admin',
             ['unbanned_user' => $user->name, 'email' => $user->email]
         );
     }
 }
-

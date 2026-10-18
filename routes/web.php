@@ -70,9 +70,13 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
 
     // Reports Management
     Route::get('/reports', [App\Http\Controllers\Admin\ReportsController::class, 'index'])->name('reports');
+    Route::get('/reports/reporters', [App\Http\Controllers\Admin\ReportsController::class, 'reporters'])->name('reports.reporters');
+    Route::get('/reports/locations', [App\Http\Controllers\Admin\ReportsController::class, 'locations'])->name('reports.locations');
+    Route::post('/reports/{report}/in-progress', [App\Http\Controllers\Admin\ReportsController::class, 'markInProgress'])->name('reports.in-progress');
     Route::post('/reports/{id}/resolve', [App\Http\Controllers\Admin\ReportsController::class, 'resolve'])->name('reports.resolve');
     Route::post('/reports/{id}/reject', [App\Http\Controllers\Admin\ReportsController::class, 'reject'])->name('reports.reject');
     Route::post('/reports/bulk-resolve', [App\Http\Controllers\Admin\ReportsController::class, 'bulkResolve'])->name('reports.bulk-resolve');
+    Route::post('/reports/bulk-in-progress', [App\Http\Controllers\Admin\ReportsController::class, 'bulkMarkInProgress'])->name('reports.bulk-in-progress');
     Route::post('/reports/bulk-reject', [App\Http\Controllers\Admin\ReportsController::class, 'bulkReject'])->name('reports.bulk-reject');
     Route::patch('/reports/{id}/priority', [App\Http\Controllers\Admin\ReportsController::class, 'updatePriority'])->name('reports.update-priority');
     Route::delete('/reports/{report}', [App\Http\Controllers\Admin\ReportsController::class, 'destroy'])->name('reports.destroy');

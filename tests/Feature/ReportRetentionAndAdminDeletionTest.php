@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Notifications\DatabaseNotification;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -117,13 +118,30 @@ test('admin reports retain old resolved reports and expose permanent deletion', 
     $owner = User::factory()->create();
     $oldResolved = retentionReport($owner, 'resolved', now()->subMonths(6));
 
-    $this->actingAs($admin)->get('/admin/reports')
+    $response = $this->actingAs($admin)->get('/admin/reports');
+    $response
         ->assertOk()
         ->assertViewHas('reports', fn ($reports) => $reports->contains('id', $oldResolved->id))
-        ->assertSee("openDeleteReportModal({$oldResolved->id})", false)
+        ->assertSee('data-delete-report-url="'.route('admin.reports.destroy', $oldResolved).'"', false)
+        ->assertSee('openDeleteReportModal(this.dataset.deleteReportUrl)', false)
         ->assertSee('Are you sure you want to permanently delete this report? This action cannot be undone.', false)
         ->assertSee('id="deleteReportForm"', false)
+        ->assertSee('id="confirmDeleteReportButton" class="admin-btn-danger" disabled', false)
+        ->assertSee("form.setAttribute('action', deleteUrl)", false)
+        ->assertSee("this.dataset.submitting === 'true'", false)
         ->assertDontSee('confirm(', false);
+
+    expect(preg_match_all('/<script[^>]+src="[^"]*\/assets\/app-[^"]+\.js"/', $response->getContent()))
+        ->toBe(1);
+});
+
+test('admin report destroy route uses delete and consistent report model binding', function () {
+    $route = Route::getRoutes()->getByName('admin.reports.destroy');
+
+    expect($route)->not->toBeNull()
+        ->and($route->uri())->toBe('admin/reports/{report}')
+        ->and($route->methods())->toContain('DELETE')
+        ->and($route->getActionName())->toBe('App\\Http\\Controllers\\Admin\\ReportsController@destroy');
 });
 
 test('only admins can permanently delete reports and all stored dependencies are cleaned up', function () {
@@ -132,6 +150,7 @@ test('only admins can permanently delete reports and all stored dependencies are
     $owner = User::factory()->create();
     $other = User::factory()->create();
     $report = retentionReport($owner);
+    $unrelatedReport = retentionReport($owner);
     $report->update(['image_path' => 'reports/permanent-delete.jpg']);
     Storage::disk('public')->put($report->image_path, 'report image');
     ReportLike::query()->create(['report_id' => $report->id, 'user_id' => $other->id]);
@@ -155,7 +174,8 @@ test('only admins can permanently delete reports and all stored dependencies are
     expect(Report::find($report->id))->not->toBeNull();
     Storage::disk('public')->assertExists($report->image_path);
 
-    $this->actingAs($admin)->delete(route('admin.reports.destroy', $report))
+    $response = $this->actingAs($admin)->delete(route('admin.reports.destroy', $report));
+    $response
         ->assertRedirect(route('admin.reports'))
         ->assertSessionHas('success', 'Report permanently deleted successfully.');
 
@@ -165,5 +185,12 @@ test('only admins can permanently delete reports and all stored dependencies are
     $this->assertDatabaseMissing('report_followers', ['report_id' => $report->id]);
     $this->assertDatabaseMissing('notifications', ['id' => $notification->id]);
     $this->assertDatabaseMissing('activity_logs', ['id' => $activity->id]);
+    $this->assertDatabaseHas('reports', ['id' => $unrelatedReport->id]);
     Storage::disk('public')->assertMissing('reports/permanent-delete.jpg');
+
+    enableSqliteFieldFunctionForAdminReports();
+    $this->actingAs($admin)->get(route('admin.reports'))
+        ->assertOk()
+        ->assertSee((string) $unrelatedReport->id)
+        ->assertDontSee('data-delete-report-url="'.route('admin.reports.destroy', $report).'"', false);
 });

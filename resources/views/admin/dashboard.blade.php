@@ -387,6 +387,7 @@
               @php
                 $statusStyles = [
                   'pending' => 'bg-yellow-50 text-yellow-800 ring-yellow-600/20',
+                  'in_progress' => 'bg-blue-50 text-blue-700 ring-blue-600/20',
                   'resolved' => 'bg-green-50 text-green-700 ring-green-600/20',
                   'rejected' => 'bg-red-50 text-red-700 ring-red-600/20',
                 ];
@@ -409,7 +410,7 @@
                 <td class="max-w-xs px-4">{{ \Illuminate\Support\Str::limit($report->description, 30) }}</td>
                 <td class="px-4">
                   <span class="{{ $statusStyles[$report->status] ?? 'bg-gray-100 text-gray-700 ring-gray-500/20' }} inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold ring-1 ring-inset">
-                    {{ ucfirst($report->status) }}
+                    {{ $report->status_label }}
                   </span>
                 </td>
                 <td class="whitespace-nowrap px-4">

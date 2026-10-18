@@ -58,6 +58,7 @@ class CommunityReportController extends Controller
             'location' => $report->location,
             'description' => $report->description,
             'status' => $report->status,
+            'status_label' => $report->status_label,
             'status_badge' => $report->getStatusBadgeBgClass(),
             'admin_notes' => $report->admin_notes,
             'rejection_reason' => $report->rejection_reason,
@@ -88,7 +89,7 @@ class CommunityReportController extends Controller
     {
         $timeline = [
             [
-                'label' => 'Reported',
+                'label' => 'Submitted',
                 'timestamp' => $report->created_at?->toIso8601String(),
                 'meta' => $report->created_at?->diffForHumans(),
                 'status' => 'created',
@@ -111,7 +112,7 @@ class CommunityReportController extends Controller
             ];
         } else {
             $timeline[] = [
-                'label' => ucfirst($report->status),
+                'label' => $report->status_label,
                 'timestamp' => $report->updated_at?->toIso8601String(),
                 'meta' => $report->updated_at?->diffForHumans(),
                 'status' => $report->status,
@@ -133,7 +134,7 @@ class CommunityReportController extends Controller
                 return [
                     'id' => $related->id,
                     'location' => $related->location,
-                    'status' => ucfirst($related->status),
+                    'status' => $related->status_label,
                     'timestamp' => $related->created_at?->diffForHumans(),
                 ];
             });

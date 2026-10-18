@@ -34,14 +34,15 @@ class DashboardController extends Controller
 
         // Reports by status for chart
         $pendingReports = Report::where('status', 'pending')->count();
+        $inProgressReports = Report::where('status', 'in_progress')->count();
         $resolvedReports = Report::where('status', 'resolved')->count();
         $rejectedReports = Report::where('status', 'rejected')->count();
 
         // Reports overview chart data (by status)
         $reportsChartData = [
-            'labels' => ['Pending', 'Resolved', 'Rejected'],
-            'data' => [$pendingReports, $resolvedReports, $rejectedReports],
-            'colors' => ['#eab308', '#16a34a', '#dc2626'],
+            'labels' => ['Pending', 'In Progress', 'Resolved', 'Rejected'],
+            'data' => [$pendingReports, $inProgressReports, $resolvedReports, $rejectedReports],
+            'colors' => ['#eab308', '#2563eb', '#16a34a', '#dc2626'],
         ];
 
         // User roles chart data
@@ -49,7 +50,7 @@ class DashboardController extends Controller
         $totalRegularUsers = User::where('is_admin', false)->count();
         $regularUserPercentage = $totalUsers > 0 ? round(($totalRegularUsers / $totalUsers) * 100, 1) : 0.0;
         $adminPercentage = $totalUsers > 0 ? round(($totalAdmins / $totalUsers) * 100, 1) : 0.0;
-        
+
         $usersChartData = [
             'labels' => ['Regular Users', 'Admins'],
             'data' => [$totalRegularUsers, $totalAdmins],

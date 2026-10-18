@@ -54,7 +54,7 @@
           </div>
           <div class="ml-auto">
             <span class="resident-home-status {{ $report->getStatusBadgeBgClass() }}" data-status="{{ $report->status }}">
-              {{ ucfirst($report->status) }}
+              {{ $report->status_label }}
             </span>
           </div>
         </div>

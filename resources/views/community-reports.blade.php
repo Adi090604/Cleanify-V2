@@ -28,6 +28,7 @@
         @php
           $total = \App\Models\Report::count();
           $pending = \App\Models\Report::where('status', 'pending')->count();
+          $inProgress = \App\Models\Report::where('status', 'in_progress')->count();
           $resolved = \App\Models\Report::where('status', 'resolved')->count();
         @endphp
         <div class="bg-white rounded-xl shadow-sm p-3 text-center border border-gray-100">
@@ -37,6 +38,10 @@
         <div class="bg-white rounded-xl shadow-sm p-3 text-center border border-gray-100">
           <p class="text-xs uppercase text-gray-500">Pending</p>
           <p class="text-xl font-semibold text-yellow-600">{{ $pending }}</p>
+        </div>
+        <div class="bg-white rounded-xl shadow-sm p-3 text-center border border-gray-100">
+          <p class="text-xs uppercase text-gray-500">In Progress</p>
+          <p class="text-xl font-semibold text-blue-600">{{ $inProgress }}</p>
         </div>
         <div class="bg-white rounded-xl shadow-sm p-3 text-center border border-gray-100">
           <p class="text-xs uppercase text-gray-500">Resolved</p>
@@ -121,7 +126,7 @@
               </div>
               <p class="text-sm text-gray-500 flex items-center gap-1"><i class="fas fa-map-marker-alt"></i>{{ $report->location }}</p>
             </div>
-            <span class="text-xs font-semibold px-3 py-1 rounded-full {{ $report->getStatusBadgeBgClass() }}">{{ ucfirst($report->status) }}</span>
+            <span class="text-xs font-semibold px-3 py-1 rounded-full {{ $report->getStatusBadgeBgClass() }}">{{ $report->status_label }}</span>
           </div>
           <p class="text-gray-700 mb-3">{{ Str::limit($report->description, 160) }}</p>
           @if($report->image_path)
@@ -516,7 +521,7 @@
       document.getElementById('detailAuthorName').textContent = data.author.name;
       document.getElementById('detailLocation').textContent = data.location;
       document.getElementById('detailDescription').textContent = data.description;
-      document.getElementById('detailStatusBadge').textContent = data.status;
+      document.getElementById('detailStatusBadge').textContent = data.status_label;
       document.getElementById('detailStatusBadge').className = `text-xs font-semibold px-3 py-1 rounded-full ${data.status_badge}`;
       document.getElementById('detailLikeCount').innerHTML = `<i class="fas fa-heart text-red-500 mr-1"></i>${data.likes_count}`;
       document.getElementById('detailCommentCount').innerHTML = `<i class="fas fa-comment text-blue-500 mr-1"></i>${data.comments_count}`;
@@ -549,7 +554,7 @@
       const timeline = document.getElementById('detailTimeline');
       timeline.innerHTML = data.timeline.map(item => `
         <li class="flex items-center gap-3">
-          <span class="w-2 h-2 rounded-full ${item.status === 'resolved' ? 'bg-green-600' : (item.status === 'rejected' ? 'bg-red-600' : 'bg-yellow-500')}"></span>
+          <span class="w-2 h-2 rounded-full ${item.status === 'resolved' ? 'bg-green-600' : (item.status === 'rejected' ? 'bg-red-600' : (item.status === 'in_progress' ? 'bg-blue-600' : 'bg-yellow-500'))}"></span>
           <div>
             <p class="font-semibold text-gray-800">${item.label}</p>
             <p class="text-xs text-gray-500">${item.meta ?? ''}</p>

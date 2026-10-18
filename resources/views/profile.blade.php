@@ -71,7 +71,7 @@
         </div>
         <div>
           <span class="text-sm font-medium px-3 py-1 rounded-full {{ $report->getStatusBadgeBgClass() }}">
-            {{ ucfirst($report->status) }}
+            {{ $report->status_label }}
           </span>
         </div>
       </div>

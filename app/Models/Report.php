@@ -12,6 +12,14 @@ class Report extends Model
 {
     public const PUBLIC_RESOLVED_RETENTION_HOURS = 72;
 
+    public const STATUS_PENDING = 'pending';
+
+    public const STATUS_IN_PROGRESS = 'in_progress';
+
+    public const STATUS_RESOLVED = 'resolved';
+
+    public const STATUS_REJECTED = 'rejected';
+
     protected $fillable = [
         'user_id',
         'location',
@@ -40,7 +48,7 @@ class Report extends Model
                 return;
             }
 
-            $report->resolved_at = $report->status === 'resolved' ? now() : null;
+            $report->resolved_at = $report->status === self::STATUS_RESOLVED ? now() : null;
         });
     }
 
@@ -50,9 +58,9 @@ class Report extends Model
     public function scopePubliclyVisible(Builder $query): Builder
     {
         return $query->where(function (Builder $query) {
-            $query->where('status', '!=', 'resolved')
+            $query->where('status', '!=', self::STATUS_RESOLVED)
                 ->orWhere(function (Builder $query) {
-                    $query->where('status', 'resolved')
+                    $query->where('status', self::STATUS_RESOLVED)
                         ->where('resolved_at', '>', now()->subHours(self::PUBLIC_RESOLVED_RETENTION_HOURS));
                 });
         });
@@ -79,10 +87,11 @@ class Report extends Model
      */
     public function getStatusBadgeClass(): string
     {
-        return match($this->status) {
-            'pending' => 'text-yellow-600',
-            'resolved' => 'text-green-600',
-            'rejected' => 'text-red-600',
+        return match ($this->status) {
+            self::STATUS_PENDING => 'text-yellow-600',
+            self::STATUS_IN_PROGRESS => 'text-blue-600',
+            self::STATUS_RESOLVED => 'text-green-600',
+            self::STATUS_REJECTED => 'text-red-600',
             default => 'text-gray-600',
         };
     }
@@ -92,12 +101,34 @@ class Report extends Model
      */
     public function getStatusBadgeBgClass(): string
     {
-        return match($this->status) {
-            'pending' => 'bg-yellow-100 text-yellow-800',
-            'resolved' => 'bg-green-100 text-green-800',
-            'rejected' => 'bg-red-100 text-red-800',
+        return match ($this->status) {
+            self::STATUS_PENDING => 'bg-yellow-100 text-yellow-800',
+            self::STATUS_IN_PROGRESS => 'bg-blue-100 text-blue-800',
+            self::STATUS_RESOLVED => 'bg-green-100 text-green-800',
+            self::STATUS_REJECTED => 'bg-red-100 text-red-800',
             default => 'bg-gray-100 text-gray-800',
         };
+    }
+
+    public function getStatusLabelAttribute(): string
+    {
+        return match ($this->status) {
+            self::STATUS_PENDING => 'Pending',
+            self::STATUS_IN_PROGRESS => 'In Progress',
+            self::STATUS_RESOLVED => 'Resolved',
+            self::STATUS_REJECTED => 'Rejected',
+            default => ucfirst(str_replace('_', ' ', $this->status)),
+        };
+    }
+
+    public function isPending(): bool
+    {
+        return $this->status === self::STATUS_PENDING;
+    }
+
+    public function isInProgress(): bool
+    {
+        return $this->status === self::STATUS_IN_PROGRESS;
     }
 
     /**
@@ -105,7 +136,7 @@ class Report extends Model
      */
     public function getPriorityBadgeClass(): string
     {
-        return match($this->priority ?? 'medium') {
+        return match ($this->priority ?? 'medium') {
             'critical' => 'bg-red-100 text-red-800',
             'high' => 'bg-orange-100 text-orange-800',
             'medium' => 'bg-yellow-100 text-yellow-800',

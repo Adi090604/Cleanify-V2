@@ -24,21 +24,165 @@
       <p class="text-gray-600 mt-1">Manage and resolve community reports</p>
     </div>
     <div class="flex w-full lg:w-auto max-w-lg">
-      <form action="{{ route('admin.reports') }}" method="GET" class="flex w-full">
-        <input id="reportSearchInput" type="text" name="search" value="{{ $search }}" class="flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Search reports...">
+      <form action="{{ route('admin.reports') }}" method="GET" class="flex w-full gap-2">
+        @if($priorityFilter)<input type="hidden" name="priority" value="{{ $priorityFilter }}">@endif
+        @if($reporterFilter)<input type="hidden" name="reporter_id" value="{{ $reporterFilter }}">@endif
+        @if($locationFilter)<input type="hidden" name="location" value="{{ $locationFilter }}">@endif
+        <select name="status" class="rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-transparent focus:outline-none focus:ring-2 focus:ring-green-500" aria-label="Filter reports by status" onchange="this.form.submit()">
+          <option value="">All statuses</option>
+          <option value="pending" @selected($statusFilter === 'pending')>Pending</option>
+          <option value="in_progress" @selected($statusFilter === 'in_progress')>In Progress</option>
+          <option value="resolved" @selected($statusFilter === 'resolved')>Resolved</option>
+          <option value="rejected" @selected($statusFilter === 'rejected')>Rejected</option>
+        </select>
+        <div class="flex min-w-0 flex-1">
+        <input id="reportSearchInput" type="text" name="search" value="{{ $search }}" class="min-w-0 flex-1 px-4 py-2 border border-gray-300 rounded-l-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Search reports...">
         <button type="submit" class="px-4 bg-green-600 text-white rounded-r-lg hover:bg-green-700 transition-colors duration-300">
           <i class="fas fa-search"></i>
         </button>
+        </div>
       </form>
     </div>
   </div>
 
-  <div class="admin-stat-grid grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 mb-5">
+  <div class="admin-stat-grid grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-5 mb-5">
     <x-admin.stat-card icon="fas fa-clock" title="Pending Reports" value="{{ $pendingReports }}" borderClass="border-l-4 border-yellow-500" iconWrapperClass="bg-yellow-100" iconColorClass="text-yellow-600" />
+    <x-admin.stat-card icon="fas fa-spinner" title="In Progress" value="{{ $inProgressReports }}" borderClass="border-l-4 border-blue-500" iconWrapperClass="bg-blue-100" iconColorClass="text-blue-600" />
     <x-admin.stat-card icon="fas fa-check-circle" title="Resolved" value="{{ $resolvedReports }}" borderClass="border-l-4 border-green-500" iconWrapperClass="bg-green-100" iconColorClass="text-green-600" />
     <x-admin.stat-card icon="fas fa-times-circle" title="Rejected" value="{{ $rejectedReports }}" borderClass="border-l-4 border-red-500" iconWrapperClass="bg-red-100" iconColorClass="text-red-600" />
     <x-admin.stat-card icon="fas fa-chart-line" title="This Month" value="{{ $thisMonthReports }}" borderClass="border-l-4 border-blue-500" iconWrapperClass="bg-blue-100" iconColorClass="text-blue-600" />
   </div>
+
+  <section class="mb-5" aria-labelledby="reporting-insights-title">
+    <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <h3 id="reporting-insights-title" class="text-xl font-bold text-gray-800">Reporting Insights</h3>
+        <p class="text-sm text-gray-500">Reporter activity and recurring free-text report locations.</p>
+      </div>
+      @if($reporterFilter || $locationFilter || $search || $statusFilter || $priorityFilter)
+        <a href="{{ route('admin.reports') }}" class="text-sm font-semibold text-green-700 hover:text-green-800">Clear All Filters</a>
+      @endif
+    </div>
+
+    <div class="grid grid-cols-1 gap-4 xl:grid-cols-2">
+      <article class="rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div class="border-b border-gray-100 px-4 py-3">
+          <h4 class="font-semibold text-gray-800"><i class="fas fa-users mr-2 text-green-600"></i>Most Active Reporters</h4>
+        </div>
+        <div class="divide-y divide-gray-100">
+          @forelse($topReporters as $reporter)
+            @php
+              $topLocation = $mostReportedLocations->get($reporter->id);
+            @endphp
+            <a href="{{ route('admin.reports', array_merge(request()->except(['page', 'report', 'reporter_id']), ['reporter_id' => $reporter->id])) }}" class="block px-4 py-3 transition hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-green-500">
+              <div class="flex flex-col justify-between gap-2 sm:flex-row sm:items-start">
+                <div class="min-w-0">
+                  <p class="truncate font-semibold text-gray-900">{{ $reporter->name }}</p>
+                  <p class="text-xs text-gray-500">Current Service Area: {{ $reporter->service_area ?: 'Not set' }}</p>
+                  <p class="mt-1 text-xs text-gray-500">Most Reported Location: {{ $topLocation?->location_name ?: 'No location data' }}</p>
+                </div>
+                <div class="shrink-0 text-left sm:text-right">
+                  <p class="font-semibold text-green-700">{{ $reporter->reports_count }} {{ Str::plural('report', $reporter->reports_count) }}</p>
+                  <p class="text-xs text-gray-500">Latest {{ $reporter->latest_report_at ? \Carbon\Carbon::parse($reporter->latest_report_at)->format('M d, Y') : '—' }}</p>
+                </div>
+              </div>
+              <div class="mt-2 flex flex-wrap gap-1.5 text-xs">
+                <span class="rounded-full bg-yellow-50 px-2 py-1 text-yellow-700">Pending {{ $reporter->pending_reports_count }}</span>
+                <span class="rounded-full bg-blue-50 px-2 py-1 text-blue-700">In Progress {{ $reporter->in_progress_reports_count }}</span>
+                <span class="rounded-full bg-green-50 px-2 py-1 text-green-700">Resolved {{ $reporter->resolved_reports_count }}</span>
+                <span class="rounded-full bg-red-50 px-2 py-1 text-red-700">Rejected {{ $reporter->rejected_reports_count }}</span>
+              </div>
+            </a>
+          @empty
+            <p class="px-4 py-8 text-center text-sm text-gray-500">No reporter activity yet.</p>
+          @endforelse
+        </div>
+        <div class="border-t border-gray-100 px-4 py-3 text-right">
+          <a href="{{ route('admin.reports.reporters') }}" class="inline-flex items-center gap-2 text-sm font-semibold text-green-700 hover:text-green-900">
+            View All Reporters <i class="fas fa-arrow-right text-xs"></i>
+          </a>
+        </div>
+      </article>
+
+      <article class="rounded-xl border border-gray-200 bg-white shadow-sm">
+        <div class="border-b border-gray-100 px-4 py-3">
+          <h4 class="font-semibold text-gray-800"><i class="fas fa-map-marker-alt mr-2 text-green-600"></i>Frequently Reported Locations</h4>
+        </div>
+        <div class="divide-y divide-gray-100">
+          @forelse($frequentLocations as $locationInsight)
+            <a href="{{ route('admin.reports', array_merge(request()->except(['page', 'report', 'location']), ['location' => $locationInsight->location_key])) }}" class="block px-4 py-3 transition hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-green-500">
+              <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                  <p class="truncate font-semibold text-gray-900">{{ $locationInsight->location_name }}</p>
+                  <p class="text-xs text-gray-500">{{ $locationInsight->unique_reporters }} unique {{ Str::plural('reporter', $locationInsight->unique_reporters) }}</p>
+                </div>
+                <div class="shrink-0 text-right">
+                  <p class="font-semibold text-green-700">{{ $locationInsight->total_reports }} {{ Str::plural('report', $locationInsight->total_reports) }}</p>
+                  <p class="text-xs text-gray-500">Latest {{ \Carbon\Carbon::parse($locationInsight->latest_report_at)->format('M d, Y') }}</p>
+                </div>
+              </div>
+              <div class="mt-2 flex flex-wrap gap-1.5 text-xs">
+                <span class="rounded-full bg-yellow-50 px-2 py-1 text-yellow-700">Pending {{ $locationInsight->pending_reports }}</span>
+                <span class="rounded-full bg-blue-50 px-2 py-1 text-blue-700">In Progress {{ $locationInsight->in_progress_reports }}</span>
+                <span class="rounded-full bg-green-50 px-2 py-1 text-green-700">Resolved {{ $locationInsight->resolved_reports }}</span>
+                <span class="rounded-full bg-red-50 px-2 py-1 text-red-700">Rejected {{ $locationInsight->rejected_reports }}</span>
+              </div>
+            </a>
+          @empty
+            <p class="px-4 py-8 text-center text-sm text-gray-500">No reported locations yet.</p>
+          @endforelse
+        </div>
+        <div class="border-t border-gray-100 px-4 py-3 text-right">
+          <a href="{{ route('admin.reports.locations') }}" class="inline-flex items-center gap-2 text-sm font-semibold text-green-700 hover:text-green-900">
+            View All Locations <i class="fas fa-arrow-right text-xs"></i>
+          </a>
+        </div>
+      </article>
+    </div>
+  </section>
+
+  @if($activeReporter || $activeLocationSummary)
+    <section class="mb-4 grid grid-cols-1 gap-3 {{ $activeReporter && $activeLocationSummary ? 'xl:grid-cols-2' : '' }}" aria-label="Active report filters">
+      @if($activeReporter)
+        @php
+          $reporterTopLocation = $mostReportedLocations->get($activeReporter->id);
+        @endphp
+        <article class="rounded-xl border border-green-200 bg-green-50 p-4">
+          <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+            <div>
+              <p class="text-xs font-bold uppercase tracking-wide text-green-700">Reporter History</p>
+              <h3 class="mt-1 text-lg font-bold text-gray-900">{{ $activeReporter->name }}</h3>
+              <p class="text-sm text-gray-600">{{ $activeReporter->reports_count }} reports submitted</p>
+            </div>
+            <a href="{{ route('admin.reports', request()->except(['page', 'report', 'reporter_id'])) }}" class="text-sm font-semibold text-green-700 hover:text-green-900">Clear Reporter Filter</a>
+          </div>
+          <dl class="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+            <div><dt class="text-gray-500">Current Service Area</dt><dd class="font-medium text-gray-800">{{ $activeReporter->service_area ?: 'Not set' }}</dd></div>
+            <div><dt class="text-gray-500">Most Reported Location</dt><dd class="font-medium text-gray-800">{{ $reporterTopLocation?->location_name ?: 'No location data' }}</dd></div>
+            <div><dt class="text-gray-500">Status</dt><dd class="font-medium text-gray-800">{{ $activeReporter->pending_reports_count }} pending · {{ $activeReporter->in_progress_reports_count }} in progress · {{ $activeReporter->resolved_reports_count }} resolved · {{ $activeReporter->rejected_reports_count }} rejected</dd></div>
+            <div><dt class="text-gray-500">Last Report</dt><dd class="font-medium text-gray-800">{{ $activeReporter->latest_report_at ? \Carbon\Carbon::parse($activeReporter->latest_report_at)->format('M d, Y') : '—' }}</dd></div>
+          </dl>
+        </article>
+      @endif
+
+      @if($activeLocationSummary)
+        <article class="rounded-xl border border-blue-200 bg-blue-50 p-4">
+          <div class="flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+            <div>
+              <p class="text-xs font-bold uppercase tracking-wide text-blue-700">Reported Location</p>
+              <h3 class="mt-1 text-lg font-bold text-gray-900">{{ $activeLocationSummary->location_name }}</h3>
+              <p class="text-sm text-gray-600">{{ $activeLocationSummary->total_reports }} reports · {{ $activeLocationSummary->unique_reporters }} unique reporters</p>
+            </div>
+            <a href="{{ route('admin.reports', request()->except(['page', 'report', 'location'])) }}" class="text-sm font-semibold text-blue-700 hover:text-blue-900">Clear Location Filter</a>
+          </div>
+          <dl class="mt-3 grid grid-cols-1 gap-2 text-sm sm:grid-cols-2">
+            <div><dt class="text-gray-500">Status</dt><dd class="font-medium text-gray-800">{{ $activeLocationSummary->pending_reports }} pending · {{ $activeLocationSummary->in_progress_reports }} in progress · {{ $activeLocationSummary->resolved_reports }} resolved · {{ $activeLocationSummary->rejected_reports }} rejected</dd></div>
+            <div><dt class="text-gray-500">Latest Report</dt><dd class="font-medium text-gray-800">{{ \Carbon\Carbon::parse($activeLocationSummary->latest_report_at)->format('M d, Y') }}</dd></div>
+          </dl>
+        </article>
+      @endif
+    </section>
+  @endif
 
   <div class="admin-table-card bg-white rounded-xl shadow-sm overflow-hidden">
     <div class="overflow-x-auto">
@@ -104,19 +248,27 @@
                 @php
                   $statusBadgeClass = match($report->status) {
                     'pending' => 'bg-yellow-50 text-yellow-700 ring-yellow-600/20',
+                    'in_progress' => 'bg-blue-50 text-blue-700 ring-blue-600/20',
                     'resolved' => 'bg-green-50 text-green-700 ring-green-600/20',
                     'rejected' => 'bg-red-50 text-red-700 ring-red-600/20',
                     default => 'bg-gray-100 text-gray-700 ring-gray-500/20',
                   };
                 @endphp
                 <span class="admin-status-badge ring-1 ring-inset {{ $statusBadgeClass }}">
-                  <i class="fas fa-circle text-xs mr-1"></i>{{ ucfirst($report->status) }}
+                  <i class="fas fa-circle text-xs mr-1"></i>{{ $report->status_label }}
                 </span>
               </td>
               <td class="px-4 py-3 text-gray-600">{{ $report->created_at->format('M d, Y') }}</td>
               <td class="px-4 py-3">
                 <div class="flex space-x-2">
                   @if($report->status === 'pending')
+                    <button onclick="openInProgressModal({{ $report->id }})" class="admin-icon-button bg-blue-500 text-white hover:bg-blue-600" title="Mark In Progress">
+                      <i class="fas fa-spinner text-xs"></i>
+                    </button>
+                    <button onclick="openRejectModal({{ $report->id }})" class="admin-icon-button bg-red-500 text-white hover:bg-red-600" title="Reject">
+                      <i class="fas fa-times text-xs"></i>
+                    </button>
+                  @elseif($report->status === 'in_progress')
                     <button onclick="openResolveModal({{ $report->id }})" class="admin-icon-button bg-green-500 text-white hover:bg-green-600" title="Resolve">
                       <i class="fas fa-check text-xs"></i>
                     </button>
@@ -127,7 +279,7 @@
                   <button onclick="openReportView({{ $report->id }})" class="admin-icon-button bg-blue-500 text-white hover:bg-blue-600" title="View">
                     <i class="fas fa-eye text-xs"></i>
                   </button>
-                  <button type="button" onclick="openDeleteReportModal({{ $report->id }})" class="admin-icon-button bg-red-500 text-white hover:bg-red-600" title="Delete permanently">
+                  <button type="button" data-delete-report-url="{{ route('admin.reports.destroy', $report) }}" onclick="openDeleteReportModal(this.dataset.deleteReportUrl)" class="admin-icon-button bg-red-500 text-white hover:bg-red-600" title="Delete permanently">
                     <i class="fas fa-trash-alt text-xs"></i>
                   </button>
                 </div>
@@ -155,7 +307,7 @@
           @endif
         </div>
         <div class="flex items-center">
-          {{ $reports->appends(['search' => $search, 'status' => $statusFilter])->links('pagination::tailwind') }}
+          {{ $reports->links('pagination::tailwind') }}
         </div>
       </div>
     </div>
@@ -199,8 +351,24 @@
         <button onclick="closeModal('viewReportModal')" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-300">
           <i class="fas fa-times mr-2"></i>Close
         </button>
-        <button onclick="openResolveModalFromView()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-300">
+        <button id="viewReportInProgressButton" onclick="openInProgressModalFromView()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-300">
+          <i class="fas fa-spinner mr-2"></i>Mark In Progress
+        </button>
+        <button id="viewReportResolveButton" onclick="openResolveModalFromView()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors duration-300">
           <i class="fas fa-check mr-2"></i>Mark as Resolved
+        </button>
+      </div>
+    @endslot
+  </x-modal>
+
+  <x-modal id="inProgressReportModal" title="Mark Report In Progress" icon="fas fa-spinner" color="blue" variant="confirmation">
+    <p>This confirms that the reported garbage issue has been acknowledged and is currently being handled.</p>
+    <form id="inProgressReportForm" method="POST">@csrf</form>
+    @slot('footer')
+      <div class="admin-confirm-actions">
+        <button type="button" onclick="closeModal('inProgressReportModal')" class="admin-btn-secondary">Cancel</button>
+        <button type="submit" form="inProgressReportForm" class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700">
+          <i class="fas fa-spinner mr-2"></i>Mark In Progress
         </button>
       </div>
     @endslot
@@ -284,7 +452,7 @@
         <button type="button" onclick="closeModal('deleteReportModal')" class="admin-btn-secondary">
           Cancel
         </button>
-        <button type="submit" form="deleteReportForm" class="admin-btn-danger">
+        <button type="submit" form="deleteReportForm" id="confirmDeleteReportButton" class="admin-btn-danger" disabled>
           <i class="fas fa-trash mr-2"></i>Delete Report
         </button>
       </div>
@@ -335,19 +503,17 @@
       document.getElementById('viewReportCoordinates').textContent = hasCoordinates ? `${Number(report.latitude).toFixed(8)}, ${Number(report.longitude).toFixed(8)}` : 'Location not available';
       
       const statusElement = document.getElementById('viewReportStatus');
-      const statusClass = report.status === 'pending' ? 'text-yellow-600' : 
+      const statusClass = report.status === 'pending' ? 'text-yellow-600' :
+                         report.status === 'in_progress' ? 'text-blue-600' :
                          report.status === 'resolved' ? 'text-green-600' : 'text-red-600';
       statusElement.className = `mt-1 font-semibold ${statusClass}`;
-      statusElement.innerHTML = `<i class="fas fa-circle text-xs mr-1"></i>${report.status.charAt(0).toUpperCase() + report.status.slice(1)}`;
+      statusElement.innerHTML = `<i class="fas fa-circle text-xs mr-1"></i>${report.status.replace('_', ' ').replace(/\b\w/g, letter => letter.toUpperCase())}`;
       
       document.getElementById('viewReportDate').textContent = report.created_at;
       document.getElementById('viewReportDescription').textContent = report.description;
       
-      // Show/hide resolve button based on status
-      const resolveBtn = document.querySelector('#viewReportModal [onclick="openResolveModalFromView()"]');
-      if (resolveBtn) {
-        resolveBtn.style.display = report.status === 'pending' ? 'inline-block' : 'none';
-      }
+      document.getElementById('viewReportInProgressButton').style.display = report.status === 'pending' ? 'inline-block' : 'none';
+      document.getElementById('viewReportResolveButton').style.display = report.status === 'in_progress' ? 'inline-block' : 'none';
       
       openModal('viewReportModal');
       const mapSection = document.getElementById('viewReportMapSection');
@@ -376,6 +542,12 @@
       openModal('resolveReportModal');
     }
 
+    function openInProgressModal(id) {
+      currentReportId = id;
+      document.getElementById('inProgressReportForm').action = `/admin/reports/${id}/in-progress`;
+      openModal('inProgressReportModal');
+    }
+
     function openRejectModal(id) {
       currentReportId = id;
       const form = document.getElementById('rejectReportForm');
@@ -384,15 +556,43 @@
       openModal('rejectReportModal');
     }
 
-    function openDeleteReportModal(id) {
+    function openDeleteReportModal(deleteUrl) {
       const form = document.getElementById('deleteReportForm');
-      form.action = `/admin/reports/${id}`;
+      const confirmButton = document.getElementById('confirmDeleteReportButton');
+      if (!form || !deleteUrl) return;
+
+      form.setAttribute('action', deleteUrl);
+      form.dataset.ready = 'true';
+      form.dataset.submitting = 'false';
+      if (confirmButton) {
+        confirmButton.disabled = false;
+        confirmButton.innerHTML = '<i class="fas fa-trash mr-2"></i>Delete Report';
+      }
       openModal('deleteReportModal');
     }
+
+    document.getElementById('deleteReportForm')?.addEventListener('submit', function(event) {
+      if (this.dataset.ready !== 'true' || !this.getAttribute('action') || this.dataset.submitting === 'true') {
+        event.preventDefault();
+        return;
+      }
+
+      this.dataset.submitting = 'true';
+      const confirmButton = document.getElementById('confirmDeleteReportButton');
+      if (confirmButton) {
+        confirmButton.disabled = true;
+        confirmButton.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Deleting...';
+      }
+    });
 
     function openResolveModalFromView() {
       closeModal('viewReportModal');
       setTimeout(() => openResolveModal(currentReportId), 300);
+    }
+
+    function openInProgressModalFromView() {
+      closeModal('viewReportModal');
+      setTimeout(() => openInProgressModal(currentReportId), 300);
     }
 
     if (selectedReportId) {
