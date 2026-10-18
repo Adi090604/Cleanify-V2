@@ -44,17 +44,17 @@ class ProfileController extends Controller
     public function update(Request $request, ProfilePhotoService $profilePhotos): JsonResponse|RedirectResponse
     {
         // Check if request wants JSON (AJAX request) - check early
-        $wantsJson = $request->expectsJson() 
-            || $request->wantsJson() 
+        $wantsJson = $request->expectsJson()
+            || $request->wantsJson()
             || $request->ajax()
             || $request->header('X-Requested-With') === 'XMLHttpRequest'
             || $request->header('Accept') === 'application/json';
-        
+
         try {
             // Validate with proper error handling
             $validated = $request->validate([
                 'name' => ['required', 'string', 'max:255'],
-                'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,' . Auth::id()],
+                'email' => ['required', 'string', 'email', 'max:255', 'unique:users,email,'.Auth::id()],
                 'phone' => ['nullable', 'string', 'max:20'],
                 'address' => ['nullable', 'string', 'max:255'],
                 'profile_photo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:4096'],
@@ -122,22 +122,29 @@ class ProfileController extends Controller
             ], 403);
         }
 
+        $request->merge([
+            'barangay' => is_string($request->barangay) ? trim($request->barangay) : $request->barangay,
+            'location' => is_string($request->location) ? trim($request->location) : $request->location,
+        ]);
+
         $validated = $request->validate([
             'description' => ['required', 'string', 'max:1000'],
+            'barangay' => ['required', 'string', 'max:255'],
             'location' => ['required', 'string', 'max:255'],
             'image' => ['nullable', 'image', 'mimes:jpeg,jpg,png,gif,webp', 'max:5120'], // 5MB max
         ]);
 
         $report->description = $validated['description'];
+        $report->barangay = $validated['barangay'];
         $report->location = $validated['location'];
 
         // Handle image upload if provided
         if ($request->hasFile('image')) {
             $file = $request->file('image');
-            
+
             // Additional MIME type validation
             $allowedMimes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-            if (!in_array($file->getMimeType(), $allowedMimes)) {
+            if (! in_array($file->getMimeType(), $allowedMimes)) {
                 return response()->json([
                     'success' => false,
                     'message' => 'Invalid image type. Only JPEG, PNG, GIF, and WebP are allowed.',
@@ -150,7 +157,7 @@ class ProfileController extends Controller
             }
 
             // Generate unique filename
-            $filename = uniqid() . '_' . time() . '.' . $file->getClientOriginalExtension();
+            $filename = uniqid().'_'.time().'.'.$file->getClientOriginalExtension();
             $imagePath = $file->storeAs('reports', $filename, 'public');
             $report->image_path = $imagePath;
         }

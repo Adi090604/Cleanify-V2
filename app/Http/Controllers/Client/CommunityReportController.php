@@ -15,7 +15,7 @@ class CommunityReportController extends Controller
      */
     public function index(): View
     {
-        $reports = Report::publiclyVisible()
+        $reports = Report::query()
             ->with(['user'])
             ->withCount(['likes', 'comments', 'followers'])
             ->latest()
@@ -55,6 +55,7 @@ class CommunityReportController extends Controller
                 'avatar_bg' => $report->user?->getAvatarBgClasses(),
                 'initial' => $report->user?->getAvatarInitial(),
             ],
+            'barangay' => $report->barangay,
             'location' => $report->location,
             'description' => $report->description,
             'status' => $report->status,
@@ -124,7 +125,7 @@ class CommunityReportController extends Controller
 
     private function relatedReports(Report $report)
     {
-        return Report::publiclyVisible()
+        return Report::query()
             ->where('id', '!=', $report->id)
             ->where('location', $report->location)
             ->latest()
@@ -133,6 +134,7 @@ class CommunityReportController extends Controller
             ->map(function ($related) {
                 return [
                     'id' => $related->id,
+                    'barangay' => $related->barangay,
                     'location' => $related->location,
                     'status' => $related->status_label,
                     'timestamp' => $related->created_at?->diffForHumans(),

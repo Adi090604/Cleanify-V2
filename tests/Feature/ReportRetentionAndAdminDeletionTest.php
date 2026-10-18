@@ -42,12 +42,13 @@ function enableSqliteFieldFunctionForAdminReports(): void
     });
 }
 
-test('web and API community feeds share the 72 hour public visibility rule', function () {
+test('the seventy two hour rule applies only to web and mobile Home feeds', function () {
     $this->travelTo(Carbon::parse('2026-09-15 12:00:00'));
     $owner = User::factory()->create();
     $viewer = User::factory()->create();
 
     $pending = retentionReport($owner);
+    $pending->forceFill(['created_at' => now()->subYear(), 'updated_at' => now()->subYear()])->saveQuietly();
     $rejected = retentionReport($owner, 'rejected');
     $newlyResolved = retentionReport($owner, 'resolved');
     $withinWindow = retentionReport($owner, 'resolved', now()->subHours(71)->subMinutes(59));
@@ -57,25 +58,38 @@ test('web and API community feeds share the 72 hour public visibility rule', fun
     $visibleIds = [$pending->id, $rejected->id, $newlyResolved->id, $withinWindow->id];
     $hiddenIds = [$atBoundary->id, $expired->id];
 
-    $this->actingAs($viewer)->get('/community-reports')
+    $this->actingAs($viewer)->get(route('dashboard'))
         ->assertOk()
-        ->assertViewHas('reports', function ($reports) use ($visibleIds, $hiddenIds) {
-            $ids = $reports->getCollection()->pluck('id');
+        ->assertViewHas('recentReports', function ($reports) use ($visibleIds, $hiddenIds) {
+            $ids = $reports->pluck('id');
 
             return collect($visibleIds)->every(fn ($id) => $ids->contains($id))
                 && collect($hiddenIds)->every(fn ($id) => ! $ids->contains($id));
         });
 
-    $apiIds = $this->actingAs($viewer, 'sanctum')->getJson('/api/v1/reports')
+    $communityIds = $this->actingAs($viewer)->get(route('community-reports'))
+        ->assertOk()
+        ->viewData('reports')
+        ->getCollection()
+        ->pluck('id')
+        ->all();
+    expect($communityIds)->toEqualCanonicalizing([...$visibleIds, ...$hiddenIds]);
+
+    $communityApiIds = $this->actingAs($viewer, 'sanctum')->getJson('/api/v1/reports')
+        ->assertOk()
+        ->json('data.*.id');
+    expect($communityApiIds)->toEqualCanonicalizing([...$visibleIds, ...$hiddenIds]);
+
+    $homeApiIds = $this->actingAs($viewer, 'sanctum')->getJson('/api/v1/reports/home')
         ->assertOk()
         ->json('data.*.id');
 
-    expect($apiIds)
+    expect($homeApiIds)
         ->toEqualCanonicalizing($visibleIds)
         ->and(Report::query()->whereKey($hiddenIds)->count())->toBe(2);
 });
 
-test('old resolved reports remain in owner history but not another users public feed', function () {
+test('old resolved reports remain in profile community and storage but not Home', function () {
     $owner = User::factory()->create();
     $viewer = User::factory()->create();
     $oldResolved = retentionReport($owner, 'resolved', now()->subHours(73));
@@ -86,11 +100,21 @@ test('old resolved reports remain in owner history but not another users public 
 
     $this->actingAs($viewer, 'sanctum')->getJson('/api/v1/reports')
         ->assertOk()
+        ->assertJsonFragment(['id' => $oldResolved->id]);
+
+    $this->actingAs($viewer, 'sanctum')->getJson('/api/v1/reports/home')
+        ->assertOk()
         ->assertJsonMissing(['id' => $oldResolved->id]);
+
+    $this->actingAs($viewer)->get(route('community-reports'))
+        ->assertOk()
+        ->assertViewHas('reports', fn ($reports) => $reports->contains('id', $oldResolved->id));
 
     $this->actingAs($owner)->get('/profile')
         ->assertOk()
         ->assertViewHas('userReports', fn ($reports) => $reports->contains('id', $oldResolved->id));
+
+    $this->assertDatabaseHas('reports', ['id' => $oldResolved->id]);
 });
 
 test('report status transitions maintain a dedicated resolution timestamp', function () {
@@ -122,6 +146,8 @@ test('admin reports retain old resolved reports and expose permanent deletion', 
     $response
         ->assertOk()
         ->assertViewHas('reports', fn ($reports) => $reports->contains('id', $oldResolved->id))
+        ->assertViewHas('topReporters', fn ($reporters) => $reporters->firstWhere('id', $owner->id)?->reports_count === 1)
+        ->assertViewHas('frequentLocations', fn ($locations) => $locations->first()?->total_reports === 1)
         ->assertSee('data-delete-report-url="'.route('admin.reports.destroy', $oldResolved).'"', false)
         ->assertSee('openDeleteReportModal(this.dataset.deleteReportUrl)', false)
         ->assertSee('Are you sure you want to permanently delete this report? This action cannot be undone.', false)

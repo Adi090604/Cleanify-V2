@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Report extends Model
 {
-    public const PUBLIC_RESOLVED_RETENTION_HOURS = 72;
+    public const HOME_FEED_RESOLVED_RETENTION_HOURS = 72;
 
     public const STATUS_PENDING = 'pending';
 
@@ -23,6 +23,7 @@ class Report extends Model
     protected $fillable = [
         'user_id',
         'location',
+        'barangay',
         'latitude',
         'longitude',
         'description',
@@ -53,15 +54,15 @@ class Report extends Model
     }
 
     /**
-     * Reports visible in the public community feed.
+     * Reports visible in the resident Home feed.
      */
-    public function scopePubliclyVisible(Builder $query): Builder
+    public function scopeVisibleOnHomeFeed(Builder $query): Builder
     {
         return $query->where(function (Builder $query) {
             $query->where('status', '!=', self::STATUS_RESOLVED)
                 ->orWhere(function (Builder $query) {
                     $query->where('status', self::STATUS_RESOLVED)
-                        ->where('resolved_at', '>', now()->subHours(self::PUBLIC_RESOLVED_RETENTION_HOURS));
+                        ->where('resolved_at', '>', now()->subHours(self::HOME_FEED_RESOLVED_RETENTION_HOURS));
                 });
         });
     }

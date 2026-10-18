@@ -28,6 +28,8 @@ Route::prefix('v1')->group(function (): void {
         Route::post('/notifications/{notification}/read', [NotificationController::class, 'markAsRead']);
         Route::delete('/notifications/{notification}', [NotificationController::class, 'destroy']);
         Route::get('/reports', [ReportController::class, 'index']);
+        Route::get('/reports/home', [ReportController::class, 'home']);
+        Route::get('/reports/{report}', [ReportController::class, 'show']);
         Route::post('/reports', [ReportController::class, 'store']);
         Route::post('/reports/{report}/like', [ReportController::class, 'toggleLike']);
         Route::get('/reports/{report}/comments', [ReportController::class, 'comments']);

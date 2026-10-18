@@ -72,6 +72,9 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('/reports', [App\Http\Controllers\Admin\ReportsController::class, 'index'])->name('reports');
     Route::get('/reports/reporters', [App\Http\Controllers\Admin\ReportsController::class, 'reporters'])->name('reports.reporters');
     Route::get('/reports/locations', [App\Http\Controllers\Admin\ReportsController::class, 'locations'])->name('reports.locations');
+    Route::get('/reports/barangays', [App\Http\Controllers\Admin\ReportsController::class, 'barangays'])->name('reports.barangays');
+    Route::get('/reports/hotspots', [App\Http\Controllers\Admin\ReportsController::class, 'hotspots'])->name('reports.hotspots');
+    Route::get('/reports/hotspots/reports', [App\Http\Controllers\Admin\ReportsController::class, 'hotspotReports'])->name('reports.hotspots.reports');
     Route::post('/reports/{report}/in-progress', [App\Http\Controllers\Admin\ReportsController::class, 'markInProgress'])->name('reports.in-progress');
     Route::post('/reports/{id}/resolve', [App\Http\Controllers\Admin\ReportsController::class, 'resolve'])->name('reports.resolve');
     Route::post('/reports/{id}/reject', [App\Http\Controllers\Admin\ReportsController::class, 'reject'])->name('reports.reject');

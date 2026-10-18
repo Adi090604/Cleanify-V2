@@ -13,13 +13,14 @@ class ReportCreator
     {
         $imagePath = $image?->store('reports', 'public');
 
-        if ($image && !$imagePath) {
+        if ($image && ! $imagePath) {
             throw new RuntimeException('The image could not be saved. Please try another file.');
         }
 
         return Report::create([
             'user_id' => $user->id,
-            'location' => $validated['location'] ?? null,
+            'barangay' => $validated['barangay'],
+            'location' => $validated['location'],
             'latitude' => $validated['latitude'] ?? null,
             'longitude' => $validated['longitude'] ?? null,
             'description' => $validated['description'],

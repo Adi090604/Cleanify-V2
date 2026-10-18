@@ -162,7 +162,7 @@ test('admin can reject pending and in progress reports but not terminal reports'
     Notification::assertSentToTimes($owner, ReportRejectedNotification::class, 2);
 });
 
-test('in progress remains public at any age while resolved retention remains exactly seventy two hours', function () {
+test('in progress remains on Home at any age while resolved Home retention remains exactly seventy two hours', function () {
     $owner = User::factory()->create();
     $viewer = User::factory()->create();
     $inProgress = workflowReport($owner, [
@@ -174,11 +174,14 @@ test('in progress remains public at any age while resolved retention remains exa
     $atBoundary = workflowReport($owner, ['status' => Report::STATUS_RESOLVED]);
     $atBoundary->forceFill(['resolved_at' => now()->subHours(72)])->saveQuietly();
 
-    $webIds = $this->actingAs($viewer)->get(route('community-reports'))->assertOk()->viewData('reports')->pluck('id');
+    $webIds = $this->actingAs($viewer)->get(route('dashboard'))->assertOk()->viewData('recentReports')->pluck('id');
     expect($webIds)->toContain($inProgress->id, $withinWindow->id)->not->toContain($atBoundary->id);
 
-    $apiIds = $this->actingAs($viewer, 'sanctum')->getJson('/api/v1/reports')->assertOk()->json('data.*.id');
+    $apiIds = $this->actingAs($viewer, 'sanctum')->getJson('/api/v1/reports/home')->assertOk()->json('data.*.id');
     expect($apiIds)->toContain($inProgress->id, $withinWindow->id)->not->toContain($atBoundary->id);
+
+    $communityIds = $this->actingAs($viewer)->get(route('community-reports'))->assertOk()->viewData('reports')->pluck('id');
+    expect($communityIds)->toContain($inProgress->id, $withinWindow->id, $atBoundary->id);
 });
 
 test('resident web and mobile api render and serialize in progress reports', function () {

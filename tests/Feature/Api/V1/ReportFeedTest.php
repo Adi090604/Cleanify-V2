@@ -10,7 +10,8 @@ function mobileReport(array $attributes = []): Report
 {
     return Report::create(array_merge([
         'user_id' => User::factory()->create()->id,
-        'location' => 'Barangay Mabua',
+        'barangay' => 'Mabua',
+        'location' => 'Beside the public market',
         'description' => 'Uncollected waste beside the road.',
         'status' => 'pending',
         'priority' => 'medium',
@@ -19,11 +20,13 @@ function mobileReport(array $attributes = []): Report
 
 test('the mobile report feed requires Sanctum authentication', function () {
     $this->getJson('/api/v1/reports')->assertUnauthorized();
+    $this->getJson('/api/v1/reports/1')->assertUnauthorized();
 });
 
 test('an authenticated user receives real report fields with safe author data', function () {
     $viewer = User::factory()->create();
     $report = mobileReport([
+        'barangay' => 'Nabago',
         'location' => 'Zone 31',
         'latitude' => 9.80123456,
         'longitude' => 125.49234567,
@@ -38,6 +41,7 @@ test('an authenticated user receives real report fields with safe author data', 
         ->assertJsonPath('data.0.id', $report->id)
         ->assertJsonPath('data.0.author.name', $report->user->name)
         ->assertJsonPath('data.0.description', 'Overflowing community bin.')
+        ->assertJsonPath('data.0.barangay', 'Nabago')
         ->assertJsonPath('data.0.location', 'Zone 31')
         ->assertJsonPath('data.0.status', 'resolved')
         ->assertJsonPath('data.0.priority', 'high')

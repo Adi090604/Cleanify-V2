@@ -12,6 +12,7 @@ use App\Notifications\ReportRejectedNotification;
 use App\Notifications\ReportResolvedNotification;
 use App\Services\ActivityLogService;
 use App\Services\ReportDeletionService;
+use App\Services\ReportGeographyAnalytics;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -20,7 +21,7 @@ use Illuminate\View\View;
 
 class ReportsController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request, ReportGeographyAnalytics $geographyAnalytics): View
     {
         $query = Report::with(['user', 'resolver']);
         $selectedReportId = $request->integer('report');
@@ -84,6 +85,7 @@ class ReportsController extends Controller
             $topReporters->pluck('id')->when($activeReporter, fn ($ids) => $ids->push($activeReporter->id))->unique()
         );
         $frequentLocations = $this->locationInsightsQuery()->limit(5)->get();
+        $frequentBarangays = $geographyAnalytics->barangayInsightsQuery()->limit(5)->get();
         $activeLocationSummary = $locationFilter
             ? $this->locationSummary($locationFilter)
             : null;
@@ -112,6 +114,7 @@ class ReportsController extends Controller
             'topReporters' => $topReporters,
             'mostReportedLocations' => $mostReportedLocations,
             'frequentLocations' => $frequentLocations,
+            'frequentBarangays' => $frequentBarangays,
             'activeReporter' => $activeReporter,
             'activeLocationSummary' => $activeLocationSummary,
             'reporterFilter' => $activeReporter?->id,
@@ -164,6 +167,87 @@ class ReportsController extends Controller
             'activePage' => 'reports',
             'locations' => $locations,
             'search' => $search ?? '',
+        ]);
+    }
+
+    public function barangays(Request $request, ReportGeographyAnalytics $analytics): View
+    {
+        $search = $this->analyticsSearch($request->query('search'));
+        $query = $analytics->barangayInsightsQuery();
+
+        if ($search) {
+            $normalizedSearch = $analytics->normalize($search);
+            $query->whereRaw($analytics->normalizedSql('barangay').' LIKE ?', ["%{$normalizedSearch}%"]);
+        }
+
+        $barangays = $query->paginate(20)->withQueryString();
+
+        return view('admin.barangays', [
+            'activePage' => 'reports',
+            'barangays' => $barangays,
+            'search' => $search ?? '',
+        ]);
+    }
+
+    public function hotspots(Request $request, ReportGeographyAnalytics $analytics): View
+    {
+        $barangayKey = $analytics->normalize($request->query('barangay'));
+        abort_if(! $barangayKey, 404);
+
+        $barangay = $analytics->barangayInsightsQuery()
+            ->whereRaw($analytics->normalizedSql('barangay').' = ?', [$barangayKey])
+            ->first();
+        abort_if(! $barangay, 404);
+
+        $reports = $analytics->reportsForBarangay($barangayKey);
+        $hotspots = $analytics->hotspots($reports);
+
+        return view('admin.hotspots', [
+            'activePage' => 'reports',
+            'barangay' => $barangay,
+            'barangayKey' => $barangayKey,
+            'hotspots' => $hotspots,
+            'frequentHotspots' => $hotspots->where('is_frequent', true),
+            'otherHotspots' => $hotspots->where('is_frequent', false),
+            'frequentMinimum' => ReportGeographyAnalytics::FREQUENT_HOTSPOT_MINIMUM,
+        ]);
+    }
+
+    public function hotspotReports(Request $request, ReportGeographyAnalytics $analytics): View
+    {
+        $barangayKey = $analytics->normalize($request->query('barangay'));
+        $hotspotId = $request->query('hotspot');
+        abort_if(! $barangayKey || ! is_string($hotspotId) || ! preg_match('/\A(?:gps-\d+|landmark-[a-f0-9]{64})\z/', $hotspotId), 404);
+
+        $barangay = $analytics->barangayInsightsQuery()
+            ->whereRaw($analytics->normalizedSql('barangay').' = ?', [$barangayKey])
+            ->first();
+        abort_if(! $barangay, 404);
+
+        $hotspot = $analytics->hotspots($analytics->reportsForBarangay($barangayKey))
+            ->firstWhere('id', $hotspotId);
+        abort_if(! $hotspot, 404);
+
+        $reports = Report::query()
+            ->with('user:id,name,email')
+            ->whereIn('id', $hotspot->report_ids)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->get([
+                'id',
+                'user_id',
+                'location',
+                'description',
+                'status',
+                'created_at',
+            ]);
+
+        return view('admin.hotspot-reports', [
+            'activePage' => 'reports',
+            'barangay' => $barangay,
+            'barangayKey' => $barangayKey,
+            'hotspot' => $hotspot,
+            'reports' => $reports,
         ]);
     }
 

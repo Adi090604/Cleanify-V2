@@ -18,6 +18,7 @@ class ReportResource extends JsonResource
                 'initial' => $this->user?->getAvatarInitial() ?? 'C',
             ],
             'description' => $this->description,
+            'barangay' => $this->barangay,
             'location' => $this->location,
             'latitude' => $this->latitude !== null ? (float) $this->latitude : null,
             'longitude' => $this->longitude !== null ? (float) $this->longitude : null,

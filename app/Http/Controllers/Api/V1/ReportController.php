@@ -3,11 +3,12 @@
 namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\StoreReportRequest;
 use App\Http\Resources\Api\V1\ReportCommentResource;
 use App\Http\Resources\Api\V1\ReportResource;
-use App\Http\Requests\StoreReportRequest;
 use App\Models\Report;
 use App\Services\ReportCreator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
@@ -17,7 +18,27 @@ class ReportController extends Controller
 {
     public function index(Request $request): AnonymousResourceCollection
     {
-        $reports = Report::publiclyVisible()
+        return $this->reportFeed($request, Report::query());
+    }
+
+    public function home(Request $request): AnonymousResourceCollection
+    {
+        return $this->reportFeed($request, Report::visibleOnHomeFeed());
+    }
+
+    public function show(Request $request, Report $report): ReportResource
+    {
+        $report->load([
+            'user:id,name',
+            'likes' => fn ($query) => $query->where('user_id', $request->user()->id),
+        ])->loadCount(['likes', 'comments', 'followers']);
+
+        return ReportResource::make($report);
+    }
+
+    private function reportFeed(Request $request, Builder $query): AnonymousResourceCollection
+    {
+        $reports = $query
             ->with([
                 'user:id,name',
                 'likes' => fn ($query) => $query->where('user_id', $request->user()->id),

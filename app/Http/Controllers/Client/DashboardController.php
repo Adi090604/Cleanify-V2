@@ -16,7 +16,8 @@ class DashboardController extends Controller
     {
         $user = Auth::user();
 
-        $recentReports = Report::with([
+        $recentReports = Report::visibleOnHomeFeed()
+            ->with([
                 'user',
                 'likes:id,report_id,user_id',
                 'comments' => function ($query) {
@@ -42,4 +43,3 @@ class DashboardController extends Controller
         ]);
     }
 }
-

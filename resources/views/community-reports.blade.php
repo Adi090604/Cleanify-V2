@@ -60,10 +60,10 @@
           <div class="flex-1 space-y-3">
             <div>
               <div class="flex items-center justify-between gap-3 mb-2">
-                <p class="text-sm font-medium text-gray-700">Report location</p>
+                <p class="text-sm font-medium text-gray-700">GPS Location <span class="text-gray-400 font-normal">(optional)</span></p>
                 <button type="button" id="useMyLocationButton" class="inline-flex items-center gap-2 px-3 py-1.5 border border-green-600 text-green-600 rounded-lg hover:bg-green-50 transition text-xs font-medium">
                   <i class="fas fa-location-crosshairs" aria-hidden="true"></i>
-                  <span>Use My Location</span>
+                  <span>Use Current Location</span>
                 </button>
               </div>
               <div id="reportLocationMap" class="h-56 w-full rounded-lg border border-gray-200"></div>
@@ -75,8 +75,13 @@
               @error('longitude') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
             <div>
-              <label class="block text-sm font-medium text-gray-700 mb-2" for="reportLocationText">Location / Barangay <span class="text-gray-400 font-normal">(optional)</span></label>
-              <input id="reportLocationText" type="text" name="location" value="{{ old('location') }}" class="w-full border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 @error('location') border-red-500 @enderror" placeholder="e.g. Barangay Luna">
+              <label class="block text-sm font-medium text-gray-700 mb-2" for="reportBarangay">Barangay <span class="text-red-600">*</span></label>
+              <input id="reportBarangay" type="text" name="barangay" value="{{ old('barangay') }}" maxlength="255" required class="w-full border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 @error('barangay') border-red-500 @enderror" placeholder="Enter barangay">
+              @error('barangay') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-2" for="reportLocationText">Specific Location / Landmark <span class="text-red-600">*</span></label>
+              <input id="reportLocationText" type="text" name="location" value="{{ old('location') }}" maxlength="255" required class="w-full border border-gray-200 rounded-lg px-4 py-2 focus:outline-none focus:ring-2 focus:ring-green-500 @error('location') border-red-500 @enderror" placeholder="e.g. Purok 3, beside Barangay Hall">
               @error('location') <p class="text-sm text-red-600">{{ $message }}</p> @enderror
             </div>
             <textarea name="description" rows="3" class="w-full border border-gray-200 rounded-2xl px-4 py-3 focus:outline-none focus:ring-2 focus:ring-green-500 resize-none @error('description') border-red-500 @enderror" placeholder="Describe the issue..." required>{{ old('description') }}</textarea>
@@ -124,7 +129,7 @@
                   </button>
                 @endif
               </div>
-              <p class="text-sm text-gray-500 flex items-center gap-1"><i class="fas fa-map-marker-alt"></i>{{ $report->location }}</p>
+              <p class="text-sm text-gray-500 flex items-center gap-1"><i class="fas fa-map-marker-alt"></i>{{ $report->barangay ?: 'Barangay not recorded' }} · {{ $report->location ?: 'Location not recorded' }}</p>
             </div>
             <span class="text-xs font-semibold px-3 py-1 rounded-full {{ $report->getStatusBadgeBgClass() }}">{{ $report->status_label }}</span>
           </div>
@@ -216,13 +221,14 @@
         <div class="w-12 h-12 rounded-full bg-green-100 flex items-center justify-center font-bold text-green-700" id="detailAuthorAvatar">C</div>
         <div>
           <p class="font-semibold text-gray-800" id="detailAuthorName">Cleanify User</p>
-          <p class="text-sm text-gray-500 flex items-center gap-1">
-            <i class="fas fa-map-marker-alt"></i>
-            <span id="detailLocation">Location</span>
-          </p>
         </div>
         <span class="ml-auto text-xs font-semibold px-3 py-1 rounded-full bg-gray-100 text-gray-700" id="detailStatusBadge">Pending</span>
       </div>
+
+      <dl class="grid grid-cols-1 gap-3 rounded-lg bg-gray-50 p-4 sm:grid-cols-2">
+        <div><dt class="text-xs font-semibold uppercase tracking-wide text-gray-500">Barangay</dt><dd id="detailBarangay" class="mt-1 text-gray-800">Barangay not recorded</dd></div>
+        <div><dt class="text-xs font-semibold uppercase tracking-wide text-gray-500">Specific Location / Landmark</dt><dd id="detailLocation" class="mt-1 text-gray-800">Location not recorded</dd></div>
+      </dl>
 
       <p id="detailDescription" class="text-gray-700"></p>
       <img id="detailImage" src="" class="w-full rounded-lg hidden" alt="Report image">
@@ -331,7 +337,7 @@
           position => {
             const updated = setLocation(position.coords.latitude, position.coords.longitude);
             showLocationStatus(
-              updated ? 'Your current location is selected.' : 'Your browser returned an invalid location.',
+              updated ? '✓ GPS location attached' : 'Your browser returned an invalid location.',
               !updated,
             );
             useMyLocationButton.disabled = false;
@@ -519,7 +525,8 @@
       document.getElementById('detailAuthorAvatar').textContent = data.author.initial ?? 'C';
       document.getElementById('detailAuthorAvatar').className = `w-12 h-12 rounded-full flex items-center justify-center font-bold ${data.author.avatar_bg ?? 'bg-green-100 text-green-700'}`;
       document.getElementById('detailAuthorName').textContent = data.author.name;
-      document.getElementById('detailLocation').textContent = data.location;
+      document.getElementById('detailBarangay').textContent = data.barangay || 'Barangay not recorded';
+      document.getElementById('detailLocation').textContent = data.location || 'Location not recorded';
       document.getElementById('detailDescription').textContent = data.description;
       document.getElementById('detailStatusBadge').textContent = data.status_label;
       document.getElementById('detailStatusBadge').className = `text-xs font-semibold px-3 py-1 rounded-full ${data.status_badge}`;
@@ -580,7 +587,7 @@
         related.innerHTML = data.related.map(item => `
           <div class="flex items-center justify-between border border-gray-100 rounded-lg px-3 py-2">
             <div>
-              <p class="font-semibold text-gray-800">${item.location}</p>
+              <p class="font-semibold text-gray-800">${item.barangay || 'Barangay not recorded'} · ${item.location || 'Location not recorded'}</p>
               <p class="text-xs text-gray-500">${item.status} · ${item.timestamp}</p>
             </div>
             <button class="text-green-600 text-xs hover:underline" onclick="openReportDetail(${item.id})">Open</button>

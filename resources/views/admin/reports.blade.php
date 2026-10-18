@@ -57,7 +57,7 @@
     <div class="mb-3 flex flex-wrap items-center justify-between gap-2">
       <div>
         <h3 id="reporting-insights-title" class="text-xl font-bold text-gray-800">Reporting Insights</h3>
-        <p class="text-sm text-gray-500">Reporter activity and recurring free-text report locations.</p>
+        <p class="text-sm text-gray-500">Reporter activity and recurring report geography.</p>
       </div>
       @if($reporterFilter || $locationFilter || $search || $statusFilter || $priorityFilter)
         <a href="{{ route('admin.reports') }}" class="text-sm font-semibold text-green-700 hover:text-green-800">Clear All Filters</a>
@@ -106,35 +106,39 @@
 
       <article class="rounded-xl border border-gray-200 bg-white shadow-sm">
         <div class="border-b border-gray-100 px-4 py-3">
-          <h4 class="font-semibold text-gray-800"><i class="fas fa-map-marker-alt mr-2 text-green-600"></i>Frequently Reported Locations</h4>
+          <h4 class="font-semibold text-gray-800"><i class="fas fa-map-marked-alt mr-2 text-green-600"></i>Frequently Reported Barangays</h4>
         </div>
         <div class="divide-y divide-gray-100">
-          @forelse($frequentLocations as $locationInsight)
-            <a href="{{ route('admin.reports', array_merge(request()->except(['page', 'report', 'location']), ['location' => $locationInsight->location_key])) }}" class="block px-4 py-3 transition hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-green-500">
+          @forelse($frequentBarangays as $barangayInsight)
+            <a href="{{ route('admin.reports.hotspots', ['barangay' => $barangayInsight->barangay_key]) }}" class="block px-4 py-3 transition hover:bg-green-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-green-500">
               <div class="flex items-start justify-between gap-3">
                 <div class="min-w-0">
-                  <p class="truncate font-semibold text-gray-900">{{ $locationInsight->location_name }}</p>
-                  <p class="text-xs text-gray-500">{{ $locationInsight->unique_reporters }} unique {{ Str::plural('reporter', $locationInsight->unique_reporters) }}</p>
+                  <p class="truncate font-semibold text-gray-900">{{ $barangayInsight->barangay_name }}</p>
+                  <p class="text-xs text-gray-500">{{ $barangayInsight->unique_reporters }} unique {{ Str::plural('reporter', $barangayInsight->unique_reporters) }}</p>
                 </div>
                 <div class="shrink-0 text-right">
-                  <p class="font-semibold text-green-700">{{ $locationInsight->total_reports }} {{ Str::plural('report', $locationInsight->total_reports) }}</p>
-                  <p class="text-xs text-gray-500">Latest {{ \Carbon\Carbon::parse($locationInsight->latest_report_at)->format('M d, Y') }}</p>
+                  <p class="font-semibold text-green-700">{{ $barangayInsight->qualifying_reports }} qualifying {{ Str::plural('report', $barangayInsight->qualifying_reports) }}</p>
+                  <p class="text-xs text-gray-500">{{ $barangayInsight->total_reports }} total · Latest {{ \Carbon\Carbon::parse($barangayInsight->latest_report_at)->format('M d, Y') }}</p>
                 </div>
               </div>
               <div class="mt-2 flex flex-wrap gap-1.5 text-xs">
-                <span class="rounded-full bg-yellow-50 px-2 py-1 text-yellow-700">Pending {{ $locationInsight->pending_reports }}</span>
-                <span class="rounded-full bg-blue-50 px-2 py-1 text-blue-700">In Progress {{ $locationInsight->in_progress_reports }}</span>
-                <span class="rounded-full bg-green-50 px-2 py-1 text-green-700">Resolved {{ $locationInsight->resolved_reports }}</span>
-                <span class="rounded-full bg-red-50 px-2 py-1 text-red-700">Rejected {{ $locationInsight->rejected_reports }}</span>
+                <span class="rounded-full bg-yellow-50 px-2 py-1 text-yellow-700">Pending {{ $barangayInsight->pending_reports }}</span>
+                <span class="rounded-full bg-blue-50 px-2 py-1 text-blue-700">In Progress {{ $barangayInsight->in_progress_reports }}</span>
+                <span class="rounded-full bg-green-50 px-2 py-1 text-green-700">Resolved {{ $barangayInsight->resolved_reports }}</span>
+                <span class="rounded-full bg-red-50 px-2 py-1 text-red-700">Rejected {{ $barangayInsight->rejected_reports }}</span>
               </div>
             </a>
           @empty
-            <p class="px-4 py-8 text-center text-sm text-gray-500">No reported locations yet.</p>
+            <p class="px-4 py-8 text-center text-sm text-gray-500">No reported Barangays yet.</p>
           @endforelse
         </div>
-        <div class="border-t border-gray-100 px-4 py-3 text-right">
-          <a href="{{ route('admin.reports.locations') }}" class="inline-flex items-center gap-2 text-sm font-semibold text-green-700 hover:text-green-900">
-            View All Locations <i class="fas fa-arrow-right text-xs"></i>
+        <div class="flex flex-wrap justify-end gap-x-4 gap-y-2 border-t border-gray-100 px-4 py-3 text-right">
+          @if($frequentLocations->isEmpty())
+            <span class="mr-auto text-xs text-gray-500">No reported locations yet.</span>
+          @endif
+          <a href="{{ route('admin.reports.locations') }}" class="text-sm font-semibold text-gray-600 hover:text-gray-900">View All Locations</a>
+          <a href="{{ route('admin.reports.barangays') }}" class="inline-flex items-center gap-2 text-sm font-semibold text-green-700 hover:text-green-900">
+            View All Barangays <i class="fas fa-arrow-right text-xs"></i>
           </a>
         </div>
       </article>
@@ -189,7 +193,7 @@
       <table class="w-full" id="reportsTable">
         <thead>
           <tr class="admin-table-header">
-            @foreach (['#','Reporter','Location','Description','Image','Status','Date Reported','Actions'] as $heading)
+            @foreach (['#','Reporter','Report Location','Description','Image','Status','Date Reported','Actions'] as $heading)
               <th class="px-4 py-3 text-left text-sm font-semibold">{{ $heading }}</th>
             @endforeach
           </tr>
@@ -200,6 +204,7 @@
               'id' => $report->id,
               'reporter' => $report->user?->name ?? 'Unknown User',
               'email' => $report->user?->email ?? 'N/A',
+              'barangay' => $report->barangay,
               'location' => $report->location,
               'latitude' => $report->latitude,
               'longitude' => $report->longitude,
@@ -233,7 +238,10 @@
                   @endif
                 </div>
               </td>
-              <td class="px-4 py-3 text-gray-600">{{ $report->location }}</td>
+              <td class="px-4 py-3 text-gray-600">
+                <p class="font-medium text-gray-800">{{ $report->barangay ?: 'Barangay not recorded' }}</p>
+                <p class="mt-1 text-xs">{{ $report->location ?: 'Location not recorded' }}</p>
+              </td>
               <td class="px-4 py-3 text-gray-600 max-w-xs truncate">{{ $report->description }}</td>
               <td class="px-4 py-3">
                 @if($report->image_path)
@@ -327,7 +335,11 @@
           <p id="viewReportReporter" class="mt-1 text-lg font-semibold"></p>
         </div>
         <div>
-          <label class="block text-sm font-medium text-gray-700">Location</label>
+          <label class="block text-sm font-medium text-gray-700">Barangay</label>
+          <p id="viewReportBarangay" class="mt-1 text-gray-900"></p>
+        </div>
+        <div>
+          <label class="block text-sm font-medium text-gray-700">Specific Location / Landmark</label>
           <p id="viewReportLocation" class="mt-1 text-gray-900"></p>
         </div>
         <div><label class="block text-sm font-medium text-gray-700">Coordinates</label><p id="viewReportCoordinates" class="mt-1 text-gray-900"></p></div>
@@ -498,7 +510,8 @@
       } else { imageLink.classList.add('hidden'); imageEmpty.textContent = 'No photo attached'; imageEmpty.classList.remove('hidden'); }
       
       document.getElementById('viewReportReporter').textContent = `${report.reporter} (${report.email})`;
-      document.getElementById('viewReportLocation').textContent = report.location;
+      document.getElementById('viewReportBarangay').textContent = report.barangay || 'Barangay not recorded';
+      document.getElementById('viewReportLocation').textContent = report.location || 'Location not recorded';
       const hasCoordinates = report.latitude !== null && report.latitude !== undefined && report.longitude !== null && report.longitude !== undefined;
       document.getElementById('viewReportCoordinates').textContent = hasCoordinates ? `${Number(report.latitude).toFixed(8)}, ${Number(report.longitude).toFixed(8)}` : 'Location not available';
       

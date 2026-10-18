@@ -16,7 +16,8 @@ test('an authenticated user can create a pending report with the web fields', fu
     $user = User::factory()->create();
 
     $response = $this->actingAs($user, 'sanctum')->postJson('/api/v1/reports', [
-        'location' => 'Barangay Mabua',
+        'barangay' => 'Mabua',
+        'location' => 'Beside the public market',
         'latitude' => 9.78701234,
         'longitude' => 125.49281234,
         'description' => 'Waste has not been collected.',
@@ -27,7 +28,8 @@ test('an authenticated user can create a pending report with the web fields', fu
 
     $report = Report::findOrFail($response->json('data.id'));
     expect($report->user_id)->toBe($user->id)
-        ->and($report->location)->toBe('Barangay Mabua')
+        ->and($report->barangay)->toBe('Mabua')
+        ->and($report->location)->toBe('Beside the public market')
         ->and((float) $report->latitude)->toBe(9.78701234)
         ->and((float) $report->longitude)->toBe(125.49281234);
 });
@@ -40,7 +42,7 @@ test('report creation enforces existing description coordinate and image validat
         'longitude' => 181,
         'image' => UploadedFile::fake()->create('document.pdf', 10, 'application/pdf'),
     ])->assertUnprocessable()
-        ->assertJsonValidationErrors(['description', 'latitude', 'longitude', 'image']);
+        ->assertJsonValidationErrors(['barangay', 'location', 'description', 'latitude', 'longitude', 'image']);
 });
 
 test('report photo is stored on the public reports disk and serialized in the feed', function () {
@@ -48,6 +50,8 @@ test('report photo is stored on the public reports disk and serialized in the fe
     $user = User::factory()->create();
 
     $response = $this->actingAs($user, 'sanctum')->post('/api/v1/reports', [
+        'barangay' => 'Nabago',
+        'location' => 'Purok 3, beside Barangay Hall',
         'description' => 'Photo report.',
         'image' => UploadedFile::fake()->image('waste.jpg'),
     ], ['Accept' => 'application/json'])->assertCreated();

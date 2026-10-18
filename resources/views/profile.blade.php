@@ -78,9 +78,10 @@
 
       <!-- Post Content -->
       <p class="text-gray-700 mb-4" id="report-description-{{ $report->id }}">{{ $report->description }}</p>
-      <p class="text-sm text-gray-500 mb-4">
-        <i class="fas fa-map-marker-alt mr-2"></i>{{ $report->location }}
-      </p>
+      <div class="mb-4 space-y-1 text-sm text-gray-500">
+        <p><i class="fas fa-map-marker-alt mr-2"></i><span class="font-medium">Barangay:</span> {{ $report->barangay ?: 'Barangay not recorded' }}</p>
+        <p><i class="fas fa-landmark mr-2"></i><span class="font-medium">Specific Location / Landmark:</span> {{ $report->location ?: 'Location not recorded' }}</p>
+      </div>
       @if($report->image_path)
         <img src="{{ asset('storage/' . $report->image_path) }}" alt="Post Image" class="w-full rounded-lg mb-4" id="report-image-{{ $report->id }}" onerror="this.style.display='none'">
       @endif
@@ -164,8 +165,12 @@
       @csrf
       @method('PATCH')
       <div class="mb-4">
-        <label class="block text-gray-700 mb-2">Location</label>
-        <input type="text" name="location" id="editPostLocation" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" required>
+        <label class="block text-gray-700 mb-2">Barangay *</label>
+        <input type="text" name="barangay" id="editPostBarangay" maxlength="255" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="Enter barangay" required>
+      </div>
+      <div class="mb-4">
+        <label class="block text-gray-700 mb-2">Specific Location / Landmark *</label>
+        <input type="text" name="location" id="editPostLocation" maxlength="255" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="e.g. Purok 3, beside Barangay Hall" required>
       </div>
       <div class="mb-4">
         <label class="block text-gray-700 mb-2">Description</label>
@@ -233,6 +238,7 @@
     document.getElementById(`postDropdown${reportId}`)?.classList.add('hidden');
     
     if (report[reportId]) {
+      document.getElementById('editPostBarangay').value = report[reportId].barangay ?? '';
       document.getElementById('editPostLocation').value = report[reportId].location;
       document.getElementById('editPostDescription').value = report[reportId].description;
       document.getElementById('editPostForm').action = `/profile/reports/${reportId}`;
