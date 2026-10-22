@@ -69,6 +69,7 @@
             <div><span>Service assignment</span><strong id="detailRoute"></strong></div>
             <div><span>Last updated</span><strong id="detailLastUpdated"></strong></div>
             <div><span>Map location</span><strong id="detailLocation"></strong></div>
+            <div><span>Coverage Radius</span><strong id="detailCoverageRadius"></strong></div>
           </div>
           <div class="resident-tracker-selected-actions">
             <button id="detailFocusBtn" type="button" class="resident-tracker-focus-button">
@@ -151,6 +152,7 @@
               'status' => $truck->status,
               'formatted_status' => $truck->formatted_status,
               'status_badge' => $truck->getStatusBadgeClass(),
+              'coverage_radius_meters' => $truck->coverage_radius_meters,
               'latitude' => $truck->latitude,
               'longitude' => $truck->longitude,
               'last_updated' => $truck->last_updated ? $truck->last_updated->toIso8601String() : null,
@@ -160,7 +162,6 @@
     @endphp
     const initialTrucks = @json($initialTrucks);
 
-    const zones = @json($zones);
     const map = L.map('map').setView([{{ $centerLat }}, {{ $centerLng }}], 13);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       attribution: '&copy; OpenStreetMap contributors',
@@ -188,9 +189,10 @@
     };
 
     const markers = {};
+    const coverageCircles = {};
+    const coverageCircleLayer = L.layerGroup().addTo(map);
     const clusterGroup = L.markerClusterGroup({ showCoverageOnHover: false });
     map.addLayer(clusterGroup);
-    const zoneLayers = {};
     const truckDetailPanel = document.getElementById('truckDetailPanel');
     const detailTruckName = document.getElementById('detailTruckName');
     const detailStatusBadge = document.getElementById('detailStatusBadge');
@@ -198,11 +200,61 @@
     const detailRoute = document.getElementById('detailRoute');
     const detailLastUpdated = document.getElementById('detailLastUpdated');
     const detailLocation = document.getElementById('detailLocation');
+    const detailCoverageRadius = document.getElementById('detailCoverageRadius');
     const detailFocusBtn = document.getElementById('detailFocusBtn');
     let selectedTruckId = null;
     let truckCache = {};
     let countdown = 30;
     let countdownInterval = null;
+
+    const hasValidTruckCoordinates = (truck) => {
+      if (truck?.latitude === null || truck?.latitude === '' || truck?.longitude === null || truck?.longitude === '') {
+        return false;
+      }
+      const latitude = Number(truck?.latitude);
+      const longitude = Number(truck?.longitude);
+      return Number.isFinite(latitude) && Number.isFinite(longitude)
+        && latitude >= -90 && latitude <= 90
+        && longitude >= -180 && longitude <= 180;
+    };
+
+    const formatCoverageRadius = (value) => {
+      const radius = Number(value);
+      if (!Number.isFinite(radius) || radius <= 0) return 'Not configured';
+      return radius >= 1000 ? `${Number((radius / 1000).toFixed(1))} km` : `${radius} m`;
+    };
+
+    const removeCoverageCircle = (truckId) => {
+      const circle = coverageCircles[truckId];
+      if (!circle) return;
+      coverageCircleLayer.removeLayer(circle);
+      delete coverageCircles[truckId];
+    };
+
+    const upsertCoverageCircle = (truck, latitude, longitude) => {
+      const radius = Number(truck.coverage_radius_meters);
+      if (!Number.isFinite(radius) || radius <= 0) {
+        removeCoverageCircle(truck.id);
+        return;
+      }
+
+      const existingCircle = coverageCircles[truck.id];
+      if (existingCircle) {
+        existingCircle.setLatLng([latitude, longitude]);
+        existingCircle.setRadius(radius);
+        return;
+      }
+
+      coverageCircles[truck.id] = L.circle([latitude, longitude], {
+        radius,
+        color: '#16a34a',
+        fillColor: '#22c55e',
+        fillOpacity: 0.08,
+        opacity: 0.55,
+        weight: 1.5,
+        interactive: false,
+      }).addTo(coverageCircleLayer);
+    };
 
     const makePopup = (truck) => {
       const statusColors = {
@@ -221,31 +273,44 @@
           </div>
           <p class="text-gray-600 text-xs"><strong>Driver:</strong> ${truck.driver ?? 'N/A'}</p>
           <p class="text-gray-600 text-xs"><strong>Route:</strong> ${truck.route ?? 'N/A'}</p>
+          <p class="text-gray-600 text-xs"><strong>Coverage Radius:</strong> ${formatCoverageRadius(truck.coverage_radius_meters)}</p>
           <p class="text-gray-500 text-xs mt-2 pt-2 border-t border-gray-200"><strong>Last updated:</strong> ${truck.last_updated_human ?? 'Never'}</p>
         </div>
       `;
     };
 
     const upsertMarker = (truck) => {
-      if (!truck.latitude || !truck.longitude) return;
+      if (!hasValidTruckCoordinates(truck)) {
+        if (markers[truck.id]) {
+          clusterGroup.removeLayer(markers[truck.id]);
+          delete markers[truck.id];
+        }
+        removeCoverageCircle(truck.id);
+        return;
+      }
+
+      const latitude = Number(truck.latitude);
+      const longitude = Number(truck.longitude);
       
       const icon = getTruckIcon(truck.status);
       
       if (!markers[truck.id]) {
-        const marker = L.marker([truck.latitude, truck.longitude], { icon: icon })
+        const marker = L.marker([latitude, longitude], { icon: icon })
           .bindPopup(makePopup(truck));
         marker.on('click', () => showTruckDetail(truckCache[truck.id] ?? truck));
         markers[truck.id] = marker;
         clusterGroup.addLayer(marker);
       } else {
         // Update marker position and icon if status changed
-        markers[truck.id].setLatLng([truck.latitude, truck.longitude]);
+        markers[truck.id].setLatLng([latitude, longitude]);
         markers[truck.id].setIcon(icon);
         const popupContent = makePopup(truck);
         markers[truck.id].setPopupContent(popupContent);
         // Update truck cache for detail panel
         truckCache[truck.id] = truck;
       }
+
+      upsertCoverageCircle(truck, latitude, longitude);
     };
 
     const removeMissingMarkers = (ids) => {
@@ -253,6 +318,11 @@
         if (!ids.includes(Number(id))) {
           clusterGroup.removeLayer(markers[id]);
           delete markers[id];
+        }
+      });
+      Object.keys(coverageCircles).forEach(id => {
+        if (!ids.includes(Number(id))) {
+          removeCoverageCircle(id);
         }
       });
     };
@@ -397,7 +467,8 @@
       detailDriver.textContent = truck.driver ?? 'No driver assigned';
       detailRoute.textContent = truck.route ?? 'No route assigned';
       detailLastUpdated.textContent = truck.last_updated_human ?? 'Never';
-      const hasLocation = Boolean(truck.latitude && truck.longitude);
+      detailCoverageRadius.textContent = formatCoverageRadius(truck.coverage_radius_meters);
+      const hasLocation = hasValidTruckCoordinates(truck);
       detailLocation.textContent = hasLocation ? 'Available on map' : 'Not available';
       detailFocusBtn.disabled = !hasLocation;
       document.querySelectorAll('.truck-item').forEach(item => {
@@ -421,22 +492,6 @@
       });
     });
 
-    const drawZones = () => {
-      Object.entries(zones).forEach(([name, coords], index) => {
-        const hue = (index * 60) % 360;
-        const color = `hsl(${hue}, 70%, 45%)`;
-        const circle = L.circle([coords.lat, coords.lng], {
-          radius: 600,
-          color,
-          fillColor: color,
-          fillOpacity: 0.1,
-          weight: 1,
-        }).bindPopup(`<strong>${name}</strong>`);
-        circle.addTo(map);
-        zoneLayers[name] = circle;
-      });
-    };
-
     document.getElementById('truckSearch').addEventListener('input', filterList);
     document.getElementById('statusFilter').addEventListener('change', filterList);
     document.querySelectorAll('.resident-tracker-filter-chip').forEach(chip => {
@@ -454,7 +509,6 @@
       truckCache[truck.id] = truck;
       upsertMarker(truck);
     });
-    drawZones();
     startCountdown();
     filterList();
   </script>

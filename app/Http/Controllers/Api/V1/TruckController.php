@@ -28,6 +28,7 @@ class TruckController extends Controller
                 'route' => $truck->route,
                 'status' => $truck->status,
                 'formatted_status' => $truck->formatted_status,
+                'coverage_radius_meters' => $truck->coverage_radius_meters,
                 'latitude' => $truck->latitude !== null ? (float) $truck->latitude : null,
                 'longitude' => $truck->longitude !== null ? (float) $truck->longitude : null,
                 'last_updated' => $truck->last_updated?->toIso8601String(),

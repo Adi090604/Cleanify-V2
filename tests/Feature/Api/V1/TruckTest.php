@@ -1,8 +1,8 @@
 <?php
 
+use App\Models\ServiceZone;
 use App\Models\Truck;
 use App\Models\TruckLocation;
-use App\Models\ServiceZone;
 use App\Models\User;
 
 test('the mobile truck endpoint requires Sanctum authentication', function () {
@@ -11,15 +11,17 @@ test('the mobile truck endpoint requires Sanctum authentication', function () {
 
 test('authenticated users receive real trucks ordered by code', function () {
     $user = User::factory()->create();
-    $second = Truck::create(['code' => 'TRK-002', 'driver' => 'Driver B', 'route' => 'Zone 2', 'status' => 'offline']);
-    $first = Truck::create(['code' => 'TRK-001', 'driver' => 'Driver A', 'route' => 'Zone 1', 'status' => 'active', 'latitude' => 9.78, 'longitude' => 125.49, 'last_updated' => now()]);
+    $second = Truck::create(['code' => 'TRK-002', 'driver' => 'Driver B', 'route' => 'Zone 2', 'status' => 'offline', 'coverage_radius_meters' => null]);
+    $first = Truck::create(['code' => 'TRK-001', 'driver' => 'Driver A', 'route' => 'Zone 1', 'status' => 'active', 'coverage_radius_meters' => 500, 'latitude' => 9.78, 'longitude' => 125.49, 'last_updated' => now()]);
 
     $this->actingAs($user, 'sanctum')->getJson('/api/v1/trucks')
         ->assertOk()
         ->assertJsonPath('trucks.0.id', $first->id)
         ->assertJsonPath('trucks.0.code', 'TRK-001')
         ->assertJsonPath('trucks.0.formatted_status', 'Active')
+        ->assertJsonPath('trucks.0.coverage_radius_meters', 500)
         ->assertJsonPath('trucks.1.id', $second->id)
+        ->assertJsonPath('trucks.1.coverage_radius_meters', null)
         ->assertJsonPath('trucks.1.latitude', null)
         ->assertJsonMissingPath('trucks.0.created_at')
         ->assertJsonMissingPath('trucks.0.updated_at');

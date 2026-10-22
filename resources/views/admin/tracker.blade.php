@@ -102,6 +102,7 @@
               'driver' => $truck->driver,
               'route' => $truck->route,
               'status' => $truck->status,
+              'coverage_radius_meters' => $truck->coverage_radius_meters,
               'latitude' => $truck->latitude,
               'longitude' => $truck->longitude,
               'last_updated' => $truck->last_updated ? $truck->last_updated->format('M d, Y H:i') : null,
@@ -222,6 +223,14 @@
         @enderror
       </div>
       <div>
+        <label class="block text-gray-700 mb-2" for="addTruckCoverageRadius"><i class="fas fa-circle-notch mr-2 text-green-600"></i>Coverage Radius (meters) *</label>
+        <input type="number" name="coverage_radius_meters" id="addTruckCoverageRadius" value="{{ old('coverage_radius_meters') }}" min="{{ \App\Models\Truck::MIN_COVERAGE_RADIUS_METERS }}" max="{{ \App\Models\Truck::MAX_COVERAGE_RADIUS_METERS }}" step="1" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent" placeholder="500" required>
+        <p class="text-xs text-gray-500 mt-1">Controls the size of the visible circle around the truck on tracker maps.</p>
+        @error('coverage_radius_meters', 'storeTruck')
+          <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+        @enderror
+      </div>
+      <div>
         <label class="block text-gray-700 mb-2"><i class="fas fa-map-marker-alt mr-2 text-green-600"></i>Initial Location (Optional)</label>
         <div class="mb-3">
           <div id="addTruckMap" style="height: 250px; width: 100%; border-radius: 8px; border: 2px solid #e5e7eb; background-color: #f3f4f6;"></div>
@@ -286,6 +295,14 @@
           @endforeach
         </select>
         @error('status', 'updateTruck')
+          <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+        @enderror
+      </div>
+      <div>
+        <label class="block text-gray-700 mb-2" for="editTruckCoverageRadius"><i class="fas fa-circle-notch mr-2 text-yellow-600"></i>Coverage Radius (meters) *</label>
+        <input type="number" name="coverage_radius_meters" id="editTruckCoverageRadius" min="{{ \App\Models\Truck::MIN_COVERAGE_RADIUS_METERS }}" max="{{ \App\Models\Truck::MAX_COVERAGE_RADIUS_METERS }}" step="1" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:border-transparent" placeholder="500" required>
+        <p class="text-xs text-gray-500 mt-1">Controls the size of the visible circle around the truck on tracker maps.</p>
+        @error('coverage_radius_meters', 'updateTruck')
           <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
         @enderror
       </div>
@@ -391,6 +408,7 @@
     let map = null;
     let truckMarkers = [];
     let markerCluster = null;
+    let coverageCircleLayer = null;
     let routePolylines = {}; // Store route polylines by truck ID
     let autoRefreshInterval = null;
     let countdownInterval = null;
@@ -399,18 +417,30 @@
     let clickMarker = null;
     let selectedTruckMarker = null;
 
+    const truckStatusMeta = {
+      active: { label: 'Active', markerClass: 'active' },
+      on_break: { label: 'On Break', markerClass: 'on-break' },
+      offline: { label: 'Offline', markerClass: 'offline' },
+      maintenance: { label: 'Maintenance', markerClass: 'maintenance' },
+    };
+
+    const getTruckStatusMeta = (status) => truckStatusMeta[status] ?? {
+      label: status ? String(status).replaceAll('_', ' ') : 'Unknown',
+      markerClass: 'unknown',
+    };
+
+    const formatCoverageRadius = (value) => {
+      const radius = Number(value);
+      if (!Number.isFinite(radius) || radius <= 0) return 'Not configured';
+      return radius >= 1000 ? `${Number((radius / 1000).toFixed(1))} km` : `${radius} m`;
+    };
+
     const getTruckIcon = (status) => {
-      const statusClasses = {
-        'active': 'active',
-        'on_break': 'on-break',
-        'offline': 'offline',
-        'maintenance': 'maintenance',
-      };
-      const statusClass = statusClasses[status] || 'unknown';
+      const statusMeta = getTruckStatusMeta(status);
 
       return L.divIcon({
         className: 'truck-map-marker',
-        html: `<span class="truck-map-marker__body truck-map-marker--${statusClass}">
+        html: `<span class="truck-map-marker__body truck-map-marker__body--admin truck-map-marker--${statusMeta.markerClass}">
           <i class="fas fa-truck" aria-hidden="true"></i>
           <span class="truck-map-marker__status" aria-hidden="true"></span>
         </span>`,
@@ -462,6 +492,7 @@
         chunkedLoading: true,
         maxClusterRadius: 50
       });
+      coverageCircleLayer = L.layerGroup().addTo(map);
     }
     
     // Function to add/update markers (defined outside if block so it can be called from fetchTruckData)
@@ -472,6 +503,7 @@
       
       // Clear existing markers
       markerCluster.clearLayers();
+      coverageCircleLayer.clearLayers();
       truckMarkers = [];
       
       const bounds = [];
@@ -487,22 +519,31 @@
           
           const truckIcon = getTruckIcon(truck.status);
           
-          const statusLabels = {
-            'active': 'Active',
-            'on_break': 'On Break',
-            'offline': 'Offline',
-            'maintenance': 'Maintenance',
-          };
-          
           const lastUpdated = truck.last_updated ? new Date(truck.last_updated).toLocaleString() : 'Never';
           const lastUpdatedIso = truck.last_updated_iso || truck.last_updated || '';
+          const radius = Number(truck.coverage_radius_meters);
+          const formattedRadius = formatCoverageRadius(radius);
+
+          if (Number.isFinite(radius) && radius > 0) {
+            L.circle([lat, lng], {
+              radius,
+              color: '#16a34a',
+              fillColor: '#22c55e',
+              fillOpacity: 0.08,
+              opacity: 0.55,
+              weight: 1.5,
+              interactive: false,
+            }).addTo(coverageCircleLayer);
+          }
+
           const marker = L.marker([lat, lng], { icon: truckIcon })
             .bindPopup(`
               <div class="text-center">
                 <b>${truck.code}</b><br>
                 Driver: ${truck.driver}<br>
                 Route: ${truck.route}<br>
-                Status: <span class="font-semibold">${statusLabels[truck.status] || truck.status}</span><br>
+                Status: <span class="font-semibold">${getTruckStatusMeta(truck.status).label}</span><br>
+                Coverage Radius: ${formattedRadius}<br>
                 <small>Coordinates: ${lat.toFixed(6)}, ${lng.toFixed(6)}</small><br>
                 <small>Last updated: <span class="last-updated-popup" data-timestamp="${lastUpdatedIso}">${lastUpdated}</span></small><br>
                 <button onclick="openTruckView(${truck.id})" class="mt-2 px-3 py-1 bg-blue-500 text-white rounded text-sm hover:bg-blue-600">
@@ -549,11 +590,16 @@
           div.style.cssText = 'background: white; padding: 10px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.15);';
           div.innerHTML = `
             <h4 class="font-semibold mb-2 text-sm text-gray-800">Truck Status</h4>
-            <div class="space-y-1 text-xs">
-              <div class="flex items-center"><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png" class="w-4 h-6 mr-2">Active</div>
-              <div class="flex items-center"><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-yellow.png" class="w-4 h-6 mr-2">On Break</div>
-              <div class="flex items-center"><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png" class="w-4 h-6 mr-2">Offline</div>
-              <div class="flex items-center"><img src="https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png" class="w-4 h-6 mr-2">Maintenance</div>
+            <div class="space-y-1.5 text-xs">
+              ${Object.values(truckStatusMeta).map(statusMeta => `
+                <div class="flex items-center gap-2">
+                  <span class="truck-map-marker__body truck-map-marker__body--admin truck-map-marker__body--legend truck-map-marker--${statusMeta.markerClass}" aria-hidden="true">
+                    <i class="fas fa-truck"></i>
+                    <span class="truck-map-marker__status"></span>
+                  </span>
+                  <span>${statusMeta.label}</span>
+                </div>
+              `).join('')}
             </div>
           `;
           return div;
@@ -979,6 +1025,8 @@
       trucks.forEach(truck => {
         const row = document.querySelector(`tr[data-truck*='"id":${truck.id}']`);
         if (row) {
+          row.dataset.truck = JSON.stringify(truck);
+
           // Update last updated timestamp
           const lastUpdatedCell = row.querySelector('.last-updated');
           if (lastUpdatedCell && truck.last_updated) {
@@ -1144,16 +1192,9 @@
         'maintenance': 'bg-blue-100 text-blue-800',
       };
       
-      const statusLabels = {
-        'active': 'Active',
-        'on_break': 'On Break',
-        'offline': 'Offline',
-        'maintenance': 'Maintenance',
-      };
-      
       document.getElementById('viewTruckBadges').innerHTML = `
         <span class="${statusBadges[truck.status] || 'bg-gray-100 text-gray-800'} text-sm font-medium px-3 py-1 rounded-full">
-          <i class="fas fa-circle text-xs mr-1"></i>${statusLabels[truck.status] || truck.status}
+          <i class="fas fa-circle text-xs mr-1"></i>${getTruckStatusMeta(truck.status).label}
         </span>
         <span class="bg-blue-100 text-blue-800 text-sm font-medium px-3 py-1 rounded-full">
           <i class="fas fa-route mr-1"></i>${truck.route}
@@ -1164,7 +1205,8 @@
         <div class="space-y-2">
           <div class="flex justify-between"><span class="text-gray-600">Truck ID:</span><span class="font-medium">${truck.code}</span></div>
           <div class="flex justify-between"><span class="text-gray-600">Driver:</span><span class="font-medium">${truck.driver}</span></div>
-          <div class="flex justify-between"><span class="text-gray-600">Status:</span><span class="font-medium">${statusLabels[truck.status] || truck.status}</span></div>
+          <div class="flex justify-between"><span class="text-gray-600">Status:</span><span class="font-medium">${getTruckStatusMeta(truck.status).label}</span></div>
+          <div class="flex justify-between"><span class="text-gray-600">Coverage Radius:</span><span class="font-medium">${formatCoverageRadius(truck.coverage_radius_meters)}</span></div>
         </div>`;
       
       document.getElementById('viewTruckRoute').innerHTML = `
@@ -1205,6 +1247,7 @@
       document.getElementById('editTruckDriver').value = truck.driver;
       document.getElementById('editTruckRoute').value = truck.route;
       document.getElementById('editTruckStatus').value = truck.status;
+      document.getElementById('editTruckCoverageRadius').value = truck.coverage_radius_meters ?? '';
       document.getElementById('editTruckLatitude').value = truck.latitude || '';
       document.getElementById('editTruckLongitude').value = truck.longitude || '';
       

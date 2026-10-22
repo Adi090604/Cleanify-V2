@@ -139,6 +139,39 @@ test('gps clustering uses distance connected components and is retrieval-order i
         ->and($ordered->firstWhere('id', 'gps-'.$far->id)->report_ids)->toBe([$far->id, $identical->id]);
 });
 
+test('mixed gps and landmark reports reindex the gps subset before positional clustering', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $reporter = User::factory()->create();
+    $gpsOne = geographyReport($reporter, ['barangay' => 'Canlanipa', 'location' => 'Shared Site', 'latitude' => 9.7800, 'longitude' => 125.4900]);
+    $fallback = geographyReport($reporter, ['barangay' => 'Canlanipa', 'location' => 'Fallback Site']);
+    $gpsTwo = geographyReport($reporter, ['barangay' => 'Canlanipa', 'location' => 'Shared Site', 'latitude' => 9.7802, 'longitude' => 125.4900]);
+    $gpsThree = geographyReport($reporter, ['barangay' => 'Canlanipa', 'location' => 'Shared Site', 'latitude' => 9.7804, 'longitude' => 125.4900]);
+
+    $orderedReports = collect([$gpsOne, $fallback, $gpsTwo, $gpsThree])->sortBy('id')->values();
+    [$gpsSubset, $fallbackSubset] = $orderedReports->partition(
+        fn (Report $report) => $report->latitude !== null && $report->longitude !== null
+    );
+
+    expect($gpsSubset->keys()->all())->toBe([0, 2, 3])
+        ->and($fallbackSubset->keys()->all())->toBe([1]);
+
+    $hotspots = app(ReportGeographyAnalytics::class)->hotspots($orderedReports);
+    $gpsHotspot = $hotspots->firstWhere('basis', 'gps');
+    $landmarkHotspot = $hotspots->firstWhere('basis', 'landmark');
+
+    expect($hotspots)->toHaveCount(2)
+        ->and($hotspots->sum('total_reports'))->toBe(4)
+        ->and($gpsHotspot->report_ids)->toBe([$gpsOne->id, $gpsTwo->id, $gpsThree->id])
+        ->and($landmarkHotspot->report_ids)->toBe([$fallback->id]);
+
+    $this->actingAs($admin)->get(route('admin.reports.hotspots', ['barangay' => 'canlanipa']))
+        ->assertOk()
+        ->assertViewHas('hotspots', fn ($items) => $items->count() === 2
+            && $items->sum('total_reports') === 4
+            && $items->firstWhere('basis', 'gps')->report_ids === [$gpsOne->id, $gpsTwo->id, $gpsThree->id]
+            && $items->firstWhere('basis', 'landmark')->report_ids === [$fallback->id]);
+});
+
 test('gps groups stay inside a barangay and valid gps reports are never duplicated as landmarks', function () {
     $reporter = User::factory()->create();
     $nabagoGps = geographyReport($reporter, ['barangay' => 'Nabago', 'location' => 'Shared Landmark', 'latitude' => 9.7800, 'longitude' => 125.4900]);

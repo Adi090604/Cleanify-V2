@@ -62,6 +62,7 @@ class ReportGeographyAnalytics
     {
         $ordered = $reports->sortBy('id')->values();
         [$gpsReports, $fallbackReports] = $ordered->partition(fn (Report $report) => $this->hasValidCoordinates($report));
+        $gpsReports = $gpsReports->values();
         $hotspots = collect();
 
         if ($gpsReports->isNotEmpty()) {

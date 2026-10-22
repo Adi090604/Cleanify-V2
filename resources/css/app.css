@@ -443,6 +443,26 @@ table tbody tr:hover { background: #f7faf7 !important; }
 .truck-map-marker--offline { --truck-status-color: #ef4444; }
 .truck-map-marker--maintenance { --truck-status-color: #3b82f6; }
 
+/* Admin markers and their compact legend use the same status-filled truck treatment. */
+.truck-map-marker__body--admin {
+  border-color: #fff;
+  background: var(--truck-status-color);
+  color: #fff;
+}
+.truck-map-marker__body--legend {
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: 0 0 1.5rem;
+  border-width: 1.5px;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, .22);
+  font-size: .65rem;
+}
+.truck-map-marker__body--legend .truck-map-marker__status {
+  width: .4rem;
+  height: .4rem;
+  border-width: 1px;
+}
+
 /* Shared authentication presentation, reusing the existing forms and controls. */
 .auth-card {
   padding: 2rem !important;

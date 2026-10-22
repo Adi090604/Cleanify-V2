@@ -6,6 +6,10 @@ use Illuminate\Database\Eloquent\Model;
 
 class Truck extends Model
 {
+    public const MIN_COVERAGE_RADIUS_METERS = 50;
+
+    public const MAX_COVERAGE_RADIUS_METERS = 10000;
+
     protected $fillable = [
         'code',
         'driver',
@@ -14,12 +18,14 @@ class Truck extends Model
         'latitude',
         'longitude',
         'last_updated',
+        'coverage_radius_meters',
     ];
 
     protected $casts = [
         'latitude' => 'decimal:8',
         'longitude' => 'decimal:8',
         'last_updated' => 'datetime',
+        'coverage_radius_meters' => 'integer',
     ];
 
     public static function suggestNextCode(iterable $codes): string
@@ -28,7 +34,7 @@ class Truck extends Model
         $widths = [];
 
         foreach ($codes as $code) {
-            if (!is_string($code) || !preg_match('/^TRK-(\d+)$/', $code, $matches)) {
+            if (! is_string($code) || ! preg_match('/^TRK-(\d+)$/', $code, $matches)) {
                 continue;
             }
 
@@ -43,7 +49,7 @@ class Truck extends Model
         $uniqueWidths = array_unique($widths);
         $padding = count($uniqueWidths) === 1 ? max(2, $uniqueWidths[0]) : 2;
 
-        return 'TRK-' . str_pad((string) (max($numbers) + 1), $padding, '0', STR_PAD_LEFT);
+        return 'TRK-'.str_pad((string) (max($numbers) + 1), $padding, '0', STR_PAD_LEFT);
     }
 
     /**
@@ -51,7 +57,7 @@ class Truck extends Model
      */
     public function getStatusBadgeClass(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             'active' => 'bg-green-100 text-green-800',
             'on_break' => 'bg-yellow-100 text-yellow-800',
             'offline' => 'bg-red-100 text-red-800',
@@ -65,7 +71,7 @@ class Truck extends Model
      */
     public function getFormattedStatusAttribute(): string
     {
-        return match($this->status) {
+        return match ($this->status) {
             'active' => 'Active',
             'on_break' => 'On Break',
             'offline' => 'Offline',
@@ -79,9 +85,10 @@ class Truck extends Model
      */
     public function getLastUpdatedHumanAttribute(): string
     {
-        if (!$this->last_updated) {
+        if (! $this->last_updated) {
             return 'Never';
         }
+
         return $this->last_updated->diffForHumans();
     }
 
@@ -102,5 +109,4 @@ class Truck extends Model
             ->where('recorded_at', '>=', now()->subDay())
             ->orderBy('recorded_at', 'asc');
     }
-
 }
