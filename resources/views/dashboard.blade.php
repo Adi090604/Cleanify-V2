@@ -40,14 +40,19 @@
         $reportUser = $report->user;
         $avatarClasses = $reportUser?->getAvatarBgClasses() ?? 'bg-gray-400';
         $avatarInitial = $reportUser?->getAvatarInitial() ?? '?';
+        $profilePhotoUrl = $reportUser?->profile_photo_url;
         $authorName = $reportUser->name ?? 'Cleanify User';
         $userLiked = $report->likes->contains('user_id', $user->id);
       @endphp
       <article class="dashboard-card resident-card resident-home-report-card">
         <div class="resident-home-report-header flex items-center">
-          <div class="resident-home-report-avatar {{ $avatarClasses }} flex items-center justify-center text-white font-bold">
-            {{ $avatarInitial }}
-          </div>
+          @if($profilePhotoUrl)
+            <img src="{{ $profilePhotoUrl }}" alt="{{ $authorName }}'s profile photo" class="resident-home-report-avatar object-cover">
+          @else
+            <div class="resident-home-report-avatar {{ $avatarClasses }} flex items-center justify-center text-white font-bold">
+              {{ $avatarInitial }}
+            </div>
+          @endif
           <div class="resident-home-report-author-wrap">
             <h3 class="resident-home-report-author">{{ $authorName }}</h3>
             <p class="resident-home-report-time">{{ $report->created_at?->diffForHumans() }}</p>

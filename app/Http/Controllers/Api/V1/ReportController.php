@@ -29,7 +29,7 @@ class ReportController extends Controller
     public function show(Request $request, Report $report): ReportResource
     {
         $report->load([
-            'user:id,name',
+            'user:id,name,profile_photo_path',
             'likes' => fn ($query) => $query->where('user_id', $request->user()->id),
         ])->loadCount(['likes', 'comments', 'followers']);
 
@@ -40,7 +40,7 @@ class ReportController extends Controller
     {
         $reports = $query
             ->with([
-                'user:id,name',
+                'user:id,name,profile_photo_path',
                 'likes' => fn ($query) => $query->where('user_id', $request->user()->id),
             ])
             ->withCount(['likes', 'comments', 'followers'])
@@ -53,7 +53,7 @@ class ReportController extends Controller
     public function store(StoreReportRequest $request, ReportCreator $creator): JsonResponse
     {
         $report = $creator->create($request->user(), $request->validated(), $request->file('image'));
-        $report->load('user:id,name')->loadCount(['likes', 'comments', 'followers']);
+        $report->load('user:id,name,profile_photo_path')->loadCount(['likes', 'comments', 'followers']);
         $report->setRelation('likes', collect());
 
         return (new ReportResource($report))
@@ -67,7 +67,7 @@ class ReportController extends Controller
         $reports = Report::query()
             ->where('user_id', $request->user()->id)
             ->with([
-                'user:id,name',
+                'user:id,name,profile_photo_path',
                 'likes' => fn ($query) => $query->where('user_id', $request->user()->id),
             ])
             ->withCount(['likes', 'comments', 'followers'])

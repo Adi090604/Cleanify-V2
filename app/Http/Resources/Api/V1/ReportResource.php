@@ -10,12 +10,17 @@ class ReportResource extends JsonResource
 {
     public function toArray(Request $request): array
     {
+        $profilePhotoUrl = $this->user?->profile_photo_url;
+
         return [
             'id' => $this->id,
             'author' => [
                 'id' => $this->user?->id,
                 'name' => $this->user?->name ?? 'Cleanify User',
                 'initial' => $this->user?->getAvatarInitial() ?? 'C',
+                'profile_photo_url' => $profilePhotoUrl
+                    ? $request->getSchemeAndHttpHost().'/'.ltrim($profilePhotoUrl, '/')
+                    : null,
             ],
             'description' => $this->description,
             'barangay' => $this->barangay,

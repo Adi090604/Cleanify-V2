@@ -40,6 +40,7 @@ test('an authenticated user receives real report fields with safe author data', 
         ->assertOk()
         ->assertJsonPath('data.0.id', $report->id)
         ->assertJsonPath('data.0.author.name', $report->user->name)
+        ->assertJsonPath('data.0.author.profile_photo_url', null)
         ->assertJsonPath('data.0.description', 'Overflowing community bin.')
         ->assertJsonPath('data.0.barangay', 'Nabago')
         ->assertJsonPath('data.0.location', 'Zone 31')
@@ -48,6 +49,50 @@ test('an authenticated user receives real report fields with safe author data', 
         ->assertJsonMissingPath('data.0.author.email')
         ->assertJsonMissingPath('data.0.author.password')
         ->assertJsonMissingPath('data.0.image_path');
+});
+
+test('report endpoints return an absolute existing author profile photo URL', function () {
+    Storage::fake('public');
+    Storage::disk('public')->put('profile-photos/report-author.jpg', 'photo');
+    $viewer = User::factory()->create();
+    $author = User::factory()->create([
+        'profile_photo_path' => 'profile-photos/report-author.jpg',
+    ]);
+    $report = mobileReport(['user_id' => $author->id]);
+    $expectedUrl = rtrim(config('app.url'), '/').'/storage/profile-photos/report-author.jpg';
+
+    foreach ([
+        '/api/v1/reports',
+        '/api/v1/reports/home',
+        "/api/v1/reports/{$report->id}",
+    ] as $endpoint) {
+        $response = $this->actingAs($viewer, 'sanctum')
+            ->getJson($endpoint)
+            ->assertOk();
+
+        $response->assertJsonPath(
+            $endpoint === "/api/v1/reports/{$report->id}"
+                ? 'data.author.profile_photo_url'
+                : 'data.0.author.profile_photo_url',
+            $expectedUrl,
+        );
+    }
+});
+
+test('report endpoints do not expose a missing author profile photo path', function () {
+    Storage::fake('public');
+    $viewer = User::factory()->create();
+    $author = User::factory()->create([
+        'profile_photo_path' => 'profile-photos/missing-report-author.jpg',
+    ]);
+    mobileReport(['user_id' => $author->id]);
+
+    $this->actingAs($viewer, 'sanctum')
+        ->getJson('/api/v1/reports')
+        ->assertOk()
+        ->assertJsonPath('data.0.author.profile_photo_url', null)
+        ->assertJsonMissingPath('data.0.author.profile_photo_path')
+        ->assertJsonMissing(['profile_photo_path' => 'profile-photos/missing-report-author.jpg']);
 });
 
 test('the mobile report feed is paginated six reports per page', function () {

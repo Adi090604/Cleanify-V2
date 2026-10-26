@@ -1,5 +1,6 @@
 <?php
 
+use App\Models\Report;
 use App\Models\User;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -13,6 +14,18 @@ function profilePhotoUpdate(User $user, array $attributes = [])
         'phone' => $user->phone,
         'address' => $user->address,
     ], $attributes));
+}
+
+function profilePhotoReport(User $author): Report
+{
+    return Report::query()->create([
+        'user_id' => $author->id,
+        'barangay' => 'Nabago',
+        'location' => 'Profile photo test location',
+        'description' => 'Profile photo report card test.',
+        'status' => Report::STATUS_PENDING,
+        'priority' => 'medium',
+    ]);
 }
 
 test('an authenticated user can upload a profile photo to the public disk', function () {
@@ -152,6 +165,104 @@ test('a missing profile photo file falls back without rendering a broken image',
         ->assertOk()
         ->assertDontSee('profile-photos/missing.jpg')
         ->assertSee($user->getAvatarInitial());
+});
+
+test('Home report cards render the author profile photo', function () {
+    Storage::fake('public');
+    Storage::disk('public')->put('profile-photos/home-author.jpg', 'photo');
+    $author = User::factory()->create([
+        'name' => 'Home Photo Author',
+        'profile_photo_path' => 'profile-photos/home-author.jpg',
+    ]);
+    $viewer = User::factory()->create();
+    profilePhotoReport($author);
+
+    $this->actingAs($viewer)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertSee('src="/storage/profile-photos/home-author.jpg"', false)
+        ->assertSee("alt=\"{$author->name}'s profile photo\"", false);
+});
+
+test('Home report cards retain the author initials fallback', function () {
+    Storage::fake('public');
+    $author = User::factory()->create([
+        'name' => 'Home Fallback Author',
+        'profile_photo_path' => null,
+    ]);
+    $viewer = User::factory()->create();
+    profilePhotoReport($author);
+
+    $this->actingAs($viewer)
+        ->get(route('dashboard'))
+        ->assertOk()
+        ->assertSee($author->getAvatarInitial())
+        ->assertDontSee("alt=\"{$author->name}'s profile photo\"", false);
+});
+
+test('Community report cards render the author profile photo', function () {
+    Storage::fake('public');
+    Storage::disk('public')->put('profile-photos/community-author.jpg', 'photo');
+    $author = User::factory()->create([
+        'name' => 'Community Photo Author',
+        'profile_photo_path' => 'profile-photos/community-author.jpg',
+    ]);
+    $viewer = User::factory()->create();
+    profilePhotoReport($author);
+
+    $this->actingAs($viewer)
+        ->get(route('community-reports'))
+        ->assertOk()
+        ->assertSee('src="/storage/profile-photos/community-author.jpg"', false)
+        ->assertSee("alt=\"{$author->name}'s profile photo\"", false);
+});
+
+test('Community report cards retain the author initials fallback for missing files', function () {
+    Storage::fake('public');
+    $author = User::factory()->create([
+        'name' => 'Community Fallback Author',
+        'profile_photo_path' => 'profile-photos/missing-community-author.jpg',
+    ]);
+    $viewer = User::factory()->create();
+    profilePhotoReport($author);
+
+    $this->actingAs($viewer)
+        ->get(route('community-reports'))
+        ->assertOk()
+        ->assertSee($author->getAvatarInitial())
+        ->assertDontSee('profile-photos/missing-community-author.jpg')
+        ->assertDontSee("alt=\"{$author->name}'s profile photo\"", false);
+});
+
+test('Community report interactions remain available after rendering author photos', function () {
+    Storage::fake('public');
+    Storage::disk('public')->put('profile-photos/interactive-author.jpg', 'photo');
+    $author = User::factory()->create([
+        'profile_photo_path' => 'profile-photos/interactive-author.jpg',
+    ]);
+    $viewer = User::factory()->create();
+    $report = profilePhotoReport($author);
+
+    $this->actingAs($viewer)
+        ->get(route('reports.show', $report))
+        ->assertOk()
+        ->assertJsonPath('id', $report->id);
+
+    $this->postJson(route('reports.like', $report))
+        ->assertOk()
+        ->assertJson(['liked' => true, 'likes_count' => 1]);
+
+    $this->postJson(route('reports.comment', $report), ['comment' => 'Still works.'])
+        ->assertOk()
+        ->assertJsonPath('comment.comment', 'Still works.');
+
+    $this->getJson(route('reports.comments', $report))
+        ->assertOk()
+        ->assertJsonPath('comments.0.comment', 'Still works.');
+
+    $this->postJson(route('reports.follow', $report))
+        ->assertOk()
+        ->assertJson(['following' => true, 'followers_count' => 1]);
 });
 
 test('a null admin profile photo falls back without rendering a broken image', function () {

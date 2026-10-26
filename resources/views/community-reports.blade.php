@@ -117,9 +117,13 @@
       @forelse($reports as $report)
         <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 report-card" data-report-id="{{ $report->id }}">
           <div class="flex items-center gap-3 mb-3">
-            <div class="w-12 h-12 rounded-full {{ $report->user?->getAvatarBgClasses() ?? 'bg-green-100' }} text-white flex items-center justify-center font-semibold">
-              {{ $report->user?->getAvatarInitial() ?? 'C' }}
-            </div>
+            @if($report->user?->profile_photo_url)
+              <img src="{{ $report->user->profile_photo_url }}" alt="{{ $report->user->name }}'s profile photo" class="w-12 h-12 rounded-full object-cover">
+            @else
+              <div class="w-12 h-12 rounded-full {{ $report->user?->getAvatarBgClasses() ?? 'bg-green-100' }} text-white flex items-center justify-center font-semibold">
+                {{ $report->user?->getAvatarInitial() ?? 'C' }}
+              </div>
+            @endif
             <div class="flex-1">
               <div class="flex items-center gap-2">
                 <p class="font-semibold text-gray-800">{{ $report->user->name ?? 'Cleanify User' }}</p>
