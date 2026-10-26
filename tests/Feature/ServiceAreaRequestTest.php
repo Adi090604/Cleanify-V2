@@ -104,6 +104,38 @@ test('a resident cannot submit duplicate pending requests for the same normalize
     expect(ServiceAreaRequest::count())->toBe(1);
 });
 
+test('resident request validation requires both local area and Barangay with clear messages', function (array $overrides, string $field, string $message) {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)
+        ->post(route('settings.service-area-requests.store'), validServiceAreaRequestData($overrides))
+        ->assertSessionHasErrors([$field => $message]);
+})->with([
+    'missing local area' => [['area_name' => ''], 'area_name', 'Area / Purok / Sitio is required.'],
+    'missing Barangay' => [['barangay' => ''], 'barangay', 'Barangay is required.'],
+]);
+
+test('pending request duplicates require both normalized local area and normalized Barangay to match', function () {
+    $user = User::factory()->create();
+
+    $this->actingAs($user)->post(route('settings.service-area-requests.store'), validServiceAreaRequestData([
+        'area_name' => 'Purok 1',
+        'barangay' => 'Canlanipa',
+    ]))->assertSessionHasNoErrors();
+
+    $this->actingAs($user)->post(route('settings.service-area-requests.store'), validServiceAreaRequestData([
+        'area_name' => 'Purok 1',
+        'barangay' => 'Washington',
+    ]))->assertSessionHasNoErrors();
+
+    $this->actingAs($user)->post(route('settings.service-area-requests.store'), validServiceAreaRequestData([
+        'area_name' => '  PUROK   1 ',
+        'barangay' => '  CANLANIPA  ',
+    ]))->assertSessionHasErrors(['area_name' => 'You already have a pending request for this service area.']);
+
+    expect(ServiceAreaRequest::count())->toBe(2);
+});
+
 test('a rejected request does not block a future request for the same normalized area', function () {
     $user = User::factory()->create();
 

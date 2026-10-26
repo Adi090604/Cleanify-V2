@@ -57,7 +57,7 @@ test('approved unlinked request shows only the editable create service zone work
         ->assertSee('id="createServiceZoneFromRequestForm'.$request->id.'" method="POST"', false)
         ->assertSee('value="Purok Riverside"', false)->assertSee('value="Barangay Washington"', false)
         ->assertSee('value="9.76740151"', false)->assertSee('value="125.45395093"', false)
-        ->assertSee('Zone names must be unique')->assertDontSee('Link Existing Service Zone')
+        ->assertSee('The same normalized local area and Barangay pair cannot be created twice.')->assertDontSee('Link Existing Service Zone')
         ->assertDontSee('Confirm Link to Service Zone')->assertDontSee('Change Linked Service Zone');
 });
 
@@ -113,7 +113,7 @@ test('invalid or duplicate zone data is rejected without linking the request', f
     $response = $this->actingAs($admin)->post(route('admin.service-area-requests.create-zone', $request), conversionZoneData($payload))
         ->assertSessionHasErrors($errors);
     if (in_array('name', $errors, true)) {
-        $response->assertSessionHasErrors(['name' => 'A Service Zone with this name already exists. Review the existing Service Zones before creating another one.']);
+        $response->assertSessionHasErrors(['name' => 'This service area already exists in the selected Barangay.']);
     }
 
     expect($request->fresh()->service_zone_id)->toBeNull()->and(ServiceZone::count())->toBe($zoneCount);
@@ -131,6 +131,42 @@ test('normal residents cannot create a service zone from a request', function ()
     $this->actingAs($resident)->post(route('admin.service-area-requests.create-zone', $request), conversionZoneData())
         ->assertForbidden();
     expect($request->fresh()->service_zone_id)->toBeNull();
+});
+
+test('approved requests use the normalized local area and Barangay pair when creating zones', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    ServiceZone::create(conversionZoneData([
+        'name' => 'Purok 1',
+        'barangay' => 'Canlanipa',
+    ]));
+
+    $differentBarangayRequest = createConvertibleAreaRequest(User::factory()->create(), $admin, [
+        'area_name' => 'Purok 1',
+        'normalized_area_name' => 'purok 1',
+        'barangay' => 'Washington',
+    ]);
+
+    $this->actingAs($admin)->post(
+        route('admin.service-area-requests.create-zone', $differentBarangayRequest),
+        conversionZoneData(['name' => 'Purok 1', 'barangay' => 'Washington'])
+    )->assertSessionHasNoErrors();
+
+    expect($differentBarangayRequest->fresh()->serviceZone)
+        ->name->toBe('Purok 1')
+        ->barangay->toBe('Washington');
+
+    $duplicateRequest = createConvertibleAreaRequest(User::factory()->create(), $admin, [
+        'area_name' => 'Purok 1',
+        'normalized_area_name' => 'purok 1',
+        'barangay' => 'Canlanipa',
+    ]);
+
+    $this->actingAs($admin)->post(
+        route('admin.service-area-requests.create-zone', $duplicateRequest),
+        conversionZoneData(['name' => '  PUROK   1  ', 'barangay' => ' CANLANIPA '])
+    )->assertSessionHasErrors(['name' => 'This service area already exists in the selected Barangay.']);
+
+    expect($duplicateRequest->fresh()->service_zone_id)->toBeNull();
 });
 
 test('already linked request cannot create a second zone and exposes no setup action', function () {

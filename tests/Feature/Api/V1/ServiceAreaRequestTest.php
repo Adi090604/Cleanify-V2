@@ -93,6 +93,24 @@ test('authenticated resident can submit a pending request without changing curre
         ->and($resident->fresh()->service_area)->toBe('Current Official Area');
 });
 
+test('mobile service area requests require both local area and Barangay', function (array $payload, string $field, string $message) {
+    $resident = User::factory()->create();
+
+    $this->actingAs($resident, 'sanctum')
+        ->postJson('/api/v1/service-area-requests', $payload)
+        ->assertUnprocessable()
+        ->assertJsonPath("errors.{$field}.0", $message);
+})->with([
+    'missing local area' => [[
+        'area_name' => '',
+        'barangay' => 'Canlanipa',
+    ], 'area_name', 'Area / Purok / Sitio is required.'],
+    'missing Barangay' => [[
+        'area_name' => 'Purok 1',
+        'barangay' => '',
+    ], 'barangay', 'Barangay is required.'],
+]);
+
 test('ownership and moderation fields cannot be forged through the API', function () {
     $resident = User::factory()->create();
     $forgedOwner = User::factory()->create();

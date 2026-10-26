@@ -7,6 +7,14 @@ use Illuminate\Foundation\Http\FormRequest;
 
 class CreateServiceZoneForAreaRequest extends FormRequest
 {
+    protected function prepareForValidation(): void
+    {
+        $this->merge([
+            'name' => is_string($this->input('name')) ? trim($this->input('name')) : $this->input('name'),
+            'barangay' => is_string($this->input('barangay')) ? trim($this->input('barangay')) : $this->input('barangay'),
+        ]);
+    }
+
     public function authorize(): bool
     {
         return auth()->check() && auth()->user()->isAdmin();
@@ -15,7 +23,7 @@ class CreateServiceZoneForAreaRequest extends FormRequest
     public function rules(): array
     {
         return [
-            ...ServiceZoneRules::create(),
+            ...ServiceZoneRules::create($this->input('barangay')),
             'assign_to_requester' => ['nullable', 'boolean'],
         ];
     }
@@ -23,7 +31,8 @@ class CreateServiceZoneForAreaRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'name.unique' => 'A Service Zone with this name already exists. Review the existing Service Zones before creating another one.',
+            'name.required' => 'Local Area / Purok / Sitio is required.',
+            'barangay.required' => 'Barangay is required.',
         ];
     }
 }

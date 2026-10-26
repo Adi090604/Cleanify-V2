@@ -146,9 +146,9 @@
         </section>
 
         <section>
-          <h6 class="mb-2 font-semibold text-gray-800"><i class="fas fa-map-signs mr-2 text-green-600"></i>Requested Area</h6>
+          <h6 class="mb-2 font-semibold text-gray-800"><i class="fas fa-map-signs mr-2 text-green-600"></i>Requested Area Details</h6>
           <dl class="space-y-2 rounded-lg border border-gray-200 p-3 text-sm">
-            <div><dt class="text-gray-500">Area / Purok</dt><dd class="font-medium text-gray-800">{{ $serviceAreaRequest->area_name }}</dd></div>
+            <div><dt class="text-gray-500">Requested Area / Purok / Sitio</dt><dd class="font-medium text-gray-800">{{ $serviceAreaRequest->area_name }}</dd></div>
             <div><dt class="text-gray-500">Barangay</dt><dd class="text-gray-800">{{ $serviceAreaRequest->barangay ?: 'Not provided' }}</dd></div>
             <div><dt class="text-gray-500">Address / Landmark</dt><dd class="text-gray-800">{{ $serviceAreaRequest->address ?: 'Not provided' }}</dd></div>
             <div><dt class="text-gray-500">Additional Details</dt><dd class="whitespace-pre-line text-gray-800">{{ $serviceAreaRequest->details ?: 'No additional details provided.' }}</dd></div>
@@ -156,7 +156,7 @@
         </section>
 
         <section>
-          <h6 class="mb-2 font-semibold text-gray-800"><i class="fas fa-location-dot mr-2 text-green-600"></i>Location</h6>
+          <h6 class="mb-2 font-semibold text-gray-800"><i class="fas fa-location-dot mr-2 text-green-600"></i>Coordinates</h6>
           @if($serviceAreaRequest->latitude !== null && $serviceAreaRequest->longitude !== null)
             <p class="mb-2 text-xs text-gray-500">{{ number_format((float) $serviceAreaRequest->latitude, 6) }}, {{ number_format((float) $serviceAreaRequest->longitude, 6) }}</p>
             <div id="serviceAreaRequestMap{{ $serviceAreaRequest->id }}" class="service-area-review-map w-full" aria-label="Submitted request location map"></div>
@@ -271,7 +271,7 @@
         <section class="rounded-lg border border-gray-200 p-4">
           <h6 class="font-semibold text-gray-800">{{ $createZoneLabel }}</h6>
           <div class="mt-2 rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-xs text-yellow-800">
-            Zone names must be unique. Review existing Service Zones before creating another one.
+            A local area may exist in different Barangays. The same normalized local area and Barangay pair cannot be created twice.
           </div>
           <form id="createServiceZoneFromRequestForm{{ $serviceAreaRequest->id }}" method="POST" action="{{ route('admin.service-area-requests.create-zone', $serviceAreaRequest) }}" class="mt-3 space-y-3">
             @csrf
@@ -288,7 +288,7 @@
             @endif
             <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
-                <label for="newServiceZoneName{{ $serviceAreaRequest->id }}" class="mb-1 block text-sm font-medium text-gray-700">Zone Name</label>
+                <label for="newServiceZoneName{{ $serviceAreaRequest->id }}" class="mb-1 block text-sm font-medium text-gray-700">Local Area / Purok / Sitio</label>
                 <input id="newServiceZoneName{{ $serviceAreaRequest->id }}" name="name" value="{{ $isCreateRecoveryError ? old('name') : $serviceAreaRequest->area_name }}" maxlength="255" required class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-green-500">
               </div>
               <div>

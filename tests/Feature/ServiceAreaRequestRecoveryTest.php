@@ -111,7 +111,7 @@ test('creation validation reopens the correct modal with actionable errors', fun
             'name' => '', 'barangay' => '', 'status' => 'invalid', 'latitude' => '91', 'longitude' => '181',
         ])->assertRedirect(route('admin.service-area-requests'))->assertSessionHasErrors();
 
-    $this->get(route('admin.service-area-requests'))->assertOk()->assertSee('The name field is required.')
+    $this->get(route('admin.service-area-requests'))->assertOk()->assertSee('Local Area / Purok / Sitio is required.')
         ->assertSee("openModal('setupServiceAreaRequest{$request->id}')", false);
 });
 

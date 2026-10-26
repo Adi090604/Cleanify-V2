@@ -35,11 +35,19 @@ class StoreServiceAreaRequest extends FormRequest
     {
         return [
             'area_name' => ['required', 'string', 'max:255'],
-            'barangay' => ['nullable', 'string', 'max:255'],
+            'barangay' => ['required', 'string', 'max:255'],
             'address' => ['nullable', 'string', 'max:255'],
             'latitude' => ['nullable', 'numeric', 'between:-90,90', 'required_with:longitude'],
             'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
             'details' => ['nullable', 'string', 'max:2000'],
+        ];
+    }
+
+    public function messages(): array
+    {
+        return [
+            'area_name.required' => 'Area / Purok / Sitio is required.',
+            'barangay.required' => 'Barangay is required.',
         ];
     }
 }

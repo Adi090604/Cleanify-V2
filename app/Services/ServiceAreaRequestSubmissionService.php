@@ -24,14 +24,17 @@ class ServiceAreaRequestSubmissionService
             'details',
         ]);
         $normalizedAreaName = ServiceAreaRequest::normalizeAreaName($safeAttributes['area_name']);
+        $normalizedBarangay = ServiceAreaRequest::normalizeBarangay($safeAttributes['barangay']);
 
-        return DB::transaction(function () use ($user, $safeAttributes, $normalizedAreaName): ServiceAreaRequest {
+        return DB::transaction(function () use ($user, $safeAttributes, $normalizedAreaName, $normalizedBarangay): ServiceAreaRequest {
             $lockedUser = User::query()->lockForUpdate()->findOrFail($user->getKey());
 
             $duplicateExists = $lockedUser->serviceAreaRequests()
                 ->where('status', 'pending')
                 ->where('normalized_area_name', $normalizedAreaName)
-                ->exists();
+                ->get(['barangay'])
+                ->contains(fn (ServiceAreaRequest $request): bool => is_string($request->barangay)
+                    && ServiceAreaRequest::normalizeBarangay($request->barangay) === $normalizedBarangay);
 
             if ($duplicateExists) {
                 throw ValidationException::withMessages([

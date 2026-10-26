@@ -269,7 +269,7 @@
       @if($pendingServiceAreaRequest)
         <div class="mt-3 rounded-lg border border-yellow-200 bg-yellow-50 p-3 text-sm text-yellow-800">
           <i class="fas fa-clock mr-1" aria-hidden="true"></i>
-          You already have a pending request for <strong>{{ $pendingServiceAreaRequest->area_name }}</strong>. You cannot submit the same area again while it is pending.
+          You already have a pending request for <strong>{{ $pendingServiceAreaRequest->area_name }}</strong> in <strong>{{ $pendingServiceAreaRequest->barangay ?: 'an unspecified Barangay' }}</strong>. The same area and Barangay cannot be submitted again while it is pending.
         </div>
       @endif
     </div>
@@ -277,21 +277,21 @@
     <form id="serviceAreaRequestForm" method="POST" action="{{ route('settings.service-area-requests.store') }}" class="space-y-4">
       @csrf
       <div>
-        <label for="serviceAreaRequestName" class="mb-1 block text-sm font-medium text-gray-700">Area / Purok <span class="text-red-600">*</span></label>
-        <input id="serviceAreaRequestName" name="area_name" value="{{ old('area_name') }}" maxlength="255" required class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-green-500 @error('area_name') border-red-500 @enderror" placeholder="e.g. Purok 8">
+        <label for="serviceAreaRequestName" class="mb-1 block text-sm font-medium text-gray-700">Area / Purok / Sitio <span class="text-red-600">*</span></label>
+        <input id="serviceAreaRequestName" name="area_name" value="{{ old('area_name') }}" maxlength="255" required class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-green-500 @error('area_name') border-red-500 @enderror" placeholder="e.g. Purok 1, Don Julio, Espina Extension">
         @error('area_name')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
-        <p id="serviceAreaRequestDuplicateError" class="mt-1 hidden text-sm text-red-600" role="alert">You already have a pending request for this service area.</p>
+        <p id="serviceAreaRequestDuplicateError" class="mt-1 hidden text-sm text-red-600" role="alert">You already have a pending request for this area and Barangay.</p>
       </div>
 
       <div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
         <div>
-          <label for="serviceAreaRequestBarangay" class="mb-1 block text-sm font-medium text-gray-700">Barangay <span class="font-normal text-gray-400">(optional)</span></label>
-          <input id="serviceAreaRequestBarangay" name="barangay" value="{{ old('barangay') }}" maxlength="255" class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-green-500 @error('barangay') border-red-500 @enderror" placeholder="e.g. Barangay Washington">
+          <label for="serviceAreaRequestBarangay" class="mb-1 block text-sm font-medium text-gray-700">Barangay <span class="text-red-600">*</span></label>
+          <input id="serviceAreaRequestBarangay" name="barangay" value="{{ old('barangay') }}" maxlength="255" required class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-green-500 @error('barangay') border-red-500 @enderror" placeholder="e.g. Canlanipa">
           @error('barangay')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
         </div>
         <div>
           <label for="serviceAreaRequestAddress" class="mb-1 block text-sm font-medium text-gray-700">Address / Landmark <span class="font-normal text-gray-400">(optional)</span></label>
-          <input id="serviceAreaRequestAddress" name="address" value="{{ old('address') }}" maxlength="255" class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-green-500 @error('address') border-red-500 @enderror" placeholder="e.g. Near the covered court">
+          <input id="serviceAreaRequestAddress" name="address" value="{{ old('address') }}" maxlength="255" class="w-full rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-green-500 @error('address') border-red-500 @enderror" placeholder="e.g. Near covered court">
           @error('address')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
         </div>
       </div>
@@ -324,7 +324,7 @@
 
       <div>
         <label for="serviceAreaRequestDetails" class="mb-1 block text-sm font-medium text-gray-700">Additional Details <span class="font-normal text-gray-400">(optional)</span></label>
-        <textarea id="serviceAreaRequestDetails" name="details" maxlength="2000" rows="3" class="w-full resize-none rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-green-500 @error('details') border-red-500 @enderror" placeholder="Tell us anything that may help identify or review the area.">{{ old('details') }}</textarea>
+        <textarea id="serviceAreaRequestDetails" name="details" maxlength="2000" rows="3" class="w-full resize-none rounded-lg border border-gray-300 px-4 py-2 focus:border-transparent focus:outline-none focus:ring-2 focus:ring-green-500 @error('details') border-red-500 @enderror" placeholder="Optional notes">{{ old('details') }}</textarea>
         @error('details')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
       </div>
 
@@ -381,6 +381,7 @@
   let serviceAreaRequestMap;
   let serviceAreaRequestMarker;
   const pendingServiceAreaName = @json($pendingServiceAreaRequest?->area_name);
+  const pendingServiceAreaBarangay = @json($pendingServiceAreaRequest?->barangay);
   const serviceAreaRequestHasErrors = @json($serviceAreaRequestHasErrors);
 
   function normalizeServiceAreaName(value) {
@@ -478,9 +479,11 @@
 
   document.getElementById('serviceAreaRequestForm')?.addEventListener('submit', event => {
     const areaInput = document.getElementById('serviceAreaRequestName');
+    const barangayInput = document.getElementById('serviceAreaRequestBarangay');
     const duplicateError = document.getElementById('serviceAreaRequestDuplicateError');
-    const isDuplicate = pendingServiceAreaName
-      && normalizeServiceAreaName(areaInput.value) === normalizeServiceAreaName(pendingServiceAreaName);
+    const isDuplicate = pendingServiceAreaName && pendingServiceAreaBarangay
+      && normalizeServiceAreaName(areaInput.value) === normalizeServiceAreaName(pendingServiceAreaName)
+      && normalizeServiceAreaName(barangayInput.value) === normalizeServiceAreaName(pendingServiceAreaBarangay);
 
     duplicateError.classList.toggle('hidden', !isDuplicate);
     if (isDuplicate) {
@@ -490,6 +493,9 @@
   });
 
   document.getElementById('serviceAreaRequestName')?.addEventListener('input', () => {
+    document.getElementById('serviceAreaRequestDuplicateError').classList.add('hidden');
+  });
+  document.getElementById('serviceAreaRequestBarangay')?.addEventListener('input', () => {
     document.getElementById('serviceAreaRequestDuplicateError').classList.add('hidden');
   });
 

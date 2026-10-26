@@ -40,7 +40,7 @@
     <div class="overflow-x-auto">
       <table class="w-full">
         <thead><tr class="admin-table-header">
-          <th class="px-4 py-3 text-left text-sm font-semibold">Zone</th>
+          <th class="px-4 py-3 text-left text-sm font-semibold">Service Area</th>
           <th class="px-4 py-3 text-left text-sm font-semibold">Barangay</th>
           <th class="px-4 py-3 text-left text-sm font-semibold">Coordinates</th>
           <th class="px-4 py-3 text-left text-sm font-semibold">Status</th>
@@ -86,12 +86,12 @@
     <form id="createServiceZoneForm" method="POST" action="{{ route('admin.service-zones.store') }}" class="space-y-4">
       @csrf
       <div>
-        <label class="block text-gray-700 mb-2">Zone name</label>
-        <input id="createServiceZoneName" name="name" value="{{ old('name', $suggestedZoneName) }}" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" placeholder="e.g. Zone 16">
+        <label class="block text-gray-700 mb-2">Local Area / Purok / Sitio <span class="text-red-600">*</span></label>
+        <input id="createServiceZoneName" name="name" value="{{ old('name', $suggestedZoneName) }}" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" placeholder="e.g. Purok 1, Don Julio, Espina Extension">
       </div>
-      <div><label class="block text-gray-700 mb-2">Location / Barangay</label><input name="barangay" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" placeholder="e.g. Barangay Example"></div>
+      <div><label class="block text-gray-700 mb-2">Barangay <span class="text-red-600">*</span></label><input name="barangay" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500" placeholder="e.g. Canlanipa"></div>
       <div>
-        <label class="block text-gray-700 mb-2">Location <span class="text-sm text-gray-500">(optional)</span></label>
+        <label class="block text-gray-700 mb-2">Map Location <span class="text-sm text-gray-500">(optional)</span></label>
         <div id="createServiceZoneMap" class="service-zone-map"></div>
         <p class="text-xs text-gray-500 mt-2"><i class="fas fa-info-circle mr-1"></i>Enter coordinates manually or click the map.</p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
@@ -114,10 +114,10 @@
   <x-modal id="editServiceZoneModal" title="Edit Service Zone" icon="fas fa-map-marker-alt" color="blue">
     <form id="editServiceZoneForm" method="POST" class="space-y-4">
       @csrf @method('PUT')
-      <div><label class="block text-gray-700 mb-2">Zone name</label><input id="editServiceZoneName" name="name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></div>
-      <div><label class="block text-gray-700 mb-2">Location / Barangay</label><input id="editServiceZoneBarangay" name="barangay" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></div>
+      <div><label class="block text-gray-700 mb-2">Local Area / Purok / Sitio <span class="text-red-600">*</span></label><input id="editServiceZoneName" name="name" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></div>
+      <div><label class="block text-gray-700 mb-2">Barangay <span class="text-red-600">*</span></label><input id="editServiceZoneBarangay" name="barangay" required class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"></div>
       <div>
-        <label class="block text-gray-700 mb-2">Location <span class="text-sm text-gray-500">(optional)</span></label>
+        <label class="block text-gray-700 mb-2">Map Location <span class="text-sm text-gray-500">(optional)</span></label>
         <div id="editServiceZoneMap" class="service-zone-map"></div>
         <p class="text-xs text-gray-500 mt-2"><i class="fas fa-info-circle mr-1"></i>Enter coordinates manually or click the map.</p>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">

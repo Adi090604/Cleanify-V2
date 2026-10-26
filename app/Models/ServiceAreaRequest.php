@@ -5,7 +5,6 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
-use Illuminate\Support\Str;
 
 class ServiceAreaRequest extends Model
 {
@@ -34,7 +33,12 @@ class ServiceAreaRequest extends Model
 
     public static function normalizeAreaName(string $areaName): string
     {
-        return Str::lower(preg_replace('/\s+/u', ' ', trim($areaName)) ?? trim($areaName));
+        return ServiceZone::normalizeForComparison($areaName);
+    }
+
+    public static function normalizeBarangay(string $barangay): string
+    {
+        return ServiceZone::normalizeForComparison($barangay);
     }
 
     public function getStatusBadgeClass(): string
