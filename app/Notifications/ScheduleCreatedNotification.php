@@ -2,12 +2,14 @@
 
 namespace App\Notifications;
 
+use App\Contracts\SendsSmsNotification;
 use App\Models\Schedule;
+use App\Notifications\Channels\SmsChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class ScheduleCreatedNotification extends Notification
+class ScheduleCreatedNotification extends Notification implements SendsSmsNotification
 {
     use Queueable;
 
@@ -37,6 +39,10 @@ class ScheduleCreatedNotification extends Notification
             $channels[] = 'mail';
         }
 
+        if ($notifiable->sms_notifications ?? false) {
+            $channels[] = SmsChannel::class;
+        }
+
         return $channels;
     }
 
@@ -47,16 +53,26 @@ class ScheduleCreatedNotification extends Notification
     {
         return (new MailMessage)
             ->subject('New Garbage Collection Schedule - Cleanify')
-            ->greeting('Hello '.$notifiable->name.'!')
-            ->line('A new garbage collection schedule has been created for your area.')
-            ->line('**Schedule Details:**')
-            ->line('📍 Area: '.$this->schedule->area)
-            ->line('📅 Collection: '.$this->schedule->collection_label)
-            ->line('⏰ Time: '.$this->schedule->time_range)
-            ->line('🚛 Truck: '.$this->schedule->truck)
-            ->line('✅ Status: '.ucfirst($this->schedule->status))
-            ->action('View Schedule', route('garbage-schedule'))
-            ->line('Please prepare your garbage for collection on the scheduled days.');
+            ->view('emails.cleanify-notification', [
+                'title' => 'New Garbage Collection Schedule',
+                'greeting' => 'Hello '.$notifiable->name.'!',
+                'intro' => ['A new garbage collection schedule has been created for your area.'],
+                'details' => [
+                    ['label' => 'Area', 'value' => $this->schedule->area],
+                    ['label' => 'Collection', 'value' => $this->schedule->collection_label],
+                    ['label' => 'Time', 'value' => $this->schedule->time_range],
+                    ['label' => 'Truck', 'value' => $this->schedule->truck],
+                    ['label' => 'Status', 'value' => ucfirst($this->schedule->status)],
+                ],
+                'actionText' => 'View Schedule',
+                'actionUrl' => route('garbage-schedule'),
+                'closing' => ['Please prepare your garbage for collection on the scheduled days.'],
+            ]);
+    }
+
+    public function toSms(object $notifiable): string
+    {
+        return "Cleanify: New collection schedule for {$this->schedule->area}: {$this->schedule->collection_label}, {$this->schedule->time_range}. Check Cleanify for details.";
     }
 
     /**

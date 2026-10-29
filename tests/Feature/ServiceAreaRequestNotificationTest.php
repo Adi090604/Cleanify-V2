@@ -104,7 +104,7 @@ test('notification payload and email omit private review and resident location d
     $payload = $notification->toArray($resident);
     $serializedPayload = json_encode($payload);
     $mail = $notification->toMail($resident);
-    $serializedMail = json_encode([$mail->subject, $mail->greeting, $mail->introLines, $mail->actionUrl]);
+    $serializedMail = view($mail->view, $mail->viewData)->render();
 
     expect($payload)->toMatchArray([
         'notification_type' => 'service_area_request',
@@ -116,7 +116,7 @@ test('notification payload and email omit private review and resident location d
     ])->not->toHaveKeys(['admin_notes', 'reviewed_by', 'reviewer', 'area_name', 'address', 'latitude', 'longitude', 'details'])
         ->and($serializedPayload)->not->toContain('Private rejection rationale.', 'Secret Reviewer', 'Purok Notification Riverside', 'House 17, Private Lane', '9.76543210', '125.45678901')
         ->and($serializedMail)->not->toContain('Private rejection rationale.', 'Secret Reviewer', 'Purok Notification Riverside', 'House 17, Private Lane', '9.76543210', '125.45678901')
-        ->and($mail->actionUrl)->toBe(route('settings'));
+        ->and($mail->viewData['actionUrl'])->toBe(route('settings'));
 });
 
 test('messages distinguish review and setup from collection operations', function () {

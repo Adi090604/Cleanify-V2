@@ -25,7 +25,7 @@ test('settings returns real account preferences and only active service zones', 
         'email_notifications' => true,
         'sms_notifications' => false,
         'push_notifications' => true,
-        'notification_preferences' => ['report_updates' => false],
+        'notification_preferences' => ['report_updates' => false, 'system' => false],
     ]);
 
     $this->withToken(settingsToken($user))->getJson('/api/v1/settings')
@@ -39,10 +39,12 @@ test('settings returns real account preferences and only active service zones', 
         ->assertJsonPath('notifications.sms_notifications', false)
         ->assertJsonPath('notifications.report_updates', false)
         ->assertJsonPath('notifications.schedule_reminders', true)
+        ->assertJsonPath('notifications.system', false)
         ->assertJsonPath('notifications.push_available', false)
         ->assertJsonPath('notifications.preferences.report_updates', false)
         ->assertJsonPath('notifications.preferences.schedule_reminders', true)
-        ->assertJsonCount(2, 'notifications.preferences')
+        ->assertJsonPath('notifications.preferences.system', false)
+        ->assertJsonCount(3, 'notifications.preferences')
         ->assertJsonMissingPath('notifications.push_notifications')
         ->assertJsonMissingPath('notifications.preferences.community_posts')
         ->assertJsonMissingPath('notifications.preferences.truck_tracking');
@@ -129,6 +131,7 @@ test('a user can persist the canonical notification preferences including false 
         'sms_notifications' => true,
         'report_updates' => false,
         'schedule_reminders' => false,
+        'system' => true,
     ])->assertOk();
 
     $user->refresh();
@@ -136,10 +139,49 @@ test('a user can persist the canonical notification preferences including false 
         ->and($user->sms_notifications)->toBeTrue()
         ->and($user->push_notifications)->toBeTrue()
         ->and($user->notification_preferences)->toBe([
-            'system' => false,
+            'system' => true,
             'report_updates' => false,
             'schedule_reminders' => false,
         ]);
+});
+
+test('mobile can enable and disable the master sms preference without changing categories', function () {
+    $user = User::factory()->create([
+        'sms_notifications' => false,
+        'notification_preferences' => [
+            'report_updates' => true,
+            'schedule_reminders' => false,
+            'system' => true,
+        ],
+    ]);
+    $token = settingsToken($user);
+    $payload = [
+        'email_notifications' => (bool) $user->email_notifications,
+        'sms_notifications' => true,
+        'report_updates' => true,
+        'schedule_reminders' => false,
+        'system' => true,
+    ];
+
+    $this->withToken($token)->patchJson('/api/v1/settings/notifications', $payload)->assertOk();
+    $this->withToken($token)->getJson('/api/v1/settings')
+        ->assertOk()
+        ->assertJsonPath('notifications.sms_notifications', true)
+        ->assertJsonPath('notifications.report_updates', true)
+        ->assertJsonPath('notifications.schedule_reminders', false)
+        ->assertJsonPath('notifications.system', true);
+
+    $payload['sms_notifications'] = false;
+    $this->withToken($token)->patchJson('/api/v1/settings/notifications', $payload)->assertOk();
+    $this->withToken($token)->getJson('/api/v1/settings')
+        ->assertOk()
+        ->assertJsonPath('notifications.sms_notifications', false);
+
+    expect($user->fresh()->notification_preferences)->toBe([
+        'report_updates' => true,
+        'schedule_reminders' => false,
+        'system' => true,
+    ]);
 });
 
 test('the previous mobile notification payload remains temporarily compatible', function () {
@@ -199,12 +241,14 @@ test('canonical notification fields reject non-boolean values', function () {
         'sms_notifications' => 'disabled',
         'report_updates' => 'yes',
         'schedule_reminders' => 'no',
+        'system' => 'maybe',
     ])->assertUnprocessable()
         ->assertJsonValidationErrors([
             'email_notifications',
             'sms_notifications',
             'report_updates',
             'schedule_reminders',
+            'system',
         ]);
 });
 

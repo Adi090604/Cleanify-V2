@@ -133,7 +133,7 @@
       @csrf
       @method('PATCH')
 
-      @if($errors->hasAny(['email_notifications', 'sms_notifications', 'preferences', 'preferences.report_updates', 'preferences.schedule_reminders']))
+      @if($errors->hasAny(['email_notifications', 'sms_notifications', 'preferences', 'preferences.report_updates', 'preferences.schedule_reminders', 'preferences.system']))
         <x-alert type="error" class="mb-4">
           Please review the notification preference errors and try again.
         </x-alert>
@@ -161,11 +161,7 @@
           <div class="flex items-center justify-between">
             <div>
               <label for="sms_notifications" class="text-gray-700 cursor-pointer">SMS Notifications</label>
-              @if(config('sms.driver') === 'twilio')
-                <p class="text-sm text-gray-500">Receive garbage pickup reminders via SMS</p>
-              @else
-                <p class="text-sm text-gray-500">SMS delivery is currently in simulation mode. Your preference will apply when SMS delivery is configured.</p>
-              @endif
+              <p class="text-sm text-gray-500">Receive enabled Cleanify updates via SMS</p>
             </div>
             <div>
               <input type="hidden" name="sms_notifications" value="0">
@@ -222,6 +218,21 @@
               <input type="hidden" name="preferences[schedule_reminders]" value="0">
               <label for="pref_schedule_reminders" class="relative inline-block w-12 h-6 cursor-pointer">
                 <input type="checkbox" name="preferences[schedule_reminders]" id="pref_schedule_reminders" value="1" class="sr-only peer" {{ old('preferences.schedule_reminders', $notificationPrefs['schedule_reminders'] ?? true) ? 'checked' : '' }}>
+                <span class="block w-12 h-6 bg-gray-300 peer-checked:bg-green-600 rounded-full transition-colors duration-300"></span>
+                <span class="pointer-events-none absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 peer-checked:translate-x-6"></span>
+              </label>
+            </div>
+          </div>
+
+          <div class="flex items-center justify-between">
+            <div>
+              <label for="pref_system" class="text-gray-700 cursor-pointer">System</label>
+              <p class="text-sm text-gray-500">Service-area request and coverage updates</p>
+            </div>
+            <div>
+              <input type="hidden" name="preferences[system]" value="0">
+              <label for="pref_system" class="relative inline-block w-12 h-6 cursor-pointer">
+                <input type="checkbox" name="preferences[system]" id="pref_system" value="1" class="sr-only peer" {{ old('preferences.system', $notificationPrefs['system'] ?? true) ? 'checked' : '' }}>
                 <span class="block w-12 h-6 bg-gray-300 peer-checked:bg-green-600 rounded-full transition-colors duration-300"></span>
                 <span class="pointer-events-none absolute left-1 top-1 bg-white w-4 h-4 rounded-full transition-transform duration-300 peer-checked:translate-x-6"></span>
               </label>

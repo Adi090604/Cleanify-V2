@@ -40,7 +40,13 @@ test('schedule reminder email includes the canonical collection time range', fun
     ]);
 
     Mail::assertSent(GarbageCollectionReminder::class, function (GarbageCollectionReminder $mail) {
+        $rendered = $mail->render();
+
         return $mail->envelope()->subject === 'Cleanify Garbage Collection Reminder'
-            && str_contains($mail->render(), 'Collection Time: 8:00 AM - 9:00 AM');
+            && str_contains($rendered, 'CLEANIFY')
+            && str_contains($rendered, 'Garbage Collection Reminder')
+            && str_contains($rendered, 'Collection Time')
+            && str_contains($rendered, '8:00 AM - 9:00 AM')
+            && ! str_contains($rendered, 'Laravel');
     });
 });

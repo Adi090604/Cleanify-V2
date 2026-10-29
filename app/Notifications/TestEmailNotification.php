@@ -3,7 +3,6 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
@@ -30,6 +29,7 @@ class TestEmailNotification extends Notification
         if ($notifiable->email_notifications ?? true) {
             return ['mail'];
         }
+
         return [];
     }
 
@@ -39,13 +39,19 @@ class TestEmailNotification extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-                    ->subject('Test Email Notification - Cleanify Admin')
-                    ->greeting('Hello ' . $notifiable->name . '!')
-                    ->line('This is a test email notification from Cleanify Admin Panel.')
-                    ->line('If you received this email, it means your email notifications are working correctly!')
-                    ->line('You can manage your notification preferences in the Admin Settings page.')
-                    ->action('Go to Settings', url('/admin/settings'))
-                    ->line('Thank you for using Cleanify!');
+            ->subject('Test Email Notification - Cleanify Admin')
+            ->view('emails.cleanify-notification', [
+                'title' => 'Test Email Notification',
+                'greeting' => 'Hello '.$notifiable->name.'!',
+                'intro' => [
+                    'This is a test email notification from Cleanify Admin Panel.',
+                    'If you received this email, it means your email notifications are working correctly!',
+                    'You can manage your notification preferences in the Admin Settings page.',
+                ],
+                'actionText' => 'Go to Settings',
+                'actionUrl' => url('/admin/settings'),
+                'closing' => ['Thank you for using Cleanify!'],
+            ]);
     }
 
     /**

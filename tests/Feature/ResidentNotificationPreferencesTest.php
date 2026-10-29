@@ -31,12 +31,13 @@ test('resident settings show supported notification controls without fake option
     $response->assertOk()
         ->assertSee('Email Notifications')
         ->assertSee('SMS Notifications')
-        ->assertSee('SMS delivery is currently in simulation mode')
+        ->assertSee('Receive enabled Cleanify updates via SMS')
         ->assertSee('Push Notifications')
         ->assertSee('Push Notifications unavailable', false)
         ->assertSee('Browser push notifications are not currently supported')
         ->assertSee('Report Updates')
         ->assertSee('Schedule Reminders')
+        ->assertSee('System')
         ->assertDontSee('name="push_notifications"', false)
         ->assertDontSee('Community Posts')
         ->assertDontSee('Truck Tracking')
@@ -48,6 +49,7 @@ test('resident settings show supported notification controls without fake option
         'sms_notifications' => 'sms_notifications',
         'pref_report_updates' => 'preferences[report_updates]',
         'pref_schedule_reminders' => 'preferences[schedule_reminders]',
+        'pref_system' => 'preferences[system]',
     ];
 
     foreach ($supportedControls as $id => $name) {
@@ -80,6 +82,7 @@ test('resident can save supported notification preferences and reload their stat
         'preferences' => [
             'report_updates' => false,
             'schedule_reminders' => false,
+            'system' => false,
         ],
     ])->assertRedirect(route('settings'))
         ->assertSessionHas('success', 'Notification preferences updated successfully');
@@ -99,7 +102,8 @@ test('resident can save supported notification preferences and reload their stat
         ->not->toMatch('/id="email_notifications"[^>]*checked/')
         ->not->toMatch('/id="sms_notifications"[^>]*checked/')
         ->not->toMatch('/id="pref_report_updates"[^>]*checked/')
-        ->not->toMatch('/id="pref_schedule_reminders"[^>]*checked/');
+        ->not->toMatch('/id="pref_schedule_reminders"[^>]*checked/')
+        ->not->toMatch('/id="pref_system"[^>]*checked/');
 
     $this->patch(route('settings.notifications'), [
         'email_notifications' => true,
@@ -107,6 +111,7 @@ test('resident can save supported notification preferences and reload their stat
         'preferences' => [
             'report_updates' => true,
             'schedule_reminders' => true,
+            'system' => true,
         ],
     ])->assertRedirect(route('settings'));
 
@@ -115,7 +120,37 @@ test('resident can save supported notification preferences and reload their stat
         ->toMatch('/id="email_notifications"[^>]*checked/')
         ->toMatch('/id="sms_notifications"[^>]*checked/')
         ->toMatch('/id="pref_report_updates"[^>]*checked/')
-        ->toMatch('/id="pref_schedule_reminders"[^>]*checked/');
+        ->toMatch('/id="pref_schedule_reminders"[^>]*checked/')
+        ->toMatch('/id="pref_system"[^>]*checked/');
+});
+
+test('master sms preference changes without erasing category preferences', function () {
+    $user = User::factory()->create([
+        'sms_notifications' => true,
+        'notification_preferences' => [
+            'report_updates' => true,
+            'schedule_reminders' => false,
+            'system' => true,
+        ],
+    ]);
+
+    $this->actingAs($user)->patch(route('settings.notifications'), [
+        'email_notifications' => (bool) $user->email_notifications,
+        'sms_notifications' => false,
+        'preferences' => [
+            'report_updates' => true,
+            'schedule_reminders' => false,
+            'system' => true,
+        ],
+    ])->assertRedirect(route('settings'));
+
+    expect($user->fresh())
+        ->sms_notifications->toBeFalse()
+        ->notification_preferences->toBe([
+            'report_updates' => true,
+            'schedule_reminders' => false,
+            'system' => true,
+        ]);
 });
 
 test('notification preference update is scoped to the authenticated resident', function () {
@@ -123,13 +158,13 @@ test('notification preference update is scoped to the authenticated resident', f
     $other = User::factory()->create([
         'email_notifications' => true,
         'sms_notifications' => true,
-        'notification_preferences' => ['report_updates' => true, 'schedule_reminders' => true],
+        'notification_preferences' => ['report_updates' => true, 'schedule_reminders' => true, 'system' => false],
     ]);
 
     $this->actingAs($resident)->patch(route('settings.notifications'), [
         'email_notifications' => false,
         'sms_notifications' => false,
-        'preferences' => ['report_updates' => false, 'schedule_reminders' => false],
+        'preferences' => ['report_updates' => false, 'schedule_reminders' => false, 'system' => true],
         'user_id' => $other->id,
     ])->assertRedirect(route('settings'));
 
@@ -139,6 +174,7 @@ test('notification preference update is scoped to the authenticated resident', f
         ->and($other->notification_preferences)->toBe([
             'report_updates' => true,
             'schedule_reminders' => true,
+            'system' => false,
         ]);
 });
 
@@ -151,6 +187,7 @@ test('notification preferences require supported server-side boolean values', fu
         'preferences' => [
             'report_updates' => false,
             'schedule_reminders' => false,
+            'system' => false,
             'truck_tracking' => true,
         ],
     ])->assertSessionHasErrors(['email_notifications', 'preferences']);

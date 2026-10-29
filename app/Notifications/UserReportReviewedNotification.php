@@ -2,12 +2,14 @@
 
 namespace App\Notifications;
 
+use App\Contracts\SendsSmsNotification;
 use App\Models\UserReport;
+use App\Notifications\Channels\SmsChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class UserReportReviewedNotification extends Notification
+class UserReportReviewedNotification extends Notification implements SendsSmsNotification
 {
     use Queueable;
 
@@ -37,6 +39,10 @@ class UserReportReviewedNotification extends Notification
             $channels[] = 'mail';
         }
 
+        if ($notifiable->sms_notifications ?? false) {
+            $channels[] = SmsChannel::class;
+        }
+
         return $channels;
     }
 
@@ -57,29 +63,48 @@ class UserReportReviewedNotification extends Notification
 
         $statusMessage = $statusMessages[$this->userReport->status] ?? 'Your user report status has been updated.';
 
-        $mail = (new MailMessage)
-            ->subject('User Report Status Update - Cleanify')
-            ->greeting('Hello '.$notifiable->name.'!')
-            ->line($statusMessage)
-            ->line('**Report Details:**')
-            ->line('👤 Reported User: '.($reportedUser ? $reportedUser->name : 'Unknown'))
-            ->line('📋 Reason: '.$this->userReport->getReasonLabel())
-            ->when($this->userReport->description, function ($mail) {
-                return $mail->line('📝 Description: '.$this->userReport->description);
-            })
-            ->line('✅ Status: '.ucfirst(str_replace('_', ' ', $this->userReport->status)))
-            ->when($this->userReport->admin_notes, function ($mail) {
-                return $mail->line('**Admin Notes:**')
-                    ->line($this->userReport->admin_notes);
-            })
-            ->line('Reviewed by: '.$reviewerName)
-            ->when($this->userReport->reviewed_at, function ($mail) {
-                return $mail->line('Reviewed on: '.$this->userReport->reviewed_at->format('F d, Y \a\t h:i A'));
-            })
-            ->action('View Reports', route('community-reports'))
-            ->line('Thank you for helping keep our community safe!');
+        $details = [
+            ['label' => 'Reported User', 'value' => $reportedUser ? $reportedUser->name : 'Unknown'],
+            ['label' => 'Reason', 'value' => $this->userReport->getReasonLabel()],
+        ];
 
-        return $mail;
+        if ($this->userReport->description) {
+            $details[] = ['label' => 'Description', 'value' => $this->userReport->description];
+        }
+
+        $details[] = ['label' => 'Status', 'value' => ucfirst(str_replace('_', ' ', $this->userReport->status))];
+
+        if ($this->userReport->admin_notes) {
+            $details[] = ['label' => 'Admin Notes', 'value' => $this->userReport->admin_notes];
+        }
+
+        $details[] = ['label' => 'Reviewed by', 'value' => $reviewerName];
+
+        if ($this->userReport->reviewed_at) {
+            $details[] = ['label' => 'Reviewed on', 'value' => $this->userReport->reviewed_at->format('F d, Y \a\t h:i A')];
+        }
+
+        return (new MailMessage)
+            ->subject('User Report Status Update - Cleanify')
+            ->view('emails.cleanify-notification', [
+                'title' => 'User Report Status Update',
+                'greeting' => 'Hello '.$notifiable->name.'!',
+                'intro' => [$statusMessage],
+                'details' => $details,
+                'actionText' => 'View Reports',
+                'actionUrl' => route('community-reports'),
+                'closing' => ['Thank you for helping keep our community safe!'],
+            ]);
+    }
+
+    public function toSms(object $notifiable): string
+    {
+        return match ($this->userReport->status) {
+            'reviewed' => 'Cleanify: Your user report has been reviewed. Check Cleanify for details.',
+            'dismissed' => 'Cleanify: Your user report was dismissed. Check Cleanify for details.',
+            'action_taken' => 'Cleanify: Action was taken based on your user report. Check Cleanify for details.',
+            default => 'Cleanify: Your user report status was updated. Check Cleanify for details.',
+        };
     }
 
     /**

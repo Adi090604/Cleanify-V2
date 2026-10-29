@@ -162,17 +162,19 @@ test('schedule update email contains the real collection details', function () {
     ]);
     $notification = new ScheduleUpdatedNotification($schedule);
     $mail = $notification->toMail($resident);
+    $rendered = view($mail->view, $mail->viewData)->render();
 
     expect($notification->via($resident))->toBe(['database', 'mail'])
         ->and($mail->subject)->toBe('Cleanify Collection Schedule Updated')
-        ->and($mail->greeting)->toBe('Hello Maria Resident!')
-        ->and($mail->introLines)->toContain(
+        ->and($mail->view)->toBe('emails.cleanify-notification')
+        ->and($rendered)->toContain(
+            'Hello Maria Resident!',
             'Zone 1 - Barangay Alang-Alang',
             'Thursday',
             '6:30 AM - 8:00 AM',
             'TRK-07',
             'Active'
-        );
+        )->not->toContain('Laravel');
 });
 
 test('saving without meaningful changes sends nothing', function () {

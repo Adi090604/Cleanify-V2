@@ -2,12 +2,14 @@
 
 namespace App\Notifications;
 
+use App\Contracts\SendsSmsNotification;
 use App\Models\Report;
+use App\Notifications\Channels\SmsChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class ReportResolvedNotification extends Notification
+class ReportResolvedNotification extends Notification implements SendsSmsNotification
 {
     use Queueable;
 
@@ -38,6 +40,10 @@ class ReportResolvedNotification extends Notification
             $channels[] = 'mail';
         }
 
+        if ($notifiable->sms_notifications ?? false) {
+            $channels[] = SmsChannel::class;
+        }
+
         return $channels;
     }
 
@@ -56,25 +62,37 @@ class ReportResolvedNotification extends Notification
             ? 'A community report you follow has been resolved.'
             : 'Great news! Your community report has been resolved.';
 
+        $resolvedAt = $this->report->resolved_at ?? now();
+        $details = [
+            ['label' => 'Location', 'value' => $this->report->location],
+            ['label' => 'Description', 'value' => $this->report->description],
+        ];
+
+        if ($this->report->admin_notes) {
+            $details[] = ['label' => 'Admin Notes', 'value' => $this->report->admin_notes];
+        }
+
+        $details[] = ['label' => 'Resolved by', 'value' => $resolverName];
+        $details[] = ['label' => 'Resolved on', 'value' => $resolvedAt->format('F d, Y \a\t h:i A')];
+
         return (new MailMessage)
             ->subject($subject)
-            ->greeting('Hello '.$notifiable->name.'!')
-            ->line($intro)
-            ->line('**Report Details:**')
-            ->line('📍 Location: '.$this->report->location)
-            ->line('📝 Description: '.$this->report->description)
-            ->when($this->report->admin_notes, function ($mail) {
-                return $mail->line('**Admin Notes:**')
-                    ->line($this->report->admin_notes);
-            })
-            ->line('Resolved by: '.$resolverName)
-            ->when($this->report->resolved_at, function ($mail) {
-                return $mail->line('Resolved on: '.$this->report->resolved_at->format('F d, Y \a\t h:i A'));
-            }, function ($mail) {
-                return $mail->line('Resolved on: '.now()->format('F d, Y \a\t h:i A'));
-            })
-            ->action('View Report', route('community-reports'))
-            ->line('Thank you for helping keep our community clean!');
+            ->view('emails.cleanify-notification', [
+                'title' => 'Report Resolved',
+                'greeting' => 'Hello '.$notifiable->name.'!',
+                'intro' => [$intro],
+                'details' => $details,
+                'actionText' => 'View Report',
+                'actionUrl' => route('community-reports'),
+                'closing' => ['Thank you for helping keep our community clean!'],
+            ]);
+    }
+
+    public function toSms(object $notifiable): string
+    {
+        return $this->isFollower
+            ? 'Cleanify: A report you follow has been resolved. Check Cleanify for details.'
+            : 'Cleanify: Your report has been resolved. Check Cleanify for the resolution details.';
     }
 
     /**

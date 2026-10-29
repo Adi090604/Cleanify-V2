@@ -2,10 +2,10 @@
 
 namespace App\Console\Commands;
 
-use App\Models\SmsNotification;
-use App\Models\EmailNotification;
-use App\Models\User;
 use App\Mail\GarbageCollectionReminder;
+use App\Models\EmailNotification;
+use App\Models\SmsNotification;
+use App\Models\User;
 use App\Services\ScheduleReminderService;
 use App\Services\SmsNotificationService;
 use Carbon\Carbon;
@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Mail;
 class SendScheduleSmsReminders extends Command
 {
     protected $signature = 'sms:send-schedule-reminders {--date= : Collection date (Y-m-d), for safe verification} {--dry-run : List eligible reminders without logging or sending}';
+
     protected $description = 'Send one-day-before garbage collection SMS reminders.';
 
     public function handle(ScheduleReminderService $scheduleReminders, SmsNotificationService $sms): int
@@ -35,19 +36,23 @@ class SendScheduleSmsReminders extends Command
                 ->where('sms_notifications', true)
                 ->cursor()
                 ->each(function (User $user) use ($collectionDate, $schedule, $sms, $dryRun, &$eligibleSms) {
-                    if (($user->notification_preferences['schedule_reminders'] ?? true) !== true) return;
-
-                    // Read and normalize the profile phone at dispatch time; Schedule never stores it.
-                    $phone = $sms->normalizePhoneNumber($user->phone);
-                    if (!$phone) {
-                        Log::warning('Schedule SMS reminder skipped because the user phone is missing or invalid.', ['user_id' => $user->id, 'schedule_id' => $schedule->id]);
+                    if (($user->notification_preferences['schedule_reminders'] ?? true) !== true) {
                         return;
                     }
 
-                    $message = "Cleanify Reminder: Your garbage collection is scheduled for tomorrow in {$schedule->area}. Please prepare your waste for collection. Thank you.";
-                    ++$eligibleSms;
+                    // Read and normalize the profile phone at dispatch time; Schedule never stores it.
+                    $phone = $sms->normalizePhoneNumber($user->phone);
+                    if (! $phone) {
+                        Log::warning('Schedule SMS reminder skipped because the user phone is missing or invalid.', ['user_id' => $user->id, 'schedule_id' => $schedule->id]);
+
+                        return;
+                    }
+
+                    $message = "Cleanify: Collection for {$schedule->area} is tomorrow, {$collectionDate->format('M j')}, {$schedule->time_range}. Please prepare your waste before collection.";
+                    $eligibleSms++;
                     if ($dryRun) {
                         $this->line("Would remind user {$user->id} for schedule {$schedule->id} at {$phone}.");
+
                         return;
                     }
 
@@ -72,7 +77,11 @@ class SendScheduleSmsReminders extends Command
                         $notification->update($sent ? ['status' => 'sent', 'sent_at' => now()] : ['status' => 'simulated']);
                     } catch (\Throwable $exception) {
                         $notification->update(['status' => 'failed', 'error_message' => $exception->getMessage()]);
-                        Log::error('Schedule SMS reminder failed.', ['sms_notification_id' => $notification->id, 'exception' => $exception]);
+                        Log::error('Schedule SMS reminder failed.', [
+                            'sms_notification_id' => $notification->id,
+                            'exception_class' => $exception::class,
+                            'error' => $exception->getMessage(),
+                        ]);
                     }
                 });
 
@@ -81,19 +90,23 @@ class SendScheduleSmsReminders extends Command
                 ->where('email_notifications', true)
                 ->cursor()
                 ->each(function (User $user) use ($collectionDate, $schedule, $dryRun, &$eligibleEmail) {
-                    if (($user->notification_preferences['schedule_reminders'] ?? true) !== true) return;
+                    if (($user->notification_preferences['schedule_reminders'] ?? true) !== true) {
+                        return;
+                    }
 
                     $email = filter_var($user->email, FILTER_VALIDATE_EMAIL);
-                    if (!$email) {
+                    if (! $email) {
                         Log::warning('Schedule email reminder skipped because the user email is missing or invalid.', ['user_id' => $user->id, 'schedule_id' => $schedule->id]);
+
                         return;
                     }
 
                     $subject = 'Cleanify Garbage Collection Reminder';
                     $message = "Hello {$user->name},\n\nThis is a reminder that your garbage collection is scheduled for tomorrow in {$schedule->area}.\n\nCollection Time: {$schedule->time_range}\n\nPlease prepare your waste for collection.\n\nThank you,\nCleanify";
-                    ++$eligibleEmail;
+                    $eligibleEmail++;
                     if ($dryRun) {
                         $this->line("Would email user {$user->id} for schedule {$schedule->id} at {$email}.");
+
                         return;
                     }
 
@@ -124,7 +137,7 @@ class SendScheduleSmsReminders extends Command
                 });
         }
 
-        $this->info("{$eligibleSms} eligible schedule SMS reminder(s) and {$eligibleEmail} eligible schedule email reminder(s) processed" . ($dryRun ? ' (dry run).' : '.'));
+        $this->info("{$eligibleSms} eligible schedule SMS reminder(s) and {$eligibleEmail} eligible schedule email reminder(s) processed".($dryRun ? ' (dry run).' : '.'));
 
         return self::SUCCESS;
     }

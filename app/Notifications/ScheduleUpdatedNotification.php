@@ -2,12 +2,14 @@
 
 namespace App\Notifications;
 
+use App\Contracts\SendsSmsNotification;
 use App\Models\Schedule;
+use App\Notifications\Channels\SmsChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class ScheduleUpdatedNotification extends Notification
+class ScheduleUpdatedNotification extends Notification implements SendsSmsNotification
 {
     use Queueable;
 
@@ -44,33 +46,48 @@ class ScheduleUpdatedNotification extends Notification
             $channels[] = 'mail';
         }
 
+        if ($notifiable->sms_notifications ?? false) {
+            $channels[] = SmsChannel::class;
+        }
+
         return $channels;
     }
 
     public function toMail(object $notifiable): MailMessage
     {
-        $mail = (new MailMessage)
-            ->subject('Cleanify Collection Schedule Updated')
-            ->greeting('Hello '.$notifiable->name.'!')
-            ->line($this->mailIntroduction())
-            ->line('**Service Area:**')
-            ->line($this->displayArea())
-            ->line('**Collection:**')
-            ->line($this->collectionLabel())
-            ->line('**Time:**')
-            ->line($this->schedule->time_range)
-            ->line('**Assigned Truck:**')
-            ->line($this->schedule->truck)
-            ->line('**Status:**')
-            ->line(ucfirst($this->schedule->status));
+        $additional = [];
 
         if ($this->changeKind === self::CHANGE_REMOVED_FROM_AREA) {
-            $mail->line('This schedule is now assigned to '.$this->schedule->area.'.');
+            $additional[] = 'This schedule is now assigned to '.$this->schedule->area.'.';
         }
 
-        return $mail
-            ->action('View Schedule', route('garbage-schedule'))
-            ->line('Please check Cleanify for the latest collection schedule.');
+        return (new MailMessage)
+            ->subject('Cleanify Collection Schedule Updated')
+            ->view('emails.cleanify-notification', [
+                'title' => 'Collection Schedule Updated',
+                'greeting' => 'Hello '.$notifiable->name.'!',
+                'intro' => [$this->mailIntroduction()],
+                'details' => [
+                    ['label' => 'Service Area', 'value' => $this->displayArea()],
+                    ['label' => 'Collection', 'value' => $this->collectionLabel()],
+                    ['label' => 'Time', 'value' => $this->schedule->time_range],
+                    ['label' => 'Assigned Truck', 'value' => $this->schedule->truck],
+                    ['label' => 'Status', 'value' => ucfirst($this->schedule->status)],
+                ],
+                'additional' => $additional,
+                'actionText' => 'View Schedule',
+                'actionUrl' => route('garbage-schedule'),
+                'closing' => ['Please check Cleanify for the latest collection schedule.'],
+            ]);
+    }
+
+    public function toSms(object $notifiable): string
+    {
+        return match ($this->changeKind) {
+            self::CHANGE_REMOVED_FROM_AREA => 'Cleanify: A collection schedule no longer applies to '.$this->displayArea().'. Check Cleanify for the latest schedule.',
+            self::CHANGE_ASSIGNED_TO_AREA => 'Cleanify: A collection schedule is now assigned to '.$this->schedule->area.': '.$this->collectionSummary().'. Check Cleanify for details.',
+            default => 'Cleanify: Your garbage collection schedule for '.$this->schedule->area.' was updated: '.$this->collectionSummary().'. Check Cleanify for details.',
+        };
     }
 
     /**

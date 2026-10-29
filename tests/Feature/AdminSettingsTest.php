@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Hash;
 test('admin settings omit connected accounts and retain the supported settings forms', function () {
     $admin = User::factory()->create(['is_admin' => true]);
 
-    $this->actingAs($admin)
+    $html = $this->actingAs($admin)
         ->get(route('admin.settings'))
         ->assertOk()
         ->assertSee('Profile Settings')
@@ -20,7 +20,10 @@ test('admin settings omit connected accounts and retain the supported settings f
         ->assertDontSee('toggleAccountConnection', false)
         ->assertDontSee('Jan 12, 2025')
         ->assertDontSee('Feb 20, 2025')
-        ->assertDontSee('Mar 05, 2025');
+        ->assertDontSee('Mar 05, 2025')
+        ->getContent();
+
+    expect($html)->toMatch('/<input[^>]*name="sms_notifications"[^>]*disabled[^>]*>/');
 });
 
 test('admin profile settings still update the profile', function () {

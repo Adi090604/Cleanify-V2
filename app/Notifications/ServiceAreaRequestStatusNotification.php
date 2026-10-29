@@ -2,13 +2,15 @@
 
 namespace App\Notifications;
 
+use App\Contracts\SendsSmsNotification;
 use App\Models\ServiceAreaRequest;
 use App\Models\ServiceZone;
+use App\Notifications\Channels\SmsChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class ServiceAreaRequestStatusNotification extends Notification
+class ServiceAreaRequestStatusNotification extends Notification implements SendsSmsNotification
 {
     use Queueable;
 
@@ -40,6 +42,11 @@ class ServiceAreaRequestStatusNotification extends Notification
             $channels[] = 'mail';
         }
 
+        if (($notifiable->sms_notifications ?? false)
+            && ($preferences['system'] ?? true)) {
+            $channels[] = SmsChannel::class;
+        }
+
         return $channels;
     }
 
@@ -47,10 +54,26 @@ class ServiceAreaRequestStatusNotification extends Notification
     {
         return (new MailMessage)
             ->subject($this->mailSubject())
-            ->greeting('Hello '.$notifiable->name.'!')
-            ->line($this->message())
-            ->action('View Service Area Request', route('settings'))
-            ->line('You can review the latest status in Cleanify Settings.');
+            ->view('emails.cleanify-notification', [
+                'title' => $this->title(),
+                'greeting' => 'Hello '.$notifiable->name.'!',
+                'intro' => [$this->message()],
+                'actionText' => 'View Service Area Request',
+                'actionUrl' => route('settings'),
+                'closing' => ['You can review the latest status in Cleanify Settings.'],
+            ]);
+    }
+
+    public function toSms(object $notifiable): string
+    {
+        $requestedArea = $this->requestedAreaName();
+
+        return match ($this->eventType) {
+            self::EVENT_APPROVED => "Cleanify: Your service area request for {$requestedArea} was approved. Check Cleanify for details.",
+            self::EVENT_REJECTED => "Cleanify: Your service area request for {$requestedArea} was not approved. Check Cleanify for details.",
+            self::EVENT_ZONE_CREATED => $this->zoneCreatedSms(),
+            default => 'Cleanify: Your service area request was updated. Check Cleanify for details.',
+        };
     }
 
     /**
@@ -101,6 +124,32 @@ class ServiceAreaRequestStatusNotification extends Notification
         }
 
         return 'An official Cleanify service area has been created for your approved request: '.$zoneName.'. Collection scheduling is managed separately.';
+    }
+
+    private function zoneCreatedSms(): string
+    {
+        $area = $this->serviceZone
+            ? $this->formatArea($this->serviceZone->name, $this->serviceZone->barangay)
+            : $this->requestedAreaName();
+
+        if ($this->requesterAssigned) {
+            return "Cleanify: Your area, {$area}, has been added and is now your collection service area.";
+        }
+
+        return "Cleanify: Your requested area, {$area}, has been added as an official collection service area. Check Cleanify for details.";
+    }
+
+    private function requestedAreaName(): string
+    {
+        return $this->formatArea(
+            $this->serviceAreaRequest->area_name,
+            $this->serviceAreaRequest->barangay
+        );
+    }
+
+    private function formatArea(string $area, ?string $barangay): string
+    {
+        return $barangay ? $area.', '.$barangay : $area;
     }
 
     private function mailSubject(): string

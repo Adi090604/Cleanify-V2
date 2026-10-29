@@ -2,12 +2,14 @@
 
 namespace App\Notifications;
 
+use App\Contracts\SendsSmsNotification;
 use App\Models\Report;
+use App\Notifications\Channels\SmsChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class ReportInProgressNotification extends Notification
+class ReportInProgressNotification extends Notification implements SendsSmsNotification
 {
     use Queueable;
 
@@ -29,6 +31,10 @@ class ReportInProgressNotification extends Notification
             $channels[] = 'mail';
         }
 
+        if ($notifiable->sms_notifications ?? false) {
+            $channels[] = SmsChannel::class;
+        }
+
         return $channels;
     }
 
@@ -40,12 +46,25 @@ class ReportInProgressNotification extends Notification
 
         return (new MailMessage)
             ->subject($this->isFollower ? 'Report You Follow Is In Progress - Cleanify' : 'Your Report Is In Progress - Cleanify')
-            ->greeting('Hello '.$notifiable->name.'!')
-            ->line($intro)
-            ->line('Location: '.$this->report->location)
-            ->line('Description: '.$this->report->description)
-            ->action('View Report', route('community-reports'))
-            ->line('We will notify you again when its status changes.');
+            ->view('emails.cleanify-notification', [
+                'title' => 'Report In Progress',
+                'greeting' => 'Hello '.$notifiable->name.'!',
+                'intro' => [$intro],
+                'details' => [
+                    ['label' => 'Location', 'value' => $this->report->location],
+                    ['label' => 'Description', 'value' => $this->report->description],
+                ],
+                'actionText' => 'View Report',
+                'actionUrl' => route('community-reports'),
+                'closing' => ['We will notify you again when its status changes.'],
+            ]);
+    }
+
+    public function toSms(object $notifiable): string
+    {
+        return $this->isFollower
+            ? 'Cleanify: A report you follow is now In Progress. Check Cleanify for details.'
+            : 'Cleanify: Your report is now In Progress and is being reviewed. Check Cleanify for details.';
     }
 
     /** @return array<string, mixed> */

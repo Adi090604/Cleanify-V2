@@ -19,6 +19,7 @@ class SettingsController extends Controller
         $serviceAreas = $this->activeServiceAreas();
         $reportUpdates = $user->notificationPreferenceEnabled('report_updates', 'reports');
         $scheduleReminders = $user->notificationPreferenceEnabled('schedule_reminders', 'schedule');
+        $system = $user->notificationPreferenceEnabled('system');
 
         return response()->json([
             'account' => [
@@ -34,11 +35,13 @@ class SettingsController extends Controller
                 'sms_notifications' => (bool) $user->sms_notifications,
                 'report_updates' => $reportUpdates,
                 'schedule_reminders' => $scheduleReminders,
+                'system' => $system,
                 'push_available' => false,
                 // Temporary read alias for installed clients using the previous nested shape.
                 'preferences' => [
                     'report_updates' => $reportUpdates,
                     'schedule_reminders' => $scheduleReminders,
+                    'system' => $system,
                 ],
             ],
         ]);
@@ -86,7 +89,7 @@ class SettingsController extends Controller
 
     public function updateNotifications(Request $request): JsonResponse
     {
-        $canonicalPayload = $request->hasAny(['report_updates', 'schedule_reminders']);
+        $canonicalPayload = $request->hasAny(['report_updates', 'schedule_reminders', 'system']);
         $rules = [
             'email_notifications' => ['required', 'boolean'],
             'sms_notifications' => ['required', 'boolean'],
@@ -95,11 +98,13 @@ class SettingsController extends Controller
         if ($canonicalPayload) {
             $rules['report_updates'] = ['required', 'boolean'];
             $rules['schedule_reminders'] = ['required', 'boolean'];
+            $rules['system'] = ['sometimes', 'boolean'];
         } else {
             // Temporary compatibility for the installed app's previous nested payload.
             $rules['preferences'] = ['required', 'array'];
             $rules['preferences.report_updates'] = ['required', 'boolean'];
             $rules['preferences.schedule_reminders'] = ['required', 'boolean'];
+            $rules['preferences.system'] = ['sometimes', 'boolean'];
         }
 
         $validated = $request->validate($rules);
@@ -111,6 +116,9 @@ class SettingsController extends Controller
             : $validated['preferences']['schedule_reminders'];
 
         $user = $request->user();
+        $system = $canonicalPayload
+            ? ($validated['system'] ?? $user->notificationPreferenceEnabled('system'))
+            : ($validated['preferences']['system'] ?? $user->notificationPreferenceEnabled('system'));
         $user->email_notifications = $validated['email_notifications'];
         $user->sms_notifications = $validated['sms_notifications'];
         $user->notification_preferences = array_merge(
@@ -118,6 +126,7 @@ class SettingsController extends Controller
             [
                 'report_updates' => (bool) $reportUpdates,
                 'schedule_reminders' => (bool) $scheduleReminders,
+                'system' => (bool) $system,
             ],
         );
         $user->save();

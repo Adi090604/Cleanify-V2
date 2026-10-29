@@ -12,4 +12,9 @@ return [
         'auth_token' => env('TWILIO_AUTH_TOKEN'),
         'from' => env('TWILIO_FROM'),
     ],
+
+    'textbee' => [
+        'api_key' => env('TEXTBEE_API_KEY'),
+        'base_url' => env('TEXTBEE_BASE_URL', 'https://api.textbee.dev/api/v1'),
+    ],
 ];

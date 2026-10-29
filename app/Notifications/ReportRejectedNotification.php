@@ -2,12 +2,14 @@
 
 namespace App\Notifications;
 
+use App\Contracts\SendsSmsNotification;
 use App\Models\Report;
+use App\Notifications\Channels\SmsChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
-class ReportRejectedNotification extends Notification
+class ReportRejectedNotification extends Notification implements SendsSmsNotification
 {
     use Queueable;
 
@@ -38,6 +40,10 @@ class ReportRejectedNotification extends Notification
             $channels[] = 'mail';
         }
 
+        if ($notifiable->sms_notifications ?? false) {
+            $channels[] = SmsChannel::class;
+        }
+
         return $channels;
     }
 
@@ -57,26 +63,38 @@ class ReportRejectedNotification extends Notification
             ? 'A community report you follow was rejected by our team.'
             : 'We wanted to inform you about the status of your community report.';
 
+        $reviewedAt = $this->report->resolved_at ?? now();
+        $details = [
+            ['label' => 'Location', 'value' => $this->report->location],
+            ['label' => 'Description', 'value' => $this->report->description],
+            ['label' => 'Status', 'value' => 'Rejected'],
+        ];
+
+        if ($this->report->rejection_reason) {
+            $details[] = ['label' => 'Reason', 'value' => $this->report->rejection_reason];
+        }
+
+        $details[] = ['label' => 'Reviewed by', 'value' => $resolverName];
+        $details[] = ['label' => 'Reviewed on', 'value' => $reviewedAt->format('F d, Y \a\t h:i A')];
+
         return (new MailMessage)
             ->subject($subject)
-            ->greeting('Hello '.$notifiable->name.',')
-            ->line($intro)
-            ->line('**Report Details:**')
-            ->line('📍 Location: '.$this->report->location)
-            ->line('📝 Description: '.$this->report->description)
-            ->line('**Status:** Rejected')
-            ->when($this->report->rejection_reason, function ($mail) {
-                return $mail->line('**Reason:**')
-                    ->line($this->report->rejection_reason);
-            })
-            ->line('Reviewed by: '.$resolverName)
-            ->when($this->report->resolved_at, function ($mail) {
-                return $mail->line('Reviewed on: '.$this->report->resolved_at->format('F d, Y \a\t h:i A'));
-            }, function ($mail) {
-                return $mail->line('Reviewed on: '.now()->format('F d, Y \a\t h:i A'));
-            })
-            ->action('View Report', route('community-reports'))
-            ->line('If you have any questions, please feel free to submit a new report.');
+            ->view('emails.cleanify-notification', [
+                'title' => 'Report Status Update',
+                'greeting' => 'Hello '.$notifiable->name.',',
+                'intro' => [$intro],
+                'details' => $details,
+                'actionText' => 'View Report',
+                'actionUrl' => route('community-reports'),
+                'closing' => ['If you have any questions, please feel free to submit a new report.'],
+            ]);
+    }
+
+    public function toSms(object $notifiable): string
+    {
+        return $this->isFollower
+            ? 'Cleanify: A report you follow was rejected. Check Cleanify for details.'
+            : 'Cleanify: Your report was rejected. Check Cleanify for the reason and details.';
     }
 
     /**

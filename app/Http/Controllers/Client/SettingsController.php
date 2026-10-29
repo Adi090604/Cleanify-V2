@@ -41,6 +41,7 @@ class SettingsController extends Controller
         $defaultPrefs = [
             'report_updates' => true,
             'schedule_reminders' => true,
+            'system' => true,
         ];
         $notificationPrefs = array_merge($defaultPrefs, $notificationPrefs);
 
@@ -126,9 +127,10 @@ class SettingsController extends Controller
         $validated = $request->validate([
             'email_notifications' => ['required', 'boolean'],
             'sms_notifications' => ['required', 'boolean'],
-            'preferences' => ['required', 'array:report_updates,schedule_reminders'],
+            'preferences' => ['required', 'array:report_updates,schedule_reminders,system'],
             'preferences.report_updates' => ['required', 'boolean'],
             'preferences.schedule_reminders' => ['required', 'boolean'],
+            'preferences.system' => ['required', 'boolean'],
         ]);
 
         $user = Auth::user();
@@ -142,6 +144,7 @@ class SettingsController extends Controller
         $user->notification_preferences = array_merge($currentPrefs, [
             'report_updates' => (bool) $validated['preferences']['report_updates'],
             'schedule_reminders' => (bool) $validated['preferences']['schedule_reminders'],
+            'system' => (bool) $validated['preferences']['system'],
         ]);
 
         $user->save();
