@@ -3,11 +3,16 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Models\ModerationAction;
 use App\Models\UserReport;
+use App\Services\ModerationService;
 use App\Services\ReportDeletionService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
+use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use Throwable;
 
 class UserReportController extends Controller
 {
@@ -16,7 +21,13 @@ class UserReportController extends Controller
      */
     public function index(Request $request): View
     {
-        $query = UserReport::with(['reporter', 'reportedUser', 'reviewer', 'report.user']);
+        $query = UserReport::with([
+            'reporter',
+            'reportedUser.moderationActions.administrator',
+            'reviewer',
+            'report.user',
+            'moderationAction',
+        ]);
 
         // Search functionality
         if ($request->has('search') && $request->search) {
@@ -49,7 +60,7 @@ class UserReportController extends Controller
         // Statistics
         $totalReports = UserReport::count();
         $pendingReports = UserReport::where('status', 'pending')->count();
-        $reviewedReports = UserReport::where('status', 'reviewed')->count();
+        $dismissedReports = UserReport::where('status', 'dismissed')->count();
         $actionTakenReports = UserReport::where('status', 'action_taken')->count();
 
         return view('admin.user-reports', [
@@ -57,7 +68,7 @@ class UserReportController extends Controller
             'reports' => $reports,
             'totalReports' => $totalReports,
             'pendingReports' => $pendingReports,
-            'reviewedReports' => $reviewedReports,
+            'dismissedReports' => $dismissedReports,
             'actionTakenReports' => $actionTakenReports,
             'search' => $request->search ?? '',
             'statusFilter' => $request->status ?? 'all',
@@ -68,39 +79,87 @@ class UserReportController extends Controller
     /**
      * Update the status of a user report.
      */
-    public function update(Request $request, string $id): RedirectResponse
+    public function update(Request $request, string $id, ModerationService $moderation): RedirectResponse
     {
         $validated = $request->validate([
-            'status' => ['required', 'in:pending,reviewed,dismissed,action_taken'],
+            'decision' => ['required', 'in:dismiss,warning,community_restriction,report_submission_restriction,suspension'],
+            'duration' => [
+                'nullable',
+                'required_if:decision,community_restriction,report_submission_restriction',
+                'in:3,7,custom',
+            ],
+            'custom_until' => ['nullable', 'required_if:duration,custom', 'date', 'after:now'],
+            'resident_reason' => ['nullable', 'string', 'max:500'],
             'admin_notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
         $report = UserReport::findOrFail($id);
-        $oldStatus = $report->status;
 
-        $report->update([
-            'status' => $validated['status'],
-            'admin_notes' => $validated['admin_notes'] ?? null,
-            'reviewed_by' => auth()->id(),
-            'reviewed_at' => now(),
+        try {
+            if ($validated['decision'] === 'dismiss') {
+                $moderation->dismiss($report, $request->user(), $validated['admin_notes'] ?? null);
+
+                return back()->with('success', 'User report dismissed successfully.');
+            }
+
+            $expiresAt = null;
+            if (in_array($validated['decision'], [
+                ModerationAction::COMMUNITY_RESTRICTION,
+                ModerationAction::REPORT_SUBMISSION_RESTRICTION,
+            ], true)) {
+                $expiresAt = $validated['duration'] === 'custom'
+                    ? Carbon::parse($validated['custom_until'])
+                    : now()->addDays((int) $validated['duration']);
+            }
+
+            $action = $moderation->apply(
+                $report,
+                $request->user(),
+                $validated['decision'],
+                $validated['resident_reason'] ?? null,
+                $validated['admin_notes'] ?? null,
+                $expiresAt,
+            );
+
+            $message = match ($action->action_type) {
+                ModerationAction::WARNING => 'Warning issued successfully.',
+                ModerationAction::COMMUNITY_RESTRICTION => 'Community restriction applied successfully.',
+                ModerationAction::REPORT_SUBMISSION_RESTRICTION => 'Report submission restriction applied successfully.',
+                ModerationAction::SUSPENSION => 'Account suspended successfully.',
+                default => 'Moderation action applied successfully.',
+            };
+
+            return back()->with('success', $message);
+        } catch (ValidationException $exception) {
+            throw $exception;
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return back()->with('error', 'Something went wrong while processing the moderation action. Please try again.');
+        }
+    }
+
+    public function lift(Request $request, ModerationAction $moderationAction, ModerationService $moderation): RedirectResponse
+    {
+        $validated = $request->validate([
+            'admin_notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        // If action taken, you might want to ban the user or take other actions
-        if ($validated['status'] === 'action_taken' && $report->reportedUser) {
-            // Optionally ban the user if multiple reports or serious violation
-            // $report->reportedUser->update(['banned_at' => now()]);
+        try {
+            $result = $moderation->lift($moderationAction, $request->user(), $validated['admin_notes'] ?? null);
+        } catch (ValidationException $exception) {
+            throw $exception;
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return back()->with('error', 'Something went wrong while processing the moderation action. Please try again.');
         }
 
-        // Notify the reporter if status changed (and is not pending anymore)
-        if ($oldStatus !== $validated['status'] && $validated['status'] !== 'pending' && $report->reporter) {
-            try {
-                $report->reporter->notify(new \App\Notifications\UserReportReviewedNotification($report));
-            } catch (\Exception $e) {
-                \Log::error('Failed to notify user about report review: '.$e->getMessage());
-            }
-        }
+        $message = $result->action_type === ModerationAction::UNSUSPENDED
+            ? 'Account unsuspended successfully.'
+            : 'Restriction lifted successfully.';
 
-        return back()->with('success', 'User report updated successfully!');
+        return back()->with('success', $message);
     }
 
     /**

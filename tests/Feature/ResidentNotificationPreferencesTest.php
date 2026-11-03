@@ -32,12 +32,11 @@ test('resident settings show supported notification controls without fake option
         ->assertSee('Email Notifications')
         ->assertSee('SMS Notifications')
         ->assertSee('Receive enabled Cleanify updates via SMS')
-        ->assertSee('Push Notifications')
-        ->assertSee('Push Notifications unavailable', false)
-        ->assertSee('Browser push notifications are not currently supported')
         ->assertSee('Report Updates')
         ->assertSee('Schedule Reminders')
-        ->assertSee('System')
+        ->assertSee('System Notifications')
+        ->assertDontSee('Push Notifications')
+        ->assertDontSee('Browser push notifications are not currently supported')
         ->assertDontSee('name="push_notifications"', false)
         ->assertDontSee('Community Posts')
         ->assertDontSee('Truck Tracking')
@@ -60,8 +59,6 @@ test('resident settings show supported notification controls without fake option
             ->and($html)->toMatch('/<label[^>]*for="'.preg_quote($id, '/').'"[^>]*cursor-pointer[^>]*>.*?peer-checked:bg-green-600.*?<\/label>/s')
             ->and(substr_count($html, 'name="'.$name.'"'))->toBe(2);
     }
-
-    expect($html)->toMatch('/<input[^>]*aria-label="Push Notifications unavailable"[^>]*disabled[^>]*>/');
 });
 
 test('resident can save supported notification preferences and reload their state', function () {

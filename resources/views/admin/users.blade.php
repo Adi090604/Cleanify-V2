@@ -50,7 +50,7 @@
     <x-admin.stat-card icon="fas fa-users" title="Total Users" :value="$totalUsers" />
     <x-admin.stat-card icon="fas fa-user-shield" title="Admins" :value="$totalAdmins" borderClass="border-l-4 border-blue-500" iconWrapperClass="bg-blue-100" iconColorClass="text-blue-600" />
     <x-admin.stat-card icon="fas fa-user-tie" title="Regular Users" :value="$totalRegular" borderClass="border-l-4 border-yellow-500" iconWrapperClass="bg-yellow-100" iconColorClass="text-yellow-600" />
-    <x-admin.stat-card icon="fas fa-user-slash" title="Banned Users" :value="$bannedUsers" borderClass="border-l-4 border-red-500" iconWrapperClass="bg-red-100" iconColorClass="text-red-600" />
+    <x-admin.stat-card icon="fas fa-user-lock" title="Suspended Users" :value="$bannedUsers" borderClass="border-l-4 border-red-500" iconWrapperClass="bg-red-100" iconColorClass="text-red-600" />
   </div>
 
   @php
@@ -98,7 +98,7 @@
               <td class="px-4 py-3">
                 @if($user->isBanned())
                   <span class="text-red-600 font-semibold">
-                    <i class="fas fa-ban text-xs mr-1"></i>Banned
+                    <i class="fas fa-user-lock text-xs mr-1"></i>Suspended
                   </span>
                 @else
                   <span class="text-green-600 font-semibold">
@@ -117,11 +117,11 @@
                   </button>
                   @if(auth()->id() != $user->id && !$user->isAdmin())
                     @if($user->isBanned())
-                      <button onclick="openUserUnban({{ $user->id }})" class="admin-icon-button bg-green-500 text-white hover:bg-green-600" title="Unban User">
+                      <button onclick="openUserUnban({{ $user->id }})" class="admin-icon-button bg-green-500 text-white hover:bg-green-600" title="Unsuspend User">
                         <i class="fas fa-unlock text-sm"></i>
                       </button>
                     @else
-                      <button onclick="openUserBan({{ $user->id }})" class="admin-icon-button bg-orange-500 text-white hover:bg-orange-600" title="Ban User">
+                      <button onclick="openUserBan({{ $user->id }})" class="admin-icon-button bg-orange-500 text-white hover:bg-orange-600" title="Suspend User">
                         <i class="fas fa-ban text-sm"></i>
                       </button>
                     @endif
@@ -259,8 +259,8 @@
     @endslot
   </x-modal>
 
-  <x-modal id="banUserModal" title="Ban User" icon="fas fa-ban" color="orange" variant="confirmation">
-    <p>Are you sure you want to ban this user? Banned users will not be able to log in or access the application.</p>
+  <x-modal id="banUserModal" title="Suspend User" icon="fas fa-user-lock" color="orange" variant="confirmation">
+    <p>Are you sure you want to suspend this user? Suspended users will not be able to log in or access the application.</p>
     <div class="admin-confirm-warning">
       <i class="fas fa-exclamation-circle mt-0.5" aria-hidden="true"></i>
       <p>The user will be immediately logged out if currently active and will not be able to access their account.</p>
@@ -273,15 +273,15 @@
         <form id="banUserForm" method="POST" action="" class="inline">
           @csrf
           <button type="submit" class="admin-btn-warning">
-            <i class="fas fa-ban mr-2"></i>Ban User
+            <i class="fas fa-user-lock mr-2"></i>Suspend User
           </button>
         </form>
       </div>
     @endslot
   </x-modal>
 
-  <x-modal id="unbanUserModal" title="Unban User" icon="fas fa-unlock" color="green" variant="confirmation">
-    <p>Are you sure you want to unban this user? The user will be able to log in and access the application again.</p>
+  <x-modal id="unbanUserModal" title="Unsuspend User" icon="fas fa-unlock" color="green" variant="confirmation">
+    <p>Are you sure you want to unsuspend this user? The user will be able to log in and access the application again.</p>
     @slot('footer')
       <div class="admin-confirm-actions">
         <button type="button" onclick="closeModal('unbanUserModal')" class="admin-btn-secondary">
@@ -290,7 +290,7 @@
         <form id="unbanUserForm" method="POST" action="" class="inline">
           @csrf
           <button type="submit" class="admin-btn-success">
-            <i class="fas fa-unlock mr-2"></i>Unban User
+            <i class="fas fa-unlock mr-2"></i>Unsuspend User
           </button>
         </form>
       </div>
@@ -359,7 +359,7 @@
           <i class="fas ${user.is_admin ? 'fa-user-shield' : 'fa-user'} mr-1"></i>${user.is_admin ? 'Admin' : 'User'}
         </span>
         ${user.is_banned ? 
-          '<span class="bg-red-100 text-red-800 text-sm font-medium px-3 py-1 rounded-full"><i class="fas fa-ban text-xs mr-1"></i>Banned</span>' :
+          '<span class="bg-red-100 text-red-800 text-sm font-medium px-3 py-1 rounded-full"><i class="fas fa-user-lock text-xs mr-1"></i>Suspended</span>' :
           '<span class="bg-green-100 text-green-800 text-sm font-medium px-3 py-1 rounded-full"><i class="fas fa-circle text-xs mr-1"></i>Active</span>'
         }`;
       document.getElementById('viewUserInfo').innerHTML = `
@@ -367,8 +367,8 @@
         <div class="space-y-2">
           <div class="flex justify-between"><span class="text-gray-600">Member Since:</span><span class="font-medium">${user.created_at}</span></div>
           <div class="flex justify-between"><span class="text-gray-600">Email Verified:</span><span class="${user.email_verified_at ? 'text-green-600' : 'text-yellow-600'} font-medium"><i class="fas ${user.email_verified_at ? 'fa-check-circle' : 'fa-times-circle'} mr-1"></i>${user.email_verified_at ? 'Yes' : 'No'}</span></div>
-          <div class="flex justify-between"><span class="text-gray-600">Account Status:</span><span class="${user.is_banned ? 'text-red-600' : 'text-green-600'} font-medium"><i class="fas ${user.is_banned ? 'fa-ban' : 'fa-check-circle'} mr-1"></i>${user.is_banned ? 'Banned' : 'Active'}</span></div>
-          ${user.banned_at ? `<div class="flex justify-between"><span class="text-gray-600">Banned Since:</span><span class="font-medium">${user.banned_at}</span></div>` : ''}
+          <div class="flex justify-between"><span class="text-gray-600">Account Status:</span><span class="${user.is_banned ? 'text-red-600' : 'text-green-600'} font-medium"><i class="fas ${user.is_banned ? 'fa-user-lock' : 'fa-check-circle'} mr-1"></i>${user.is_banned ? 'Suspended' : 'Active'}</span></div>
+          ${user.banned_at ? `<div class="flex justify-between"><span class="text-gray-600">Suspended Since:</span><span class="font-medium">${user.banned_at}</span></div>` : ''}
         </div>`;
       document.getElementById('viewUserStats').innerHTML = `
         <h4 class="font-semibold text-gray-800 mb-3"><i class="fas fa-chart-bar mr-2 text-purple-600"></i>Account Details</h4>

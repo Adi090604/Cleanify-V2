@@ -11,9 +11,11 @@ class EnsureMobileResident
 {
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->user()->isBanned()) {
+        if ($request->user()->isSuspended()) {
+            $request->user()->tokens()->delete();
+
             return new JsonResponse([
-                'message' => 'Your account has been banned. Please contact an administrator.',
+                'message' => 'Your account has been suspended. Please contact an administrator.',
             ], 403);
         }
 

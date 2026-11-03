@@ -16,7 +16,7 @@ Route::prefix('v1')->group(function (): void {
     Route::post('/auth/register', [AuthController::class, 'register']);
     Route::post('/auth/forgot-password', [AuthController::class, 'forgotPassword']);
 
-    Route::middleware('auth:sanctum')->group(function (): void {
+    Route::middleware(['auth:sanctum', 'mobile.resident'])->group(function (): void {
         Route::post('/auth/logout', [AuthController::class, 'logout']);
         Route::get('/me', [AuthController::class, 'me']);
         Route::post('/me/profile-photo', [ProfilePhotoController::class, 'store']);
@@ -30,10 +30,10 @@ Route::prefix('v1')->group(function (): void {
         Route::get('/reports', [ReportController::class, 'index']);
         Route::get('/reports/home', [ReportController::class, 'home']);
         Route::get('/reports/{report}', [ReportController::class, 'show']);
-        Route::post('/reports', [ReportController::class, 'store']);
-        Route::post('/reports/{report}/like', [ReportController::class, 'toggleLike']);
+        Route::post('/reports', [ReportController::class, 'store'])->middleware('reports.allowed');
+        Route::post('/reports/{report}/like', [ReportController::class, 'toggleLike'])->middleware('community.allowed');
         Route::get('/reports/{report}/comments', [ReportController::class, 'comments']);
-        Route::post('/reports/{report}/comment', [ReportController::class, 'storeComment']);
+        Route::post('/reports/{report}/comment', [ReportController::class, 'storeComment'])->middleware('community.allowed');
         Route::post('/users/{user}/report', [UserReportController::class, 'store']);
         Route::get('/me/reports', [ReportController::class, 'mine']);
         Route::get('/schedules', [ScheduleController::class, 'index']);
@@ -42,9 +42,7 @@ Route::prefix('v1')->group(function (): void {
         Route::patch('/settings/account', [SettingsController::class, 'updateAccount']);
         Route::patch('/settings/password', [SettingsController::class, 'updatePassword']);
         Route::patch('/settings/notifications', [SettingsController::class, 'updateNotifications']);
-        Route::middleware('mobile.resident')->group(function (): void {
-            Route::get('/service-area-requests/latest', [ServiceAreaRequestController::class, 'latest']);
-            Route::post('/service-area-requests', [ServiceAreaRequestController::class, 'store']);
-        });
+        Route::get('/service-area-requests/latest', [ServiceAreaRequestController::class, 'latest']);
+        Route::post('/service-area-requests', [ServiceAreaRequestController::class, 'store']);
     });
 });

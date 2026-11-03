@@ -267,27 +267,17 @@
     })
     .then(data => {
       if (data.success) {
-        showToast('success', 'Post updated successfully');
         closeModal('editPostModal');
-        setTimeout(() => location.reload(), 1000);
+        showResidentAlert('success', data.message || 'Post updated successfully')
+          .then(() => location.reload());
       } else {
-        showToast('error', data.message || 'Failed to update post');
+        showResidentAlert('error', data.message || 'Failed to update post');
       }
     })
     .catch(error => {
-      console.error('Error:', error);
-      let errorMessage = 'Failed to update post. Please try again.';
-      
-      if (error.error) {
-        if (error.error.message) {
-          errorMessage = error.error.message;
-        } else if (error.error.errors) {
-          const firstError = Object.values(error.error.errors)[0];
-          errorMessage = Array.isArray(firstError) ? firstError[0] : firstError;
-        }
-      }
-      
-      showToast('error', errorMessage);
+      console.error('Report update failed with status:', error.response?.status);
+      const errorMessage = residentRequestErrorMessage(error, 'Failed to update post. Please try again.');
+      showResidentAlert('error', errorMessage);
     });
   }
 
@@ -318,7 +308,7 @@
     })
     .then(data => {
       if (data.success) {
-        showToast('success', 'Post deleted successfully');
+        showResidentAlert('success', data.message || 'Post deleted successfully');
         const reportElement = document.getElementById(`report-${currentDeleteReportId}`);
         if (reportElement) {
           reportElement.style.transition = 'opacity 0.3s, transform 0.3s';
@@ -335,20 +325,13 @@
         closeModal('deletePostModal');
         currentDeleteReportId = null;
       } else {
-        showToast('error', data.message || 'Failed to delete post');
+        showResidentAlert('error', data.message || 'Failed to delete post');
       }
     })
     .catch(error => {
-      console.error('Error:', error);
-      let errorMessage = 'Failed to delete post. Please try again.';
-      
-      if (error.error) {
-        if (error.error.message) {
-          errorMessage = error.error.message;
-        }
-      }
-      
-      showToast('error', errorMessage);
+      console.error('Report deletion failed with status:', error.response?.status);
+      const errorMessage = residentRequestErrorMessage(error, 'Failed to delete post. Please try again.');
+      showResidentAlert('error', errorMessage);
     });
   }
 
@@ -499,7 +482,7 @@
         }
       }
       
-      showToast('error', errorMessage);
+      showResidentAlert('error', errorMessage);
     });
   }
 
@@ -538,7 +521,8 @@
         })
         .catch(error => {
           console.error('Error:', error);
-          showToast('error', 'Failed to like post. Please try again.');
+          const errorMessage = residentRequestErrorMessage(error, 'Failed to like post. Please try again.');
+          showResidentAlert('error', errorMessage);
         });
       });
     });
@@ -548,7 +532,7 @@
   window.submitProfileForm = function() {
     const form = document.getElementById('editProfileForm');
     if (!form) {
-      showToast('error', 'Form not found');
+      showResidentAlert('error', 'Form not found');
       return;
     }
     
@@ -560,13 +544,13 @@
     
     // Validate required fields
     if (!nameInput || !nameInput.value || nameInput.value.trim() === '') {
-      showToast('error', 'Name field is required');
+      showResidentAlert('error', 'Name field is required');
       nameInput?.focus();
       return;
     }
     
     if (!emailInput || !emailInput.value || emailInput.value.trim() === '') {
-      showToast('error', 'Email field is required');
+      showResidentAlert('error', 'Email field is required');
       emailInput?.focus();
       return;
     }
@@ -635,17 +619,15 @@
           input.classList.add('border-gray-300');
         });
         
-        showToast('success', 'Profile updated successfully');
         closeModal('editProfileModal');
-        setTimeout(() => location.reload(), 1000);
+        showResidentAlert('success', data.message || 'Profile updated successfully')
+          .then(() => location.reload());
       } else {
-        showToast('error', data.message || 'Failed to update profile');
+        showResidentAlert('error', data.message || 'Failed to update profile');
       }
     })
     .catch(error => {
-      console.error('Full error object:', error);
-      console.error('Error.error:', error.error);
-      console.error('Error.error.errors:', error.error?.errors);
+      console.error('Profile update failed with status:', error.response?.status);
       
       // Clear previous field errors
       document.querySelectorAll('[id^="error-"]').forEach(el => {
@@ -659,15 +641,17 @@
         input.classList.add('border-gray-300');
       });
       
-      let errorMessage = 'Failed to update profile. Please try again.';
-      let hasFieldErrors = false;
+      const isClientError = error.response?.status >= 400 && error.response?.status < 500;
+      const hasValidationErrors = isClientError && error.error?.errors;
+      const errorMessage = hasValidationErrors
+        ? 'Please check the highlighted fields.'
+        : residentRequestErrorMessage(error, 'Failed to update profile. Please try again.');
       
       // Handle Laravel validation errors
-      if (error.error) {
+      if (isClientError && error.error) {
         // Check for validation errors object
         if (error.error.errors) {
           const errors = error.error.errors;
-          console.log('Processing validation errors:', errors);
           
           // Display field-specific errors
           Object.keys(errors).forEach(field => {
@@ -688,8 +672,6 @@
               const errorText = Array.isArray(errors[field]) ? errors[field][0] : errors[field];
               errorElement.textContent = errorText;
               errorElement.classList.remove('hidden');
-              hasFieldErrors = true;
-              console.log(`Displaying error for ${field}:`, errorText);
             }
             
             if (inputElement) {
@@ -698,23 +680,11 @@
             }
           });
           
-          // Get first error for toast
-          const firstErrorKey = Object.keys(errors)[0];
-          const firstError = errors[firstErrorKey];
-          errorMessage = Array.isArray(firstError) ? firstError[0] : firstError;
-        } 
-        // Check for message field
-        else if (error.error.message && error.error.message !== 'The given data was invalid.') {
-          errorMessage = error.error.message;
         }
-      } 
-      // Handle generic error messages
-      else if (error.message) {
-        errorMessage = error.message;
       }
       
-      // Show toast with error message
-      showToast('error', errorMessage);
+      // Show a concise summary while field-level errors remain visible.
+      showResidentAlert('error', errorMessage);
     });
   };
 
@@ -724,7 +694,7 @@
       window.submitProfileForm();
     } else {
       console.error('submitProfileForm function not found');
-      showToast('error', 'Form submission error. Please refresh the page.');
+      showResidentAlert('error', 'Form submission error. Please refresh the page.');
     }
   });
 

@@ -16,13 +16,13 @@ class EnsureUserIsNotBanned
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if (Auth::check() && Auth::user()->isBanned()) {
+        if (Auth::check() && Auth::user()->isSuspended()) {
             Auth::logout();
             $request->session()->invalidate();
             $request->session()->regenerateToken();
-            
+
             return redirect()->route('login')
-                ->withErrors(['email' => 'Your account has been banned. Please contact an administrator.']);
+                ->withErrors(['email' => 'Your account has been suspended. Please contact an administrator.']);
         }
 
         return $next($request);

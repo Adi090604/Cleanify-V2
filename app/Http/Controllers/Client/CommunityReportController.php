@@ -18,6 +18,9 @@ class CommunityReportController extends Controller
         $reports = Report::query()
             ->with(['user'])
             ->withCount(['likes', 'comments', 'followers'])
+            ->withExists([
+                'likes as is_liked' => fn ($query) => $query->where('user_id', Auth::id()),
+            ])
             ->latest()
             ->paginate(6);
 
@@ -40,6 +43,7 @@ class CommunityReportController extends Controller
         ])->loadCount(['likes', 'comments', 'followers']);
 
         $user = Auth::user();
+        $isLiked = $user ? $report->likes->contains('user_id', $user->id) : false;
         $isFollowing = $user ? $report->followers->contains('id', $user->id) : false;
         $coordinate = $report->latitude !== null && $report->longitude !== null ? [
             'lat' => (float) $report->latitude,
@@ -69,6 +73,7 @@ class CommunityReportController extends Controller
             'likes_count' => $report->likes_count,
             'comments_count' => $report->comments_count,
             'followers_count' => $report->followers_count,
+            'is_liked' => $isLiked,
             'is_following' => $isFollowing,
             'timeline' => $timeline,
             'comments' => $report->comments->map(function ($comment) {

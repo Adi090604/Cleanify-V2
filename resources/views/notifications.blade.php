@@ -3,13 +3,6 @@
 @section('title', 'Notifications')
 
 @section('content')
-  @if(session('success'))
-    <x-alert type="success" dismissible class="mb-4">{{ session('success') }}</x-alert>
-  @endif
-  @if(session('error'))
-    <x-alert type="error" dismissible class="mb-4">{{ session('error') }}</x-alert>
-  @endif
-
   <div class="bg-white rounded-xl shadow-sm p-4 mb-6 flex flex-wrap gap-3 items-center justify-between">
     <div>
       <h4 class="font-semibold text-gray-800 flex items-center gap-3">
@@ -219,16 +212,16 @@
           })
           .then(data => {
             if (data && data.success) {
-              if (typeof showToast === 'function') {
-                showToast('success', 'All notifications marked as read');
+              if (typeof showResidentAlert === 'function') {
+                showResidentAlert('success', data.message || 'All notifications marked as read')
+                  .then(() => location.reload());
               }
-              setTimeout(() => location.reload(), 500);
             }
           })
           .catch(error => {
             console.error('Error:', error);
-            if (typeof showToast === 'function') {
-              showToast('error', 'Failed to mark all as read. Please try again.');
+            if (typeof showResidentAlert === 'function') {
+              showResidentAlert('error', 'Failed to mark all as read. Please try again.');
             } else {
               this.submit(); // Fallback to normal form submission
             }
@@ -328,7 +321,7 @@
           })
           .then(data => {
             if (data && data.success) {
-              showToast('success', 'Notification dismissed');
+              showResidentAlert('success', data.message || 'Notification dismissed');
               // Remove notification from UI with animation
               if (notificationCard) {
                 notificationCard.style.transition = 'opacity 0.3s, transform 0.3s';
@@ -349,7 +342,7 @@
           })
           .catch(error => {
             console.error('Error:', error);
-            showToast('error', 'Failed to dismiss notification. Please try again.');
+            showResidentAlert('error', 'Failed to dismiss notification. Please try again.');
           })
           .finally(() => {
             confirmButton.disabled = false;
@@ -380,16 +373,16 @@
           })
           .then(data => {
             if (data && data.success) {
-              if (typeof showToast === 'function') {
-                showToast('success', 'Notification preferences updated');
+              if (typeof showResidentAlert === 'function') {
+                showResidentAlert('success', data.message || 'Notification preferences updated')
+                  .then(() => location.reload());
               }
-              setTimeout(() => location.reload(), 500);
             }
           })
           .catch(error => {
             console.error('Error:', error);
-            if (typeof showToast === 'function') {
-              showToast('error', 'Failed to update preferences. Please try again.');
+            if (typeof showResidentAlert === 'function') {
+              showResidentAlert('error', 'Failed to update preferences. Please try again.');
             } else {
               this.submit(); // Fallback to normal form submission
             }

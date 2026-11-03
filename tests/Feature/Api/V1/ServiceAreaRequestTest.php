@@ -193,7 +193,7 @@ test('banned residents and admins cannot use service area request mobile endpoin
 
     expect(ServiceAreaRequest::count())->toBe(0);
 })->with([
-    'banned resident' => [['banned_at' => now()], 'Your account has been banned. Please contact an administrator.'],
+    'suspended resident' => [['banned_at' => now()], 'Your account has been suspended. Please contact an administrator.'],
     'admin' => [['is_admin' => true], 'Admin accounts can only sign in through the web Admin Portal.'],
 ]);
 

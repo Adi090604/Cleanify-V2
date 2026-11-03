@@ -35,32 +35,10 @@
     </form>
   </div>
 
-  @if(session('success'))
-    <x-alert type="success" dismissible class="mb-4">
-      {{ session('success') }}
-    </x-alert>
-  @endif
-
-  @if(session('error'))
-    <x-alert type="error" dismissible class="mb-4">
-      {{ session('error') }}
-    </x-alert>
-  @endif
-
-  @if($errors->any())
-    <x-alert type="error" dismissible class="mb-4">
-      <ul class="list-disc list-inside text-sm">
-        @foreach($errors->all() as $error)
-          <li>{{ $error }}</li>
-        @endforeach
-      </ul>
-    </x-alert>
-  @endif
-
   <div class="admin-stat-grid grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4 mb-5">
     <x-admin.stat-card icon="fas fa-flag" title="Total Reports" :value="$totalReports" />
     <x-admin.stat-card icon="fas fa-clock" title="Pending" :value="$pendingReports" borderClass="border-l-4 border-yellow-500" iconWrapperClass="bg-yellow-100" iconColorClass="text-yellow-600" />
-    <x-admin.stat-card icon="fas fa-check-circle" title="Reviewed" :value="$reviewedReports" borderClass="border-l-4 border-blue-500" iconWrapperClass="bg-blue-100" iconColorClass="text-blue-600" />
+    <x-admin.stat-card icon="fas fa-times-circle" title="Dismissed" :value="$dismissedReports" borderClass="border-l-4 border-gray-500" iconWrapperClass="bg-gray-100" iconColorClass="text-gray-600" />
     <x-admin.stat-card icon="fas fa-ban" title="Action Taken" :value="$actionTakenReports" borderClass="border-l-4 border-red-500" iconWrapperClass="bg-red-100" iconColorClass="text-red-600" />
   </div>
 
@@ -72,7 +50,6 @@
         <select name="status" class="border border-gray-300 rounded-lg px-3 py-1.5 text-sm focus:ring-green-500" onchange="this.form.submit()">
           <option value="all" {{ $statusFilter === 'all' ? 'selected' : '' }}>All statuses</option>
           <option value="pending" {{ $statusFilter === 'pending' ? 'selected' : '' }}>Pending</option>
-          <option value="reviewed" {{ $statusFilter === 'reviewed' ? 'selected' : '' }}>Reviewed</option>
           <option value="dismissed" {{ $statusFilter === 'dismissed' ? 'selected' : '' }}>Dismissed</option>
           <option value="action_taken" {{ $statusFilter === 'action_taken' ? 'selected' : '' }}>Action Taken</option>
         </select>
@@ -100,7 +77,8 @@
             <th class="px-4 py-3 text-left text-sm font-semibold">Reporter</th>
             <th class="px-4 py-3 text-left text-sm font-semibold">Reported User</th>
             <th class="px-4 py-3 text-left text-sm font-semibold">Reason</th>
-            <th class="px-4 py-3 text-left text-sm font-semibold">Description</th>
+            <th class="px-4 py-3 text-left text-sm font-semibold">Confirmed</th>
+            <th class="px-4 py-3 text-left text-sm font-semibold">Moderation</th>
             <th class="px-4 py-3 text-left text-sm font-semibold">Status</th>
             <th class="px-4 py-3 text-left text-sm font-semibold">Date</th>
             <th class="px-4 py-3 text-left text-sm font-semibold">Actions</th>
@@ -129,9 +107,6 @@
                   <div>
                     <p class="font-medium text-gray-900">{{ $report->reportedUser->name ?? 'Unknown' }}</p>
                     <p class="text-xs text-gray-500">{{ $report->reportedUser->email ?? '' }}</p>
-                    @if($report->reportedUser && $report->reportedUser->isBanned())
-                      <span class="text-xs text-red-600 font-semibold">(Banned)</span>
-                    @endif
                   </div>
                 </div>
               </td>
@@ -140,8 +115,11 @@
                   {{ $report->getReasonLabel() }}
                 </span>
               </td>
-              <td class="px-4 py-3 text-sm text-gray-600 max-w-xs">
-                {{ Str::limit($report->description ?? 'No description provided', 50) }}
+              <td class="px-4 py-3 text-sm text-gray-700">
+                {{ $report->reportedUser?->confirmedViolationCount($report->id) ?? 0 }}
+              </td>
+              <td class="px-4 py-3 text-sm text-gray-700">
+                {{ $report->reportedUser?->moderationStatusLabel() ?? 'Unknown' }}
               </td>
               <td class="px-4 py-3">
                 <span class="admin-status-badge {{ $report->getStatusBadgeClass() }}">
@@ -197,30 +175,67 @@
         <button onclick="closeModal('viewUserReportModal')" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors duration-300">
           <i class="fas fa-times mr-2"></i>Close
         </button>
-        <button onclick="openUserReportEdit()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-300">
-          <i class="fas fa-edit mr-2"></i>Update Status
+        <button id="reviewUserReportButton" onclick="openUserReportEdit()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-300">
+          <i class="fas fa-gavel mr-2"></i>Review
         </button>
       </div>
     @endslot
   </x-modal>
 
-  <x-modal id="editUserReportModal" title="Update User Report Status" icon="fas fa-edit" color="red">
-    <form id="editUserReportForm" method="POST" action="" class="space-y-4">
+  <x-modal id="editUserReportModal" title="Review User Report" icon="fas fa-user-shield" color="red">
+    <form
+      id="editUserReportForm"
+      method="POST"
+      action=""
+      class="space-y-4"
+      data-admin-moderation-confirmation
+      data-confirm-title="Dismiss this user report?"
+      data-confirm-text="No moderation action will be applied."
+      data-confirm-button="Dismiss Report"
+    >
       @csrf
       @method('PUT')
       <input type="hidden" name="id" id="editUserReportId">
       <div>
-        <label class="block text-gray-700 mb-2"><i class="fas fa-tag mr-2 text-red-600"></i>Status</label>
-        <select name="status" id="editUserReportStatus" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" required>
-          <option value="pending">Pending</option>
-          <option value="reviewed">Reviewed</option>
-          <option value="dismissed">Dismissed</option>
-          <option value="action_taken">Action Taken</option>
-        </select>
+        <p id="moderationRecommendation" class="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-800"></p>
       </div>
       <div>
-        <label class="block text-gray-700 mb-2"><i class="fas fa-comment mr-2 text-red-600"></i>Admin Notes</label>
-        <textarea name="admin_notes" id="editUserReportNotes" rows="4" class="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none" placeholder="Add notes about this report..."></textarea>
+        <label class="block text-gray-700 mb-2"><i class="fas fa-gavel mr-2 text-red-600"></i>Decision</label>
+        <select name="decision" id="editUserReportDecision" class="w-full px-4 py-2 border @error('decision') border-red-500 @else border-gray-300 @enderror rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent" required onchange="updateModerationFields()">
+          <option value="dismiss" @selected(old('decision') === 'dismiss')>Dismiss Report</option>
+          <option value="warning" @selected(old('decision') === 'warning')>Issue Warning</option>
+          <option value="community_restriction" @selected(old('decision') === 'community_restriction')>Community Restriction</option>
+          <option value="suspension" @selected(old('decision') === 'suspension')>Suspend Account</option>
+        </select>
+        @error('decision')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+      </div>
+      <div id="moderationDurationFields" class="hidden space-y-3">
+        <div>
+          <label class="block text-gray-700 mb-2">Duration</label>
+          <select name="duration" id="editUserReportDuration" class="w-full px-4 py-2 border @error('duration') border-red-500 @else border-gray-300 @enderror rounded-lg" onchange="updateModerationFields()">
+            <option value="3" @selected(old('duration') === '3')>3 Days</option>
+            <option value="7" @selected(old('duration') === '7')>7 Days</option>
+            <option value="custom" @selected(old('duration') === 'custom')>Custom</option>
+          </select>
+          @error('duration')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+        </div>
+        <div id="moderationCustomUntilField" class="hidden">
+          <label class="block text-gray-700 mb-2">Restriction Ends</label>
+          <input type="datetime-local" name="custom_until" id="editUserReportCustomUntil" value="{{ old('custom_until') }}" class="w-full px-4 py-2 border @error('custom_until') border-red-500 @else border-gray-300 @enderror rounded-lg">
+          @error('custom_until')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+        </div>
+      </div>
+      <div>
+        <label class="block text-gray-700 mb-2"><i class="fas fa-comment-alt mr-2 text-green-600"></i>Resident Safe Reason</label>
+        <textarea name="resident_reason" id="editUserReportResidentReason" rows="3" class="w-full px-4 py-2 border @error('resident_reason') border-red-500 @else border-gray-300 @enderror rounded-lg resize-none" placeholder="Optional information that may be shown to the resident">{{ old('resident_reason') }}</textarea>
+        <p class="mt-1 text-xs text-gray-500">Do not put private investigation notes here.</p>
+        @error('resident_reason')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
+      </div>
+      <div>
+        <label class="block text-gray-700 mb-2"><i class="fas fa-lock mr-2 text-red-600"></i>Internal Admin Notes</label>
+        <textarea name="admin_notes" id="editUserReportNotes" rows="4" class="w-full px-4 py-2 border @error('admin_notes') border-red-500 @else border-gray-300 @enderror rounded-lg focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none" placeholder="Private notes for administrators only">{{ old('admin_notes') }}</textarea>
+        <p class="mt-1 text-xs text-red-600">Never shown in resident notifications.</p>
+        @error('admin_notes')<p class="mt-1 text-sm text-red-600">{{ $message }}</p>@enderror
       </div>
     </form>
     @slot('footer')
@@ -229,7 +244,7 @@
           <i class="fas fa-times mr-2"></i>Cancel
         </button>
         <button type="submit" form="editUserReportForm" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors duration-300">
-          <i class="fas fa-save mr-2"></i>Save Changes
+          <i class="fas fa-check mr-2"></i>Confirm Decision
         </button>
       </div>
     @endslot
@@ -261,6 +276,10 @@
     let currentUserReportId = null;
     @php
       $userReportsData = $reports->map(function($report) {
+        $recommendation = $report->reportedUser
+          ? app(\App\Services\ModerationService::class)->recommendedAction($report->reportedUser)
+          : ['action' => 'warning', 'label' => 'Warning', 'days' => null];
+
         return [
           'id' => $report->id,
           'reporter' => [
@@ -272,7 +291,24 @@
             'id' => $report->reported_user_id,
             'name' => $report->reportedUser->name ?? 'Unknown',
             'email' => $report->reportedUser->email ?? '',
-            'is_banned' => $report->reportedUser ? $report->reportedUser->isBanned() : false,
+            'is_suspended' => $report->reportedUser ? $report->reportedUser->isSuspended() : false,
+            'confirmed_violations' => $report->reportedUser?->confirmedViolationCount($report->id) ?? 0,
+            'moderation_status' => $report->reportedUser?->moderationStatusLabel() ?? 'Unknown',
+            'recommendation' => $recommendation,
+            'moderation_history' => $report->reportedUser?->moderationActions
+              ->sortByDesc('starts_at')
+              ->map(fn ($action) => [
+                'id' => $action->id,
+                'label' => $action->label(),
+                'status' => $action->statusLabel(),
+                'applied_by' => $action->administrator?->name ?? 'Unknown Admin',
+                'starts_at' => $action->starts_at?->format('M d, Y g:i A'),
+                'expires_at' => $action->expires_at?->format('M d, Y g:i A'),
+                'can_lift' => !$action->lifted_at
+                  && in_array($action->action_type, ['community_restriction', 'report_submission_restriction', 'suspension'], true)
+                  && (!$action->expires_at || $action->expires_at->isFuture()),
+                'lift_url' => route('admin.moderation-actions.lift', $action),
+              ])->values()->all() ?? [],
           ],
           'reason' => $report->reason,
           'reason_label' => $report->getReasonLabel(),
@@ -327,8 +363,9 @@
             </div>
             <div class="bg-gray-50 rounded-lg p-4">
               <h4 class="font-semibold text-gray-800 mb-2"><i class="fas fa-user-slash mr-2 text-red-600"></i>Reported User</h4>
-              <p class="text-gray-900 font-medium">${report.reported_user.name} ${report.reported_user.is_banned ? '<span class="text-xs text-red-600 font-semibold">(Banned)</span>' : ''}</p>
-              <p class="text-sm text-gray-600">${report.reported_user.email}</p>
+              <p class="text-gray-900 font-medium">${escapeHtml(report.reported_user.name)}</p>
+              <p class="text-sm text-gray-600">${escapeHtml(report.reported_user.email)}</p>
+              <p class="mt-1 text-xs font-semibold text-red-600">${escapeHtml(report.reported_user.moderation_status)}</p>
             </div>
           </div>
           
@@ -377,11 +414,53 @@
             <h4 class="font-semibold text-gray-800 mb-2"><i class="fas fa-info-circle mr-2 text-red-600"></i>Status</h4>
             <span class="text-sm font-semibold px-3 py-1 rounded-full ${getStatusBadgeClass(report.status)}">${report.status.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase())}</span>
           </div>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div class="rounded-lg bg-gray-50 p-4">
+              <p class="text-sm text-gray-500">Previous Confirmed Violations</p>
+              <p class="text-xl font-bold text-gray-900">${report.reported_user.confirmed_violations}</p>
+            </div>
+            <div class="rounded-lg bg-blue-50 p-4">
+              <p class="text-sm text-blue-600">Recommended Action</p>
+              <p class="font-semibold text-blue-900">${escapeHtml(report.reported_user.recommendation.label)}</p>
+              <p class="text-xs text-blue-700">Guidance only. Admin judgment remains required.</p>
+            </div>
+          </div>
+
+          <div>
+            <h4 class="font-semibold text-gray-800 mb-2"><i class="fas fa-history mr-2 text-red-600"></i>Moderation History</h4>
+            ${report.reported_user.moderation_history.length ? report.reported_user.moderation_history.map(action => `
+              <div class="mb-2 rounded-lg border border-gray-200 p-3 text-sm">
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                  <strong>${escapeHtml(action.label)}</strong>
+                  <span class="text-xs font-semibold text-gray-600">${escapeHtml(action.status)}</span>
+                </div>
+                <p class="text-gray-600">Applied by ${escapeHtml(action.applied_by)} on ${escapeHtml(action.starts_at)}</p>
+                ${action.expires_at ? `<p class="text-gray-600">Expires: ${escapeHtml(action.expires_at)}</p>` : ''}
+                ${action.can_lift ? `
+                  <form
+                    method="POST"
+                    action="${escapeHtml(action.lift_url)}"
+                    class="mt-2"
+                    data-admin-moderation-confirmation
+                    data-confirm-title="${action.label === 'Suspension' ? 'Unsuspend this account?' : 'Lift this restriction?'}"
+                    data-confirm-text="${action.label === 'Suspension' ? 'The resident will be able to access Cleanify again.' : 'The resident will immediately regain access to the restricted feature.'}"
+                    data-confirm-button="${action.label === 'Suspension' ? 'Unsuspend Account' : 'Lift Restriction'}"
+                  >
+                    <input type="hidden" name="_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="rounded bg-gray-700 px-3 py-1.5 text-xs font-semibold text-white hover:bg-gray-800">
+                      ${action.label === 'Suspension' ? 'Unsuspend' : 'Lift Restriction'}
+                    </button>
+                  </form>
+                ` : ''}
+              </div>
+            `).join('') : '<p class="rounded-lg bg-gray-50 p-3 text-sm text-gray-500">No confirmed moderation history.</p>'}
+          </div>
           
           ${report.admin_notes ? `
             <div>
               <h4 class="font-semibold text-gray-800 mb-2"><i class="fas fa-sticky-note mr-2 text-red-600"></i>Admin Notes</h4>
-              <p class="text-gray-700 bg-red-50 border-l-4 border-red-600 rounded-lg p-3">${report.admin_notes}</p>
+              <p class="text-gray-700 bg-red-50 border-l-4 border-red-600 rounded-lg p-3">${escapeHtml(report.admin_notes)}</p>
             </div>
           ` : ''}
           
@@ -400,23 +479,61 @@
       `;
       
       document.getElementById('userReportDetails').innerHTML = detailsHtml;
+      document.getElementById('reviewUserReportButton').classList.toggle('hidden', report.status !== 'pending');
       openModal('viewUserReportModal');
     }
 
-    function openUserReportEdit() {
+    function openUserReportEdit(preserveOldInput = false) {
       if (!currentUserReportId) return;
       
       const report = userReportsData[currentUserReportId];
       if (!report) return;
+      if (report.status !== 'pending') {
+        showToast('error', 'This report already has a final review decision.');
+        return;
+      }
 
       const form = document.getElementById('editUserReportForm');
       form.action = `/admin/user-reports/${currentUserReportId}`;
       document.getElementById('editUserReportId').value = report.id;
-      document.getElementById('editUserReportStatus').value = report.status;
-      document.getElementById('editUserReportNotes').value = report.admin_notes || '';
+      if (!preserveOldInput) {
+        document.getElementById('editUserReportDecision').value = report.reported_user.recommendation.action;
+        if (report.reported_user.recommendation.days) {
+          document.getElementById('editUserReportDuration').value = String(report.reported_user.recommendation.days);
+        }
+        document.getElementById('editUserReportNotes').value = report.admin_notes || '';
+        document.getElementById('editUserReportResidentReason').value = '';
+      }
+      document.getElementById('moderationRecommendation').textContent = `Recommended Action: ${report.reported_user.recommendation.label}. This is guidance only.`;
+      updateModerationFields();
       
       closeModal('viewUserReportModal');
       setTimeout(() => openModal('editUserReportModal'), 300);
+    }
+
+    function updateModerationFields() {
+      const decision = document.getElementById('editUserReportDecision').value;
+      const duration = document.getElementById('editUserReportDuration').value;
+      const temporary = decision === 'community_restriction';
+      const durationFields = document.getElementById('moderationDurationFields');
+      const customField = document.getElementById('moderationCustomUntilField');
+      const customInput = document.getElementById('editUserReportCustomUntil');
+
+      durationFields.classList.toggle('hidden', !temporary);
+      customField.classList.toggle('hidden', !temporary || duration !== 'custom');
+      customInput.required = temporary && duration === 'custom';
+
+      const confirmations = {
+        dismiss: ['Dismiss this user report?', 'No moderation action will be applied.', 'Dismiss Report'],
+        warning: ['Issue warning?', 'This action will be recorded in moderation history.', 'Issue Warning'],
+        community_restriction: ['Apply community restriction?', 'Temporarily restrict this resident from posting or interacting in Community Reports. They can still view reports and access other Cleanify services.', 'Apply Restriction'],
+        suspension: ['Suspend this account?', 'The resident will be signed out and unable to access Cleanify until unsuspended.', 'Suspend Account'],
+      };
+      const [title, text, button] = confirmations[decision] || confirmations.dismiss;
+      const form = document.getElementById('editUserReportForm');
+      form.dataset.confirmTitle = title;
+      form.dataset.confirmText = text;
+      form.dataset.confirmButton = button;
     }
 
     function openDeleteCommunityReportModal(userReportId) {
@@ -444,5 +561,10 @@
         this.closest('form').submit();
       }
     });
+
+    @if($errors->any() && old('id'))
+      currentUserReportId = @json((int) old('id'));
+      setTimeout(() => openUserReportEdit(true), 0);
+    @endif
   </script>
 @endpush

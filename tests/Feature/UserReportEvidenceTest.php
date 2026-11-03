@@ -235,7 +235,7 @@ test('admin detail modal exposes real evidence and safely handles legacy missing
         ->assertSee('Delete Community Report');
 });
 
-test('admin moderation status updates and review notifications remain unchanged', function () {
+test('admin dismisses a report without changing its retained evidence', function () {
     Notification::fake();
     $admin = User::factory()->create(['is_admin' => true]);
     $reporter = User::factory()->create();
@@ -250,11 +250,11 @@ test('admin moderation status updates and review notifications remain unchanged'
     ]);
 
     $this->actingAs($admin)->put(route('admin.user-reports.update', $userReport), [
-        'status' => 'reviewed',
+        'decision' => 'dismiss',
         'admin_notes' => 'Evidence reviewed.',
     ])->assertRedirect();
 
-    expect($userReport->fresh()->status)->toBe('reviewed')
+    expect($userReport->fresh()->status)->toBe('dismissed')
         ->and($userReport->fresh()->report_id)->toBe($communityReport->id)
         ->and($userReport->fresh()->reviewed_by)->toBe($admin->id);
     Notification::assertSentTo($reporter, UserReportReviewedNotification::class);

@@ -49,14 +49,14 @@ class LoginRequest extends FormRequest
             ]);
         }
 
-        // Check if user is banned
+        // Suspended residents cannot create a new web session.
         $user = Auth::user();
-        if ($user && $user->isBanned()) {
+        if ($user && $user->isSuspended()) {
             Auth::logout();
             RateLimiter::hit($this->throttleKey());
 
             throw ValidationException::withMessages([
-                'email' => 'Your account has been banned. Please contact an administrator.',
+                'email' => 'Your account has been suspended. Please contact an administrator.',
             ]);
         }
 

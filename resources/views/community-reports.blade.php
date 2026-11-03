@@ -9,9 +9,6 @@
 @endpush
 
 @section('content')
-  @if(session('success'))
-    <x-alert type="success" dismissible class="mb-4">{{ session('success') }}</x-alert>
-  @endif
   @if($errors->any())
     <x-alert type="error" dismissible class="mb-4">Please fix the errors below.</x-alert>
   @endif
@@ -141,13 +138,21 @@
           @if($report->image_path)
             <img src="{{ asset('storage/' . $report->image_path) }}" class="resident-report-media resident-community-report-media mb-3" alt="Report image">
           @endif
-          <div class="flex items-center justify-between text-sm text-gray-500">
-            <div class="flex items-center gap-4">
-              <span><i class="fas fa-heart text-red-500 mr-1"></i>{{ $report->likes_count }}</span>
-              <span><i class="fas fa-comment text-blue-500 mr-1"></i>{{ $report->comments_count }}</span>
-              <span><i class="fas fa-eye text-green-500 mr-1"></i>{{ $report->followers_count }}</span>
+          <div class="flex flex-wrap items-center justify-between gap-3 text-sm text-gray-500">
+            <div class="flex items-center gap-2">
+              <button type="button" class="community-card-like-btn resident-home-action like-button {{ $report->is_liked ? 'text-green-600' : 'hover:text-green-600' }}" data-report-id="{{ $report->id }}" aria-pressed="{{ $report->is_liked ? 'true' : 'false' }}">
+                <i class="fas fa-heart" aria-hidden="true"></i>
+                <span class="community-card-like-label">{{ $report->is_liked ? 'Liked' : 'Like' }}</span>
+                <span class="community-card-like-count">({{ $report->likes_count }})</span>
+              </button>
+              <button type="button" class="community-card-comments-btn view-report-btn resident-home-action hover:!bg-gray-100 hover:!text-gray-700" data-report-id="{{ $report->id }}">
+                <i class="fas fa-comment" aria-hidden="true"></i>
+                <span>Comments</span>
+                <span class="community-card-comment-count">{{ $report->comments_count }}</span>
+              </button>
+              <span class="px-2"><i class="fas fa-eye text-green-500 mr-1"></i>{{ $report->followers_count }}</span>
             </div>
-            <button class="text-green-600 hover:underline view-report-btn" data-report-id="{{ $report->id }}">View details →</button>
+            <button type="button" class="text-green-600 hover:underline view-report-btn" data-report-id="{{ $report->id }}">View details →</button>
           </div>
         </div>
       @empty
@@ -253,6 +258,13 @@
       <div>
         <h6 class="font-semibold text-gray-800 mb-2">Comments</h6>
         <div id="detailComments" class="space-y-2 text-sm text-gray-700"></div>
+        <form id="detailCommentForm" class="mt-3 flex items-end gap-2">
+          <label for="detailCommentInput" class="sr-only">Add a comment</label>
+          <textarea id="detailCommentInput" rows="2" maxlength="500" required class="min-h-20 flex-1 resize-none rounded-lg border border-gray-300 px-3 py-2 text-sm focus:border-green-500 focus:outline-none focus:ring-2 focus:ring-green-500" placeholder="Add a comment..."></textarea>
+          <button type="submit" class="rounded-lg bg-green-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-green-700">
+            Comment
+          </button>
+        </form>
       </div>
 
       <div>
@@ -264,11 +276,15 @@
     @slot('footer')
       <div class="flex flex-wrap items-center gap-3 justify-between w-full text-sm text-gray-600">
         <div>
-          <span id="detailLikeCount"><i class="fas fa-heart text-red-500 mr-1"></i>0</span>
-          <span id="detailCommentCount" class="ml-3"><i class="fas fa-comment text-blue-500 mr-1"></i>0</span>
+          <span id="detailCommentCount"><i class="fas fa-comment mr-1"></i>0</span>
           <span id="detailFollowerCount" class="ml-3"><i class="fas fa-eye text-green-500 mr-1"></i>0</span>
         </div>
         <div class="flex items-center gap-3">
+          <button id="detailLikeBtn" type="button" class="resident-home-action like-button hover:text-green-600" aria-pressed="false">
+            <i class="fas fa-heart" aria-hidden="true"></i>
+            <span id="detailLikeLabel">Like</span>
+            <span id="detailLikeCount" class="like-count">(0)</span>
+          </button>
           <button id="detailFollowBtn" class="px-4 py-2 border border-green-600 text-green-600 rounded-lg hover:bg-green-600 hover:text-white transition">
             Follow updates
           </button>
@@ -283,6 +299,8 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
   <script>
     const reportDetailUrlTemplate = '{{ route('reports.show', ['report' => '__ID__']) }}';
+    const reportLikeUrlTemplate = '{{ route('reports.like', ['report' => '__ID__']) }}';
+    const reportCommentUrlTemplate = '{{ route('reports.comment', ['report' => '__ID__']) }}';
     const reportFollowUrlTemplate = '{{ route('reports.follow', ['report' => '__ID__']) }}';
     const reportUserUrlTemplate = '{{ route('users.report', ['user' => '__ID__']) }}';
     let detailMap;
@@ -290,6 +308,30 @@
     let activeReportId = null;
     let reportLocationMap;
     let reportLocationMarker;
+
+    async function submitCommunityAction(url, options = {}) {
+      const response = await fetch(url, {
+        ...options,
+        headers: {
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+          'Accept': 'application/json',
+          ...(options.headers || {}),
+        },
+      });
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        throw { response, error: data };
+      }
+
+      return data;
+    }
+
+    function showCommunityActionError(error, fallback) {
+      console.error('Community action failed with status:', error.response?.status);
+      const message = residentRequestErrorMessage(error, fallback);
+      showResidentAlert('error', message);
+    }
 
     function initializeReportLocationMap() {
       if (reportLocationMap || typeof L === 'undefined') return;
@@ -382,7 +424,7 @@
       
       // Validate reason is selected
       if (!reason) {
-        showToast('error', 'Please select a reason for reporting this user.');
+        showResidentAlert('error', 'Please select a reason for reporting this user.');
         return;
       }
       
@@ -403,8 +445,8 @@
       })
       .then(data => {
         if (data.success) {
-          if (typeof showToast === 'function') {
-            showToast('success', data.message || 'User reported successfully. Our team will review this report.');
+          if (typeof showResidentAlert === 'function') {
+            showResidentAlert('success', data.message || 'User reported successfully. Our team will review this report.');
           }
           closeModal('reportUserModal');
           // Reset form
@@ -412,32 +454,13 @@
           document.getElementById('reportDescription').value = '';
           document.getElementById('originatingReportId').value = '';
         } else if (data.error) {
-          showToast('error', data.error);
+          showResidentAlert('error', data.error);
         }
       })
       .catch(error => {
-        console.error('Error:', error);
-        let errorMessage = 'Failed to submit report. Please try again.';
-        
-        if (error.error) {
-          // Handle Laravel validation errors (format: { message: "...", errors: { field: ["error"] } })
-          if (error.error.errors) {
-            const errors = error.error.errors;
-            const firstErrorKey = Object.keys(errors)[0];
-            const firstError = errors[firstErrorKey];
-            errorMessage = Array.isArray(firstError) ? firstError[0] : firstError;
-          } 
-          // Handle custom error messages
-          else if (error.error.error) {
-            errorMessage = error.error.error;
-          } 
-          // Handle message field
-          else if (error.error.message && error.error.message !== 'The given data was invalid.') {
-            errorMessage = error.error.message;
-          }
-        }
-        
-        showToast('error', errorMessage);
+        console.error('User report submission failed with status:', error.response?.status);
+        const errorMessage = residentRequestErrorMessage(error, 'Failed to submit report. Please try again.');
+        showResidentAlert('error', errorMessage);
       });
     });
 
@@ -494,35 +517,134 @@
       if (reportImagePreviewUrl) URL.revokeObjectURL(reportImagePreviewUrl);
     });
 
+    function reportCard(reportId) {
+      return document.querySelector(`.report-card[data-report-id="${reportId}"]`);
+    }
+
+    function updateCardLikeState(reportId, isLiked, likesCount) {
+      const button = reportCard(reportId)?.querySelector('.community-card-like-btn');
+      if (!button) return;
+
+      button.querySelector('.community-card-like-label').textContent = isLiked ? 'Liked' : 'Like';
+      button.querySelector('.community-card-like-count').textContent = `(${likesCount})`;
+      button.setAttribute('aria-pressed', String(Boolean(isLiked)));
+      button.classList.toggle('text-green-600', Boolean(isLiked));
+      button.classList.toggle('hover:text-green-600', !isLiked);
+    }
+
+    function updateCardCommentCount(reportId, commentsCount) {
+      const count = reportCard(reportId)?.querySelector('.community-card-comment-count');
+      if (count) count.textContent = commentsCount;
+    }
+
+    function synchronizeLikeState(reportId, isLiked, likesCount) {
+      updateCardLikeState(reportId, isLiked, likesCount);
+      if (String(activeReportId) === String(reportId)) {
+        updateLikeButton(isLiked);
+        document.getElementById('detailLikeCount').textContent = `(${likesCount})`;
+      }
+    }
+
+    async function openReportDetail(reportId) {
+      try {
+        const response = await fetch(reportDetailUrlTemplate.replace('__ID__', reportId), {
+          headers: { 'Accept': 'application/json' },
+        });
+        const data = await response.json().catch(() => ({}));
+        if (!response.ok) throw { response, error: data };
+
+        activeReportId = data.id;
+        populateReportDetail(data);
+        openModal('reportDetailModal');
+      } catch (error) {
+        showCommunityActionError(error, 'Unable to load report details right now.');
+      }
+    }
+    window.openReportDetail = openReportDetail;
+
     document.querySelectorAll('.view-report-btn').forEach(button => {
-      button.addEventListener('click', () => {
-        const reportId = button.dataset.reportId;
-        fetch(reportDetailUrlTemplate.replace('__ID__', reportId))
-          .then(res => res.json())
-          .then(data => {
-            activeReportId = data.id;
-            populateReportDetail(data);
-            openModal('reportDetailModal');
-          })
-          .catch(() => showToast?.('error', 'Unable to load report details right now.'));
+      button.addEventListener('click', event => {
+        event.stopPropagation();
+        openReportDetail(button.dataset.reportId);
       });
     });
 
-    document.getElementById('detailFollowBtn').addEventListener('click', () => {
+    document.querySelectorAll('.community-card-like-btn').forEach(button => {
+      button.addEventListener('click', async event => {
+        event.stopPropagation();
+        const reportId = button.dataset.reportId;
+        button.disabled = true;
+
+        try {
+          const data = await submitCommunityAction(reportLikeUrlTemplate.replace('__ID__', reportId), {
+            method: 'POST',
+          });
+          synchronizeLikeState(reportId, data.liked, data.likes_count);
+        } catch (error) {
+          showCommunityActionError(error, 'Unable to update like state. Please try again.');
+        } finally {
+          button.disabled = false;
+        }
+      });
+    });
+
+    document.getElementById('detailLikeBtn')?.addEventListener('click', async event => {
       if (!activeReportId) return;
-      fetch(reportFollowUrlTemplate.replace('__ID__', activeReportId), {
-        method: 'POST',
-        headers: {
-          'X-CSRF-TOKEN': '{{ csrf_token() }}',
-          'Accept': 'application/json',
-        },
-      })
-        .then(res => res.json())
-        .then(data => {
-          updateFollowButton(data.following);
-          document.getElementById('detailFollowerCount').innerHTML = `<i class="fas fa-eye text-green-500 mr-1"></i>${data.followers_count}`;
-        })
-        .catch(() => showToast?.('error', 'Unable to update follow state.'));
+      const button = event.currentTarget;
+      button.disabled = true;
+
+      try {
+        const data = await submitCommunityAction(reportLikeUrlTemplate.replace('__ID__', activeReportId), {
+          method: 'POST',
+        });
+        synchronizeLikeState(activeReportId, data.liked, data.likes_count);
+      } catch (error) {
+        showCommunityActionError(error, 'Unable to update like state. Please try again.');
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    document.getElementById('detailCommentForm')?.addEventListener('submit', async event => {
+      event.preventDefault();
+      if (!activeReportId) return;
+
+      const input = document.getElementById('detailCommentInput');
+      const comment = input.value.trim();
+      if (!comment) return;
+
+      const button = event.currentTarget.querySelector('button[type="submit"]');
+      button.disabled = true;
+
+      try {
+        const data = await submitCommunityAction(reportCommentUrlTemplate.replace('__ID__', activeReportId), {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ comment }),
+        });
+        prependDetailComment(data.comment);
+        input.value = '';
+        document.getElementById('detailCommentCount').innerHTML = `<i class="fas fa-comment mr-1"></i>${data.comments_count}`;
+        updateCardCommentCount(activeReportId, data.comments_count);
+      } catch (error) {
+        showCommunityActionError(error, 'Unable to add comment. Please try again.');
+      } finally {
+        button.disabled = false;
+      }
+    });
+
+    document.getElementById('detailFollowBtn')?.addEventListener('click', async () => {
+      if (!activeReportId) return;
+
+      try {
+        const data = await submitCommunityAction(reportFollowUrlTemplate.replace('__ID__', activeReportId), {
+          method: 'POST',
+        });
+        updateFollowButton(data.following);
+        document.getElementById('detailFollowerCount').innerHTML = `<i class="fas fa-eye text-green-500 mr-1"></i>${data.followers_count}`;
+      } catch (error) {
+        showCommunityActionError(error, 'Unable to update follow state. Please try again.');
+      }
     });
 
     function populateReportDetail(data) {
@@ -534,9 +656,10 @@
       document.getElementById('detailDescription').textContent = data.description;
       document.getElementById('detailStatusBadge').textContent = data.status_label;
       document.getElementById('detailStatusBadge').className = `text-xs font-semibold px-3 py-1 rounded-full ${data.status_badge}`;
-      document.getElementById('detailLikeCount').innerHTML = `<i class="fas fa-heart text-red-500 mr-1"></i>${data.likes_count}`;
-      document.getElementById('detailCommentCount').innerHTML = `<i class="fas fa-comment text-blue-500 mr-1"></i>${data.comments_count}`;
+      document.getElementById('detailLikeCount').textContent = `(${data.likes_count})`;
+      document.getElementById('detailCommentCount').innerHTML = `<i class="fas fa-comment mr-1"></i>${data.comments_count}`;
       document.getElementById('detailFollowerCount').innerHTML = `<i class="fas fa-eye text-green-500 mr-1"></i>${data.followers_count}`;
+      document.getElementById('detailCommentInput').value = '';
 
       const image = document.getElementById('detailImage');
       if (data.image) {
@@ -573,18 +696,7 @@
         </li>
       `).join('');
 
-      const comments = document.getElementById('detailComments');
-      if (data.comments.length) {
-        comments.innerHTML = data.comments.map(comment => `
-          <div class="border border-gray-100 rounded-lg px-3 py-2">
-            <p class="font-semibold text-gray-800">${comment.author}</p>
-            <p class="text-sm text-gray-700">${comment.comment}</p>
-            <p class="text-xs text-gray-400 mt-1">${comment.timestamp}</p>
-          </div>
-        `).join('');
-      } else {
-        comments.innerHTML = '<p class="text-sm text-gray-500">No comments yet.</p>';
-      }
+      renderDetailComments(data.comments);
 
       const related = document.getElementById('detailRelated');
       if (data.related && data.related.length) {
@@ -601,6 +713,9 @@
         related.innerHTML = '<p class="text-sm text-gray-500">No related reports.</p>';
       }
 
+      updateLikeButton(data.is_liked);
+      updateCardLikeState(data.id, data.is_liked, data.likes_count);
+      updateCardCommentCount(data.id, data.comments_count);
       updateFollowButton(data.is_following);
 
       if (data.coordinate) {
@@ -609,6 +724,56 @@
       } else {
         document.getElementById('detailMapContainer').classList.add('hidden');
       }
+    }
+
+    function createDetailComment(comment) {
+      const wrapper = document.createElement('div');
+      wrapper.className = 'border border-gray-100 rounded-lg px-3 py-2';
+
+      const author = document.createElement('p');
+      author.className = 'font-semibold text-gray-800';
+      author.textContent = comment.author || 'Cleanify User';
+      const content = document.createElement('p');
+      content.className = 'text-sm text-gray-700';
+      content.textContent = comment.comment || '';
+      const timestamp = document.createElement('p');
+      timestamp.className = 'text-xs text-gray-400 mt-1';
+      timestamp.textContent = comment.timestamp || 'Just now';
+
+      wrapper.append(author, content, timestamp);
+      return wrapper;
+    }
+
+    function renderDetailComments(comments) {
+      const container = document.getElementById('detailComments');
+      container.replaceChildren();
+
+      if (!comments.length) {
+        const empty = document.createElement('p');
+        empty.className = 'text-sm text-gray-500';
+        empty.textContent = 'No comments yet.';
+        container.appendChild(empty);
+        return;
+      }
+
+      comments.forEach(comment => container.appendChild(createDetailComment(comment)));
+    }
+
+    function prependDetailComment(comment) {
+      const container = document.getElementById('detailComments');
+      if (container.textContent.trim() === 'No comments yet.') {
+        container.replaceChildren();
+      }
+      container.prepend(createDetailComment(comment));
+    }
+
+    function updateLikeButton(isLiked) {
+      const btn = document.getElementById('detailLikeBtn');
+      const label = document.getElementById('detailLikeLabel');
+      label.textContent = isLiked ? 'Liked' : 'Like';
+      btn.setAttribute('aria-pressed', String(Boolean(isLiked)));
+      btn.classList.toggle('text-green-600', Boolean(isLiked));
+      btn.classList.toggle('hover:text-green-600', !isLiked);
     }
 
     function updateFollowButton(isFollowing) {

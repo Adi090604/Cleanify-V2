@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class UserReport extends Model
 {
@@ -53,6 +54,11 @@ class UserReport extends Model
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function moderationAction(): HasOne
+    {
+        return $this->hasOne(ModerationAction::class);
     }
 
     /**

@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateUserRequest;
 use App\Models\User;
 use App\Services\ActivityLogService;
+use App\Services\ModerationService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -22,9 +23,9 @@ class UserManagementController extends Controller
         // Search functionality
         if ($request->has('search') && $request->search) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('name', 'like', "%{$search}%")
-                  ->orWhere('email', 'like', "%{$search}%");
+                    ->orWhere('email', 'like', "%{$search}%");
             });
         }
 
@@ -48,7 +49,6 @@ class UserManagementController extends Controller
         ]);
     }
 
-
     /**
      * Update the specified resource in storage.
      */
@@ -57,7 +57,7 @@ class UserManagementController extends Controller
         $user = User::findOrFail($id);
 
         // Prevent admin from removing their own admin status
-        if (auth()->id() == $user->id && !$request->is_admin && $user->is_admin) {
+        if (auth()->id() == $user->id && ! $request->is_admin && $user->is_admin) {
             return back()->withErrors(['is_admin' => 'You cannot remove your own admin privileges.']);
         }
 
@@ -75,7 +75,7 @@ class UserManagementController extends Controller
 
         // Log activity
         $changes = array_diff_assoc($user->getAttributes(), $oldData);
-        if (!empty($changes)) {
+        if (! empty($changes)) {
             ActivityLogService::logUserUpdated($user, $changes);
         }
 
@@ -107,42 +107,42 @@ class UserManagementController extends Controller
     /**
      * Ban a user.
      */
-    public function ban(string $id): RedirectResponse
+    public function ban(string $id, ModerationService $moderation): RedirectResponse
     {
         $user = User::findOrFail($id);
 
         // Prevent admin from banning themselves
         if (auth()->id() == $user->id) {
-            return back()->withErrors(['ban' => 'You cannot ban your own account.']);
+            return back()->withErrors(['ban' => 'You cannot suspend your own account.']);
         }
 
         // Prevent banning other admins
         if ($user->isAdmin()) {
-            return back()->withErrors(['ban' => 'Cannot ban administrator accounts.']);
+            return back()->withErrors(['ban' => 'Cannot suspend administrator accounts.']);
         }
 
-        $user->update(['banned_at' => now()]);
+        $moderation->suspendUser($user, request()->user());
 
         // Log activity
         ActivityLogService::logUserBanned($user);
 
         return redirect()->route('admin.users')
-            ->with('success', 'User has been banned successfully!');
+            ->with('success', 'User has been suspended successfully!');
     }
 
     /**
      * Unban a user.
      */
-    public function unban(string $id): RedirectResponse
+    public function unban(string $id, ModerationService $moderation): RedirectResponse
     {
         $user = User::findOrFail($id);
 
-        $user->update(['banned_at' => null]);
+        $moderation->unsuspendUser($user, request()->user());
 
         // Log activity
         ActivityLogService::logUserUnbanned($user);
 
         return redirect()->route('admin.users')
-            ->with('success', 'User has been unbanned successfully!');
+            ->with('success', 'User has been unsuspended successfully!');
     }
 }

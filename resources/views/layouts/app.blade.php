@@ -11,6 +11,17 @@
   @stack('styles')
 </head>
 <body class="user-page resident-shell bg-gray-50 overflow-hidden">
+  <div
+    id="residentAlertData"
+    class="hidden"
+    aria-hidden="true"
+    data-success="{{ session('success') }}"
+    data-error="{{ session('error') }}"
+    data-warning="{{ session('warning') }}"
+    data-info="{{ session('info') }}"
+    data-validation="{{ $errors->any() ? 'Please check the highlighted fields.' : '' }}"
+  ></div>
+
   @php
     $navigationUnreadCount = auth()->check()
       ? auth()->user()->unreadNotifications()->count()

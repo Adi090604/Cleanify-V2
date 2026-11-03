@@ -100,7 +100,70 @@ class User extends Authenticatable
      */
     public function isBanned(): bool
     {
-        return $this->banned_at !== null;
+        return $this->isSuspended();
+    }
+
+    /**
+     * The existing banned_at column is retained as the account suspension flag.
+     */
+    public function isSuspended(): bool
+    {
+        return ! $this->isAdmin() && $this->banned_at !== null;
+    }
+
+    public function moderationActions(): HasMany
+    {
+        return $this->hasMany(ModerationAction::class);
+    }
+
+    public function activeModerationAction(string $actionType): ?ModerationAction
+    {
+        return $this->moderationActions()
+            ->where('action_type', $actionType)
+            ->active()
+            ->latest('starts_at')
+            ->first();
+    }
+
+    public function activeCommunityRestriction(): ?ModerationAction
+    {
+        return $this->activeModerationAction(ModerationAction::COMMUNITY_RESTRICTION);
+    }
+
+    public function activeReportSubmissionRestriction(): ?ModerationAction
+    {
+        return $this->activeModerationAction(ModerationAction::REPORT_SUBMISSION_RESTRICTION);
+    }
+
+    public function confirmedViolationCount(?int $excludeUserReportId = null): int
+    {
+        return $this->moderationActions()
+            ->whereIn('action_type', ModerationAction::CONFIRMED_VIOLATION_ACTIONS)
+            ->whereNotNull('user_report_id')
+            ->when($excludeUserReportId, fn ($query) => $query->where('user_report_id', '!=', $excludeUserReportId))
+            ->distinct()
+            ->count('user_report_id');
+    }
+
+    public function moderationStatusLabel(): string
+    {
+        if ($this->isSuspended()) {
+            return 'Suspended';
+        }
+
+        if ($this->activeCommunityRestriction()) {
+            return 'Community Restricted';
+        }
+
+        if ($this->activeReportSubmissionRestriction()) {
+            return 'Report Submission Restricted';
+        }
+
+        if ($this->moderationActions()->where('action_type', ModerationAction::WARNING)->exists()) {
+            return 'Warned';
+        }
+
+        return 'Active';
     }
 
     /**

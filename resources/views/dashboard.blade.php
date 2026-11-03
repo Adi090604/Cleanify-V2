@@ -4,12 +4,6 @@
 
 @section('content')
   <div class="resident-home">
-    @if(session('success'))
-      <x-alert type="success" dismissible class="mb-4">
-        {{ session('success') }}
-      </x-alert>
-    @endif
-
     <!-- Home heading and report search -->
     <header class="dashboard-toolbar resident-home-header mb-6 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
       <div class="resident-home-heading">
@@ -199,9 +193,7 @@
             })
             .catch((error) => {
               console.error('Like error:', error);
-              if (typeof showToast === 'function') {
-                showToast('error', error.message || 'Unable to update like right now.');
-              }
+              showResidentAlert('error', error.message || 'Unable to update like right now.');
             })
             .finally(() => {
               this.disabled = false;
@@ -268,10 +260,8 @@
             })
             .catch((error) => {
               console.error('Comment error:', error);
-              if (typeof showToast === 'function') {
-                const errorMessage = error.message || (error.errors?.comment?.[0]) || 'Unable to post comment right now.';
-                showToast('error', errorMessage);
-              }
+              const errorMessage = error.message || (error.errors?.comment?.[0]) || 'Unable to post comment right now.';
+              showResidentAlert('error', errorMessage);
             })
             .finally(() => {
               if (submitButton) submitButton.disabled = false;

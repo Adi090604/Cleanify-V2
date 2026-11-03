@@ -18,6 +18,8 @@ return Application::configure(basePath: dirname(__DIR__))
             'throttle.reports' => \App\Http\Middleware\ThrottleReports::class,
             'not.banned' => \App\Http\Middleware\EnsureUserIsNotBanned::class,
             'mobile.resident' => \App\Http\Middleware\EnsureMobileResident::class,
+            'community.allowed' => \App\Http\Middleware\EnsureCommunityInteractionsAllowed::class,
+            'reports.allowed' => \App\Http\Middleware\EnsureReportSubmissionAllowed::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -61,14 +61,14 @@ test('invalid admin credentials do not reveal that the account is an admin', fun
     $this->assertDatabaseCount('personal_access_tokens', 0);
 });
 
-test('a banned user cannot log in through the mobile API', function () {
+test('a suspended user cannot log in through the mobile API', function () {
     $user = User::factory()->create(['banned_at' => now()]);
 
     $this->postJson('/api/v1/auth/login', [
         'email' => $user->email,
         'password' => 'password',
     ])->assertForbidden()
-        ->assertJsonPath('message', 'Your account has been banned. Please contact an administrator.');
+        ->assertJsonPath('message', 'Your account has been suspended. Please contact an administrator.');
 
     $this->assertDatabaseCount('personal_access_tokens', 0);
 });

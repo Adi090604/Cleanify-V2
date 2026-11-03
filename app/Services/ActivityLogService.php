@@ -118,27 +118,27 @@ class ActivityLogService
     }
 
     /**
-     * Log user ban.
+     * Log user suspension.
      */
     public static function logUserBanned(Model $user): ActivityLog
     {
         return self::log(
             'user.banned',
             $user,
-            'User banned by admin',
+            'User suspended by admin',
             ['banned_user' => $user->name, 'email' => $user->email]
         );
     }
 
     /**
-     * Log user unban.
+     * Log user unsuspension.
      */
     public static function logUserUnbanned(Model $user): ActivityLog
     {
         return self::log(
             'user.unbanned',
             $user,
-            'User unbanned by admin',
+            'User unsuspended by admin',
             ['unbanned_user' => $user->name, 'email' => $user->email]
         );
     }

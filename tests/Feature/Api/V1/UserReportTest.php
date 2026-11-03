@@ -63,7 +63,7 @@ test('banned users cannot report users through the mobile API', function () {
             'reason' => 'spam',
         ])->assertForbidden()
         ->assertExactJson([
-            'message' => 'Your account has been banned. Please contact an administrator.',
+            'message' => 'Your account has been suspended. Please contact an administrator.',
         ]);
 
     $this->assertDatabaseCount('user_reports', 0);

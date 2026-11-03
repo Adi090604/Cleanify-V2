@@ -10,15 +10,25 @@
 @endpush
 
 @section('content')
-  @if(session('success'))
-    <x-alert type="success" dismissible class="mb-4">
-      {{ session('success') }}
-    </x-alert>
-  @endif
-
   <h3 class="mb-6 text-gray-800 font-semibold">
     <i class="fas fa-cog text-green-600 mr-3"></i>Account Settings
   </h3>
+
+  @php
+    $communityRestriction = $user->activeCommunityRestriction();
+    $reportRestriction = $user->activeReportSubmissionRestriction();
+  @endphp
+  @if($communityRestriction || $reportRestriction)
+    <div class="mb-6 rounded-lg border border-amber-200 bg-amber-50 p-4 text-amber-900">
+      <p class="font-semibold"><i class="fas fa-user-shield mr-2"></i>Account moderation status</p>
+      @if($communityRestriction)
+        <p class="mt-1 text-sm">Community interactions are restricted until {{ $communityRestriction->expires_at->format('M d, Y g:i A') }}.</p>
+      @endif
+      @if($reportRestriction)
+        <p class="mt-1 text-sm">New cleanliness report submission is restricted until {{ $reportRestriction->expires_at->format('M d, Y g:i A') }}.</p>
+      @endif
+    </div>
+  @endif
 
   <!-- Account Information Section -->
   <div class="bg-white rounded-xl shadow-sm p-6 mb-6">
@@ -173,20 +183,6 @@
             </div>
           </div>
 
-          <div class="flex items-center justify-between">
-            <div>
-              <div class="flex items-center gap-2">
-                <span class="text-gray-500">Push Notifications</span>
-                <span class="rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-500">Unavailable</span>
-              </div>
-              <p class="text-sm text-gray-500">Browser push notifications are not currently supported</p>
-            </div>
-            <div class="relative inline-block w-12 h-6">
-              <input type="checkbox" aria-label="Push Notifications unavailable" class="sr-only peer" disabled>
-              <div class="w-12 h-6 bg-gray-200 rounded-full cursor-not-allowed"></div>
-              <div class="absolute left-1 top-1 bg-white w-4 h-4 rounded-full"></div>
-            </div>
-          </div>
         </div>
       </div>
 
@@ -226,7 +222,7 @@
 
           <div class="flex items-center justify-between">
             <div>
-              <label for="pref_system" class="text-gray-700 cursor-pointer">System</label>
+              <label for="pref_system" class="text-gray-700 cursor-pointer">System Notifications</label>
               <p class="text-sm text-gray-500">Service-area request and coverage updates</p>
             </div>
             <div>
@@ -514,7 +510,7 @@
     window.addEventListener('DOMContentLoaded', openServiceAreaRequestModal, { once: true });
   }
 
-  // Handle form submissions with toast notifications
+  // Handle form submissions with resident SweetAlert feedback.
   document.getElementById('accountForm')?.addEventListener('submit', function(e) {
     e.preventDefault();
     submitForm(this, 'Account information updated successfully');
@@ -539,29 +535,33 @@
       method: method,
       headers: {
         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+        'Accept': 'application/json',
+        'X-Requested-With': 'XMLHttpRequest',
       },
       body: formData,
     })
-    .then(response => {
-      if (response.redirected) {
-        window.location.href = response.url;
-        return;
+    .then(async response => {
+      const data = await response.json();
+      if (!response.ok) {
+        throw { response, error: data };
       }
-      return response.json();
+      return data;
     })
     .then(data => {
-      if (data) {
-        if (data.success) {
-          showToast('success', successMessage);
-          setTimeout(() => location.reload(), 1000);
-        } else {
-          showToast('error', data.message || 'An error occurred');
-        }
+      if (data.success) {
+        showResidentAlert('success', data.message || successMessage)
+          .then(() => location.reload());
+      } else {
+        showResidentAlert('error', data.message || 'An error occurred');
       }
     })
     .catch(error => {
       console.error('Error:', error);
-      showToast('error', 'An error occurred. Please try again.');
+      const hasValidationErrors = error.response?.status === 422 && error.error?.errors;
+      const message = hasValidationErrors
+        ? 'Please check the highlighted fields.'
+        : residentRequestErrorMessage(error, 'An error occurred. Please try again.');
+      showResidentAlert('error', message);
     });
   }
 
@@ -570,12 +570,12 @@
     const formData = new FormData(form);
 
     if (!formData.get('confirm_delete')) {
-      showToast('error', 'Please confirm that you understand this action cannot be undone');
+      showResidentAlert('error', 'Please confirm that you understand this action cannot be undone');
       return;
     }
 
     if (!formData.get('password')) {
-      showToast('error', 'Please enter your password to confirm');
+      showResidentAlert('error', 'Please enter your password to confirm');
       return;
     }
 
@@ -596,18 +596,18 @@
     .then(data => {
       if (data) {
         if (data.success) {
-          showToast('success', 'Account deleted successfully');
-          setTimeout(() => {
-            window.location.href = '/';
-          }, 2000);
+          showResidentAlert('success', data.message || 'Account deleted successfully')
+            .then(() => {
+              window.location.href = '/';
+            });
         } else {
-          showToast('error', data.message || 'Failed to delete account');
+          showResidentAlert('error', data.message || 'Failed to delete account');
         }
       }
     })
     .catch(error => {
       console.error('Error:', error);
-      showToast('error', 'An error occurred. Please try again.');
+      showResidentAlert('error', 'An error occurred. Please try again.');
     });
   }
 

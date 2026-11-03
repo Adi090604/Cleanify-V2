@@ -8,11 +8,24 @@
   @stack('styles')
 </head>
 <body class="admin-page bg-gray-50 overflow-x-hidden {{ ($activePage ?? null) === 'dashboard' ? 'admin-dashboard-page' : '' }}">
+  @if(($activePage ?? null) === 'user-reports')
+    <div
+      id="adminAlertData"
+      class="hidden"
+      aria-hidden="true"
+      data-success="{{ session('success') }}"
+      data-error="{{ session('error') }}"
+      data-warning="{{ session('warning') }}"
+      data-info="{{ session('info') }}"
+      data-validation="{{ $errors->any() ? 'Please check the highlighted fields.' : '' }}"
+    ></div>
+  @endif
+
   <!-- Mobile Menu -->
-  <x-admin.mobile-menu :active="$activePage ?? 'dashboard'" :pending-report-count="$pendingReportCount" :pending-service-area-request-count="$pendingServiceAreaRequestCount" />
+  <x-admin.mobile-menu :active="$activePage ?? 'dashboard'" :pending-report-count="$pendingReportCount" :pending-user-report-count="$pendingUserReportCount" :pending-service-area-request-count="$pendingServiceAreaRequestCount" />
   
   <div class="flex h-screen">
-    <x-admin.sidebar :active="$activePage ?? 'dashboard'" :pending-report-count="$pendingReportCount" :pending-service-area-request-count="$pendingServiceAreaRequestCount" />
+    <x-admin.sidebar :active="$activePage ?? 'dashboard'" :pending-report-count="$pendingReportCount" :pending-user-report-count="$pendingUserReportCount" :pending-service-area-request-count="$pendingServiceAreaRequestCount" />
 
     <div class="cleanify-main lg:ml-64 flex-1 overflow-y-auto">
       <main class="p-3 sm:p-4 lg:p-4">

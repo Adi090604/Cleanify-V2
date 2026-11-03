@@ -1,10 +1,125 @@
 import './bootstrap';
 
 import Alpine from 'alpinejs';
+import Swal from 'sweetalert2';
+import 'sweetalert2/dist/sweetalert2.min.css';
 
 window.Alpine = Alpine;
 
 Alpine.start();
+
+const residentAlertTitles = {
+  success: 'Success',
+  error: 'Something went wrong',
+  warning: 'Please note',
+  info: 'Information',
+};
+
+window.showResidentAlert = function(type, message) {
+  const icon = Object.hasOwn(residentAlertTitles, type) ? type : 'info';
+
+  return Swal.fire({
+    icon,
+    title: residentAlertTitles[icon],
+    text: String(message || ''),
+    confirmButtonText: 'OK',
+    confirmButtonColor: '#17843f',
+  });
+};
+
+window.residentRequestErrorMessage = function(error, fallback) {
+  const status = Number(error?.response?.status);
+  if (!Number.isFinite(status) || status < 400 || status >= 500) return fallback;
+
+  const payload = error?.error;
+  const validationError = payload?.errors
+    ? Object.values(payload.errors).flat().find(message => typeof message === 'string')
+    : null;
+
+  if (validationError) return validationError;
+  if (typeof payload?.error === 'string') return payload.error;
+  if (typeof payload?.message === 'string' && payload.message !== 'The given data was invalid.') {
+    return payload.message;
+  }
+
+  return fallback;
+};
+
+const adminAlertTitles = {
+  success: 'Success',
+  error: 'Something went wrong',
+  warning: 'Please note',
+  info: 'Information',
+};
+
+window.showAdminAlert = function(type, message) {
+  const icon = Object.hasOwn(adminAlertTitles, type) ? type : 'info';
+
+  return Swal.fire({
+    icon,
+    title: adminAlertTitles[icon],
+    text: String(message || ''),
+    confirmButtonText: 'OK',
+    confirmButtonColor: '#17843f',
+  });
+};
+
+document.addEventListener('submit', async function(event) {
+  const form = event.target.closest('form[data-admin-moderation-confirmation]');
+  if (!form || form.dataset.adminModerationConfirmed === 'true') return;
+
+  event.preventDefault();
+
+  const result = await Swal.fire({
+    icon: 'warning',
+    title: form.dataset.confirmTitle || 'Confirm moderation action?',
+    text: form.dataset.confirmText || 'This action will be recorded in moderation history.',
+    showCancelButton: true,
+    confirmButtonText: form.dataset.confirmButton || 'Confirm',
+    cancelButtonText: 'Cancel',
+    confirmButtonColor: '#b91c1c',
+    reverseButtons: true,
+  });
+
+  if (result.isConfirmed) {
+    form.dataset.adminModerationConfirmed = 'true';
+    form.requestSubmit();
+  }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  const alertData = document.getElementById('residentAlertData');
+  if (!alertData) return;
+
+  for (const type of ['success', 'error', 'warning', 'info']) {
+    const message = alertData.dataset[type];
+    if (message) {
+      window.showResidentAlert(type, message);
+      return;
+    }
+  }
+
+  if (alertData.dataset.validation) {
+    window.showResidentAlert('error', alertData.dataset.validation);
+  }
+});
+
+document.addEventListener('DOMContentLoaded', function() {
+  const alertData = document.getElementById('adminAlertData');
+  if (!alertData) return;
+
+  for (const type of ['success', 'error', 'warning', 'info']) {
+    const message = alertData.dataset[type];
+    if (message) {
+      window.showAdminAlert(type, message);
+      return;
+    }
+  }
+
+  if (alertData.dataset.validation) {
+    window.showAdminAlert('error', alertData.dataset.validation);
+  }
+});
 
 // Modal functions
 window.openModal = function(modalId) {

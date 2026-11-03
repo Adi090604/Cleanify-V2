@@ -74,10 +74,6 @@ class UserReportReviewedNotification extends Notification implements SendsSmsNot
 
         $details[] = ['label' => 'Status', 'value' => ucfirst(str_replace('_', ' ', $this->userReport->status))];
 
-        if ($this->userReport->admin_notes) {
-            $details[] = ['label' => 'Admin Notes', 'value' => $this->userReport->admin_notes];
-        }
-
         $details[] = ['label' => 'Reviewed by', 'value' => $reviewerName];
 
         if ($this->userReport->reviewed_at) {

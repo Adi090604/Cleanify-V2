@@ -41,16 +41,16 @@ Route::middleware(['auth', 'not.admin', 'not.banned'])->group(function () {
     Route::patch('/profile', [App\Http\Controllers\Client\ProfileController::class, 'update'])->name('profile.update');
 
     // Profile report management
-    Route::patch('/profile/reports/{report}', [App\Http\Controllers\Client\ProfileController::class, 'updateReport'])->name('profile.reports.update');
+    Route::patch('/profile/reports/{report}', [App\Http\Controllers\Client\ProfileController::class, 'updateReport'])->middleware('community.allowed')->name('profile.reports.update');
     Route::delete('/profile/reports/{report}', [App\Http\Controllers\Client\ProfileController::class, 'deleteReport'])->name('profile.reports.delete');
 
     // Report feed interactions
-    Route::post('/reports', [App\Http\Controllers\Client\ReportFeedController::class, 'store'])->middleware('throttle.reports')->name('reports.store');
-    Route::post('/reports/{report}/like', [App\Http\Controllers\Client\ReportFeedController::class, 'toggleLike'])->middleware('throttle:60,1')->name('reports.like');
-    Route::post('/reports/{report}/comment', [App\Http\Controllers\Client\ReportFeedController::class, 'storeComment'])->middleware('throttle:30,1')->name('reports.comment');
+    Route::post('/reports', [App\Http\Controllers\Client\ReportFeedController::class, 'store'])->middleware(['reports.allowed', 'throttle.reports'])->name('reports.store');
+    Route::post('/reports/{report}/like', [App\Http\Controllers\Client\ReportFeedController::class, 'toggleLike'])->middleware(['community.allowed', 'throttle:60,1'])->name('reports.like');
+    Route::post('/reports/{report}/comment', [App\Http\Controllers\Client\ReportFeedController::class, 'storeComment'])->middleware(['community.allowed', 'throttle:30,1'])->name('reports.comment');
     Route::get('/reports/{report}/comments', [App\Http\Controllers\Client\ReportFeedController::class, 'getComments'])->name('reports.comments');
     Route::get('/reports/{report}', [App\Http\Controllers\Client\CommunityReportController::class, 'show'])->name('reports.show');
-    Route::post('/reports/{report}/follow', [App\Http\Controllers\Client\ReportFeedController::class, 'toggleFollow'])->name('reports.follow');
+    Route::post('/reports/{report}/follow', [App\Http\Controllers\Client\ReportFeedController::class, 'toggleFollow'])->middleware('community.allowed')->name('reports.follow');
 
     // User reporting
     Route::post('/users/{user}/report', [App\Http\Controllers\Client\UserReportController::class, 'store'])->name('users.report');
@@ -120,6 +120,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     // User Reports Management
     Route::get('/user-reports', [App\Http\Controllers\Admin\UserReportController::class, 'index'])->name('user-reports');
     Route::put('/user-reports/{id}', [App\Http\Controllers\Admin\UserReportController::class, 'update'])->name('user-reports.update');
+    Route::post('/moderation-actions/{moderationAction}/lift', [App\Http\Controllers\Admin\UserReportController::class, 'lift'])->name('moderation-actions.lift');
     Route::delete('/user-reports/{userReport}/report', [App\Http\Controllers\Admin\UserReportController::class, 'destroyCommunityReport'])->name('user-reports.report.destroy');
 });
 
