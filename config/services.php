@@ -19,7 +19,9 @@ return [
     ],
 
     'resend' => [
-        'key' => env('RESEND_API_KEY'),
+        // RESEND_API_KEY is Laravel's documented name. Keep RESEND_KEY as a
+        // compatibility fallback for existing deployment environments.
+        'key' => env('RESEND_API_KEY', env('RESEND_KEY')),
     ],
 
     'ses' => [

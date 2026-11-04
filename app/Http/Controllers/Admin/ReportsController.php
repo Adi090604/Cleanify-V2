@@ -17,7 +17,9 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
+use Throwable;
 
 class ReportsController extends Controller
 {
@@ -582,8 +584,14 @@ class ReportsController extends Controller
                 default => new ReportRejectedNotification($report),
             };
             $report->user->notify($notification);
-        } catch (\Exception $e) {
-            \Log::error('Failed to notify report owner: '.$e->getMessage());
+        } catch (Throwable $exception) {
+            Log::error('Failed to notify report owner.', [
+                'report_id' => $report->id,
+                'recipient_user_id' => $report->user->id,
+                'notification_type' => $type,
+                'mail_driver' => config('mail.default'),
+                'exception' => $exception,
+            ]);
         }
     }
 
@@ -602,8 +610,14 @@ class ReportsController extends Controller
                     default => new ReportRejectedNotification($report, true),
                 };
                 $follower->notify($notification);
-            } catch (\Exception $e) {
-                \Log::error('Failed to notify follower: '.$e->getMessage());
+            } catch (Throwable $exception) {
+                Log::error('Failed to notify report follower.', [
+                    'report_id' => $report->id,
+                    'recipient_user_id' => $follower->id,
+                    'notification_type' => $type,
+                    'mail_driver' => config('mail.default'),
+                    'exception' => $exception,
+                ]);
             }
         }
     }
