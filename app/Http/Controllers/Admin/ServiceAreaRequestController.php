@@ -4,12 +4,15 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ApproveServiceAreaRequest;
+use App\Http\Requests\Admin\AssignExistingServiceRequest;
 use App\Http\Requests\Admin\CreateServiceZoneForAreaRequest;
 use App\Http\Requests\Admin\RejectServiceAreaRequest;
 use App\Models\ServiceAreaRequest;
 use App\Models\ServiceZone;
 use App\Notifications\ServiceAreaRequestStatusNotification;
 use App\Services\ActivityLogService;
+use App\Services\ExistingServiceAssignmentService;
+use App\Services\ExistingServiceCoverageDetector;
 use App\Services\ServiceZoneCreator;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -21,7 +24,7 @@ use Throwable;
 
 class ServiceAreaRequestController extends Controller
 {
-    public function index(Request $request): View
+    public function index(Request $request, ExistingServiceCoverageDetector $coverageDetector): View
     {
         $status = in_array($request->string('status')->toString(), ['pending', 'approved', 'rejected'], true)
             ? $request->string('status')->toString()
@@ -54,9 +57,12 @@ class ServiceAreaRequestController extends Controller
             });
         }
 
+        $requests = $query->latest()->paginate(15)->withQueryString();
+
         return view('admin.service-area-requests', [
             'activePage' => 'service-area-requests',
-            'requests' => $query->latest()->paginate(15)->withQueryString(),
+            'requests' => $requests,
+            'coverageRecommendations' => $coverageDetector->detectMany($requests->getCollection()),
             'search' => $search,
             'statusFilter' => $status,
             'totalRequests' => ServiceAreaRequest::count(),
@@ -84,6 +90,27 @@ class ServiceAreaRequestController extends Controller
         $this->notifyRequester($reviewedRequest, ServiceAreaRequestStatusNotification::EVENT_REJECTED);
 
         return back()->with('success', 'Service area request rejected.');
+    }
+
+    public function assignExisting(
+        AssignExistingServiceRequest $request,
+        ServiceAreaRequest $serviceAreaRequest,
+        ExistingServiceAssignmentService $assignmentService
+    ): RedirectResponse {
+        $validated = $request->validated();
+        $assignedRequest = $assignmentService->assign(
+            $serviceAreaRequest,
+            (int) $validated['service_zone_id'],
+            $request->user(),
+            $validated['admin_notes'] ?? null
+        );
+
+        $message = 'Resident assigned to the existing service successfully.';
+        if (! $assignedRequest->getAttribute('assignment_has_active_schedule')) {
+            $message .= ' No active collection schedule is currently available for this service.';
+        }
+
+        return back()->with('success', $message);
     }
 
     public function createZone(

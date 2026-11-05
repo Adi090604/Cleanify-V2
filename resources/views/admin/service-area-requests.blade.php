@@ -133,6 +133,8 @@
       $hasLinkedServiceZone = $serviceAreaRequest->serviceZone !== null;
       $hasZoneSetupHistory = (bool) $serviceAreaRequest->has_zone_setup_history;
       $createZoneLabel = $hasZoneSetupHistory ? 'Create Service Zone Again' : 'Create Service Zone';
+      $coverage = $coverageRecommendations[$serviceAreaRequest->id] ?? ['status' => 'disabled', 'candidates' => collect()];
+      $coverageCandidates = $coverage['candidates'];
     @endphp
     <x-modal id="serviceAreaRequestDetail{{ $serviceAreaRequest->id }}" title="Service Area Request Details" icon="fas fa-map-marked-alt" color="green">
       <div class="space-y-5">
@@ -144,6 +146,57 @@
             <div class="sm:col-span-2"><dt class="text-gray-500">Current Service Area</dt><dd class="font-medium text-gray-800">{{ $serviceAreaRequest->user?->service_area ?: 'None selected' }}</dd></div>
           </dl>
         </section>
+
+        @if($serviceAreaRequest->status === 'pending' && $coverage['status'] !== 'disabled')
+          <section>
+            <h6 class="mb-2 font-semibold text-gray-800"><i class="fas fa-satellite-dish mr-2 text-blue-600"></i>Existing Service Coverage</h6>
+            @if($coverage['status'] === 'location_unavailable')
+              <div class="rounded-lg border border-gray-300 bg-gray-50 p-4 text-sm text-gray-700">
+                <p class="font-semibold">Location unavailable</p>
+                <p class="mt-1">Coverage could not be calculated because this request has no complete GPS location. Continue with manual review.</p>
+              </div>
+            @elseif($coverage['status'] === 'no_match')
+              <div class="rounded-lg border border-gray-300 bg-gray-50 p-4 text-sm text-gray-700">
+                <p class="font-semibold">No matching coverage found</p>
+                <p class="mt-1">No active Service Zone currently has a routed truck whose recorded coverage circle includes this location. Continue the normal review workflow.</p>
+              </div>
+            @else
+              <div class="rounded-lg border border-blue-200 bg-blue-50 p-4 text-sm text-blue-950">
+                <p class="font-bold uppercase tracking-wide">Existing Service Coverage Detected</p>
+                <p class="mt-1">{{ $coverageCandidates->count() === 1 ? 'One possible existing service was found.' : $coverageCandidates->count().' possible matches were found.' }} These are advisory results based on recorded truck positions.</p>
+                <div class="mt-3 space-y-3">
+                  @foreach($coverageCandidates as $candidate)
+                    <div class="rounded-lg border border-blue-200 bg-white p-3">
+                      <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p class="font-semibold text-gray-900">{{ $candidate['service_zone_name'] }}</p>
+                          <p class="text-xs text-gray-600">Barangay: {{ $candidate['barangay'] ?: 'Not specified' }}</p>
+                        </div>
+                        <span class="inline-flex w-fit rounded-full px-2.5 py-1 text-xs font-semibold {{ $candidate['has_active_schedule'] ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800' }}">
+                          {{ $candidate['has_active_schedule'] ? 'Active schedule' : 'No active truck schedule' }}
+                        </span>
+                      </div>
+                      <dl class="mt-3 grid grid-cols-1 gap-2 text-xs text-gray-700 sm:grid-cols-2">
+                        <div><dt class="font-medium text-gray-500">Assigned Truck</dt><dd>{{ $candidate['truck_code'] }}</dd></div>
+                        <div><dt class="font-medium text-gray-500">Distance</dt><dd>{{ number_format($candidate['distance_meters']) }} meters</dd></div>
+                        <div><dt class="font-medium text-gray-500">Configured Coverage</dt><dd>{{ number_format($candidate['coverage_radius_meters']) }} meters</dd></div>
+                        <div><dt class="font-medium text-gray-500">Truck Location Updated</dt><dd>{{ $candidate['location_updated_at']?->format('M d, Y g:i A') ?? 'Timestamp unavailable' }}</dd></div>
+                      </dl>
+                      @if($candidate['is_location_stale'])
+                        <p class="mt-3 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-900"><i class="fas fa-exclamation-triangle mr-1"></i>The recorded truck location may be outdated. Confirm current operations before assigning.</p>
+                      @elseif(! $candidate['has_active_schedule'])
+                        <p class="mt-3 rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-900"><i class="fas fa-calendar-times mr-1"></i>Coverage matches geographically, but this truck has no active collection schedule for the service.</p>
+                      @else
+                        <p class="mt-3 text-xs text-green-800">This location is inside the truck's configured radius and the truck has an active schedule for this service.</p>
+                      @endif
+                    </div>
+                  @endforeach
+                </div>
+                <p class="mt-3 text-xs">Consider assigning the resident to an existing service instead of creating another Service Zone. Administrator confirmation is always required.</p>
+              </div>
+            @endif
+          </section>
+        @endif
 
         <section>
           <h6 class="mb-2 font-semibold text-gray-800"><i class="fas fa-map-signs mr-2 text-green-600"></i>Requested Area Details</h6>
@@ -218,6 +271,9 @@
           @if($serviceAreaRequest->status === 'pending')
             <button type="button" onclick="closeModal('serviceAreaRequestDetail{{ $serviceAreaRequest->id }}'); openModal('rejectServiceAreaRequest{{ $serviceAreaRequest->id }}')" class="rounded-lg bg-red-600 px-4 py-2 text-white hover:bg-red-700"><i class="fas fa-times mr-2"></i>Reject Request</button>
             <button type="button" onclick="closeModal('serviceAreaRequestDetail{{ $serviceAreaRequest->id }}'); openModal('approveServiceAreaRequest{{ $serviceAreaRequest->id }}')" class="rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700"><i class="fas fa-check mr-2"></i>Approve Request</button>
+            @if($coverageCandidates->isNotEmpty())
+              <button type="button" onclick="closeModal('serviceAreaRequestDetail{{ $serviceAreaRequest->id }}'); openModal('assignExistingService{{ $serviceAreaRequest->id }}')" class="rounded-lg bg-blue-600 px-4 py-2 text-white hover:bg-blue-700"><i class="fas fa-link mr-2"></i>Assign Existing Service</button>
+            @endif
           @elseif($serviceAreaRequest->status === 'approved' && ! $hasLinkedServiceZone)
             <button type="button" onclick="closeModal('serviceAreaRequestDetail{{ $serviceAreaRequest->id }}'); openModal('setupServiceAreaRequest{{ $serviceAreaRequest->id }}')" class="rounded-lg bg-green-600 px-4 py-2 text-white hover:bg-green-700"><i class="fas fa-plus mr-2"></i>{{ $createZoneLabel }}</button>
           @endif
@@ -256,6 +312,29 @@
           </div>
         @endslot
       </x-modal>
+
+      @if($coverageCandidates->isNotEmpty())
+        <x-modal id="assignExistingService{{ $serviceAreaRequest->id }}" title="Assign Existing Service" icon="fas fa-link" color="blue" variant="confirmation">
+          <p>Assign <strong>{{ $serviceAreaRequest->user?->name ?? 'this resident' }}</strong> to an existing service? Eligibility will be recalculated from current server-side truck data before saving.</p>
+          <form id="assignExistingServiceForm{{ $serviceAreaRequest->id }}" method="POST" action="{{ route('admin.service-area-requests.assign-existing', $serviceAreaRequest) }}" class="mt-4 space-y-3">
+            @csrf
+            <label class="block text-sm font-medium text-gray-700" for="existingServiceZone{{ $serviceAreaRequest->id }}">Recommended Service</label>
+            <select id="existingServiceZone{{ $serviceAreaRequest->id }}" name="service_zone_id" required class="w-full rounded-lg border border-gray-300 px-3 py-2 focus:ring-blue-500">
+              @foreach($coverageCandidates->unique('service_zone_id') as $candidate)
+                <option value="{{ $candidate['service_zone_id'] }}">{{ $candidate['service_zone_name'] }} — {{ $candidate['truck_code'] }} ({{ number_format($candidate['distance_meters']) }} m{{ $candidate['has_active_schedule'] ? ', active schedule' : ', no active schedule' }})</option>
+              @endforeach
+            </select>
+            <label class="block text-sm font-medium text-gray-700" for="existingServiceNotes{{ $serviceAreaRequest->id }}">Admin Notes <span class="font-normal text-gray-400">(optional)</span></label>
+            <textarea id="existingServiceNotes{{ $serviceAreaRequest->id }}" name="admin_notes" maxlength="1000" rows="3" class="w-full resize-none rounded-lg border border-gray-300 px-3 py-2 focus:ring-blue-500"></textarea>
+          </form>
+          @slot('footer')
+            <div class="admin-confirm-actions">
+              <button type="button" onclick="closeModal('assignExistingService{{ $serviceAreaRequest->id }}')" class="admin-btn-secondary">Cancel</button>
+              <button type="submit" form="assignExistingServiceForm{{ $serviceAreaRequest->id }}" class="rounded-lg bg-blue-600 px-4 py-2 font-medium text-white hover:bg-blue-700">Confirm Assignment</button>
+            </div>
+          @endslot
+        </x-modal>
+      @endif
     @endif
 
     @if($serviceAreaRequest->status === 'approved' && ! $hasLinkedServiceZone)

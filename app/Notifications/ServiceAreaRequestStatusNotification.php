@@ -20,6 +20,8 @@ class ServiceAreaRequestStatusNotification extends Notification implements Sends
 
     public const EVENT_ZONE_CREATED = 'zone_created';
 
+    public const EVENT_EXISTING_SERVICE_ASSIGNED = 'existing_service_assigned';
+
     public function __construct(
         public ServiceAreaRequest $serviceAreaRequest,
         public string $eventType,
@@ -72,6 +74,7 @@ class ServiceAreaRequestStatusNotification extends Notification implements Sends
             self::EVENT_APPROVED => "Cleanify: Your service area request for {$requestedArea} was approved. Check Cleanify for details.",
             self::EVENT_REJECTED => "Cleanify: Your service area request for {$requestedArea} was not approved. Check Cleanify for details.",
             self::EVENT_ZONE_CREATED => $this->zoneCreatedSms(),
+            self::EVENT_EXISTING_SERVICE_ASSIGNED => $this->existingServiceAssignedSms(),
             default => 'Cleanify: Your service area request was updated. Check Cleanify for details.',
         };
     }
@@ -101,6 +104,7 @@ class ServiceAreaRequestStatusNotification extends Notification implements Sends
             self::EVENT_APPROVED => 'Service Area Request Approved',
             self::EVENT_REJECTED => 'Service Area Request Not Approved',
             self::EVENT_ZONE_CREATED => 'Service Area Added',
+            self::EVENT_EXISTING_SERVICE_ASSIGNED => 'Service Request Assigned',
             default => 'Service Area Request Updated',
         };
     }
@@ -111,6 +115,7 @@ class ServiceAreaRequestStatusNotification extends Notification implements Sends
             self::EVENT_APPROVED => 'Your service area request has been approved for service-area setup. A collection schedule has not been created by this approval.',
             self::EVENT_REJECTED => 'Your service area request was not approved. You may submit a new request if your area details change.',
             self::EVENT_ZONE_CREATED => $this->zoneCreatedMessage(),
+            self::EVENT_EXISTING_SERVICE_ASSIGNED => 'Your service request has been approved. Your location has been assigned to '.$this->serviceZoneName().'. You can now view available collection schedules for your assigned area.',
             default => 'The status of your service area request has changed.',
         };
     }
@@ -158,6 +163,7 @@ class ServiceAreaRequestStatusNotification extends Notification implements Sends
             self::EVENT_APPROVED => 'Cleanify Service Area Request Approved',
             self::EVENT_REJECTED => 'Cleanify Service Area Request Update',
             self::EVENT_ZONE_CREATED => 'Cleanify Service Area Added',
+            self::EVENT_EXISTING_SERVICE_ASSIGNED => 'Cleanify Service Request Assigned',
             default => 'Cleanify Service Area Request Updated',
         };
     }
@@ -167,6 +173,7 @@ class ServiceAreaRequestStatusNotification extends Notification implements Sends
         return match ($this->eventType) {
             self::EVENT_REJECTED => 'bg-red-600',
             self::EVENT_ZONE_CREATED => 'bg-blue-600',
+            self::EVENT_EXISTING_SERVICE_ASSIGNED => 'bg-green-600',
             default => 'bg-green-600',
         };
     }
@@ -174,5 +181,10 @@ class ServiceAreaRequestStatusNotification extends Notification implements Sends
     private function serviceZoneName(): string
     {
         return $this->serviceZone?->display_name ?? 'an official Cleanify service area';
+    }
+
+    private function existingServiceAssignedSms(): string
+    {
+        return 'Cleanify: Your service request was approved and assigned to '.$this->serviceZoneName().'. View available schedules in Cleanify.';
     }
 }

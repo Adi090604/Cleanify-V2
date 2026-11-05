@@ -109,6 +109,7 @@ Route::prefix('admin')->name('admin.')->middleware(['auth', 'admin'])->group(fun
     Route::get('/service-area-requests', [App\Http\Controllers\Admin\ServiceAreaRequestController::class, 'index'])->name('service-area-requests');
     Route::post('/service-area-requests/{serviceAreaRequest}/approve', [App\Http\Controllers\Admin\ServiceAreaRequestController::class, 'approve'])->name('service-area-requests.approve');
     Route::post('/service-area-requests/{serviceAreaRequest}/reject', [App\Http\Controllers\Admin\ServiceAreaRequestController::class, 'reject'])->name('service-area-requests.reject');
+    Route::post('/service-area-requests/{serviceAreaRequest}/assign-existing', [App\Http\Controllers\Admin\ServiceAreaRequestController::class, 'assignExisting'])->name('service-area-requests.assign-existing');
     Route::post('/service-area-requests/{serviceAreaRequest}/create-zone', [App\Http\Controllers\Admin\ServiceAreaRequestController::class, 'createZone'])->name('service-area-requests.create-zone');
 
     // Settings Management
