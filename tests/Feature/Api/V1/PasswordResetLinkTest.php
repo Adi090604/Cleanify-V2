@@ -1,7 +1,7 @@
 <?php
 
 use App\Models\User;
-use Illuminate\Auth\Notifications\ResetPassword;
+use App\Notifications\GmailResetPasswordNotification;
 use Illuminate\Support\Facades\Notification;
 
 test('an existing user can request the web password reset link through the mobile API', function () {
@@ -14,7 +14,7 @@ test('an existing user can request the web password reset link through the mobil
     ])->assertOk()
         ->assertJsonPath('message', __('passwords.sent'));
 
-    Notification::assertSentTo($user, ResetPassword::class, function (ResetPassword $notification) use ($user) {
+    Notification::assertSentTo($user, GmailResetPasswordNotification::class, function (GmailResetPasswordNotification $notification) use ($user) {
         $resetUrl = $notification->toMail($user)->actionUrl;
 
         expect($resetUrl)

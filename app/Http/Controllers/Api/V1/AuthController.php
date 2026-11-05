@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Exceptions\GmailDeliveryException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\RegisterUserRequest;
 use App\Http\Resources\Api\V1\UserResource;
@@ -74,7 +75,13 @@ class AuthController extends Controller
             'email' => ['required', 'email'],
         ]);
 
-        $status = Password::sendResetLink($credentials);
+        try {
+            $status = Password::sendResetLink($credentials);
+        } catch (GmailDeliveryException) {
+            throw ValidationException::withMessages([
+                'email' => ['We could not send the password reset email. Please try again later.'],
+            ]);
+        }
 
         if ($status !== Password::RESET_LINK_SENT) {
             throw ValidationException::withMessages([
