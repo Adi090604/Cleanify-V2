@@ -4,7 +4,6 @@ use App\Models\ModerationAction;
 use App\Models\Report;
 use App\Models\User;
 use App\Models\UserReport;
-use App\Notifications\Channels\SmsChannel;
 use App\Notifications\ModerationActionNotification;
 use App\Notifications\UserReportReviewedNotification;
 use App\Services\ModerationService;
@@ -237,7 +236,7 @@ test('suspension blocks web and mobile sessions revokes tokens and can be lifted
     $this->postJson('/api/v1/auth/login', ['email' => $resident->email, 'password' => 'password'])->assertOk();
 });
 
-test('moderation notifications respect system email and sms preferences and never expose admin notes', function () {
+test('moderation notifications remain in app or email only and never expose admin notes', function () {
     $smsEnabled = User::factory()->create([
         'email_notifications' => false,
         'sms_notifications' => true,
@@ -274,9 +273,7 @@ test('moderation notifications respect system email and sms preferences and neve
     $mail = $notification->toMail($smsEnabled);
     $renderedMail = view($mail->view, $mail->viewData)->render();
 
-    expect($notification->via($smsEnabled))->toContain('database')
-        ->toContain(SmsChannel::class)
-        ->not->toContain('mail')
+    expect($notification->via($smsEnabled))->toBe(['database'])
         ->and($notification->via($muted))->toBe([])
         ->and($notification->via($emailEnabled))->toContain('database')->toContain('mail')->not->toContain(SmsChannel::class)
         ->and(json_encode($notification->toArray($smsEnabled)))->not->toContain('Private investigator')

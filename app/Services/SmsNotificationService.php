@@ -13,21 +13,22 @@ class SmsNotificationService
 {
     public function normalizePhoneNumber(?string $phone): ?string
     {
-        $digits = preg_replace('/\D+/', '', (string) $phone);
-        if (! $digits) {
+        $value = trim((string) $phone);
+        if ($value === '') {
             return null;
         }
 
-        $countryCode = ltrim((string) config('sms.default_country_code'), '+');
-        if (str_starts_with($digits, '0')) {
-            $digits = $countryCode.substr($digits, 1);
-        } elseif (strlen($digits) === 10) {
-            $digits = $countryCode.$digits;
+        $compact = preg_replace('/[\s().-]+/', '', $value);
+
+        if (preg_match('/^09\d{9}$/', $compact)) {
+            return '+63'.substr($compact, 1);
         }
 
-        $normalized = '+'.$digits;
+        if (preg_match('/^\+?639\d{9}$/', $compact)) {
+            return '+'.ltrim($compact, '+');
+        }
 
-        return preg_match('/^\+[1-9]\d{7,14}$/', $normalized) ? $normalized : null;
+        return null;
     }
 
     public function send(string $to, string $message): bool
@@ -40,7 +41,10 @@ class SmsNotificationService
         $driver = strtolower(trim((string) config('sms.driver', 'log')));
 
         if ($driver === 'log') {
-            Log::info('SMS reminder simulated by log driver.', ['to' => $recipient, 'message' => $message]);
+            Log::info('SMS delivery simulated by log driver.', [
+                'provider' => 'log',
+                'message_length' => strlen($message),
+            ]);
 
             return false;
         }

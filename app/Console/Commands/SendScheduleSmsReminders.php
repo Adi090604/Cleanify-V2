@@ -51,7 +51,7 @@ class SendScheduleSmsReminders extends Command
                     $message = "Cleanify: Collection for {$schedule->area} is tomorrow, {$collectionDate->format('M j')}, {$schedule->time_range}. Please prepare your waste before collection.";
                     $eligibleSms++;
                     if ($dryRun) {
-                        $this->line("Would remind user {$user->id} for schedule {$schedule->id} at {$phone}.");
+                        $this->line("Would remind user {$user->id} for schedule {$schedule->id}.");
 
                         return;
                     }

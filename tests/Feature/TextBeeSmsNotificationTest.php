@@ -56,6 +56,7 @@ test('TextBee sends the normalized recipient and message with server-side API au
     });
 })->with([
     'Philippine local format' => '09171234567',
+    'Philippine country code without plus' => '639171234567',
     'already normalized format' => '+639171234567',
 ]);
 
@@ -193,12 +194,33 @@ test('existing Twilio and log drivers remain functional', function () {
     Http::assertNothingSent();
 });
 
-test('clearly invalid recipients are rejected before any provider request', function () {
+test('clearly invalid recipients are rejected before any provider request', function (string $phone) {
     configureTextBee();
     Http::fake();
 
-    expect(fn () => app(SmsNotificationService::class)->send('not-a-phone', 'Cleanify reminder'))
+    expect(fn () => app(SmsNotificationService::class)->send($phone, 'Cleanify reminder'))
         ->toThrow(RuntimeException::class, 'The SMS recipient phone number is invalid.');
 
     Http::assertNothingSent();
+})->with([
+    'letters' => 'not-a-phone',
+    'too short' => '0917123456',
+    'missing mobile prefix' => '638171234567',
+    'non-Philippine number' => '+15551234567',
+    'multiple plus signs' => '++639171234567',
+]);
+
+test('log driver does not record complete phone numbers or SMS contents', function () {
+    config(['sms.driver' => 'log']);
+    Log::spy();
+
+    app(SmsNotificationService::class)->send('09171234567', 'Private reminder contents');
+
+    Log::shouldHaveReceived('info')->once()->withArgs(function (string $message, array $context): bool {
+        $logged = $message.json_encode($context);
+
+        return ! str_contains($logged, '09171234567')
+            && ! str_contains($logged, '+639171234567')
+            && ! str_contains($logged, 'Private reminder contents');
+    });
 });

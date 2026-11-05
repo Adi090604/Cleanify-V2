@@ -17,6 +17,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\View\View;
 use Throwable;
@@ -391,25 +392,32 @@ class ReportsController extends Controller
             'admin_notes' => ['nullable', 'string', 'max:1000'],
         ]);
 
-        $reports = Report::whereIn('id', $request->report_ids)
-            ->where('status', Report::STATUS_IN_PROGRESS)
-            ->get();
-        $count = 0;
+        $reports = DB::transaction(function () use ($request): Collection {
+            $reports = Report::whereIn('id', $request->report_ids)
+                ->where('status', Report::STATUS_IN_PROGRESS)
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            foreach ($reports as $report) {
+                $report->update([
+                    'status' => Report::STATUS_RESOLVED,
+                    'admin_notes' => $request->admin_notes,
+                    'resolved_by' => auth()->id(),
+                ]);
+
+                ActivityLogService::logReportResolved($report, $request->admin_notes);
+            }
+
+            return $reports;
+        });
 
         foreach ($reports as $report) {
-            $report->update([
-                'status' => 'resolved',
-                'admin_notes' => $request->admin_notes,
-                'resolved_by' => auth()->id(),
-            ]);
-
-            ActivityLogService::logReportResolved($report, $request->admin_notes);
             $this->notifyReportOwner($report, 'resolved');
             $this->notifyFollowers($report, 'resolved');
-            $count++;
         }
 
-        return $this->bulkTransitionResponse($request->report_ids, $count, 'resolved');
+        return $this->bulkTransitionResponse($request->report_ids, $reports->count(), 'resolved');
     }
 
     public function bulkMarkInProgress(Request $request): RedirectResponse
@@ -495,20 +503,27 @@ class ReportsController extends Controller
 
     public function resolve(ResolveReportRequest $request, string $id): RedirectResponse
     {
-        $report = Report::findOrFail($id);
+        $report = DB::transaction(function () use ($id, $request): ?Report {
+            $report = Report::query()->lockForUpdate()->findOrFail($id);
 
-        if (! $report->isInProgress()) {
+            if (! $report->isInProgress()) {
+                return null;
+            }
+
+            $report->update([
+                'status' => Report::STATUS_RESOLVED,
+                'admin_notes' => $request->admin_notes,
+                'resolved_by' => auth()->id(),
+            ]);
+
+            ActivityLogService::logReportResolved($report, $request->admin_notes);
+
+            return $report;
+        });
+
+        if (! $report) {
             return redirect()->route('admin.reports')->with('error', 'Only reports in progress can be resolved.');
         }
-
-        $report->update([
-            'status' => 'resolved',
-            'admin_notes' => $request->admin_notes,
-            'resolved_by' => auth()->id(),
-        ]);
-
-        // Log activity
-        ActivityLogService::logReportResolved($report, $request->admin_notes);
 
         $this->notifyReportOwner($report, 'resolved');
         $this->notifyFollowers($report, 'resolved');

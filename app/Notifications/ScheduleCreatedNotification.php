@@ -4,7 +4,6 @@ namespace App\Notifications;
 
 use App\Contracts\SendsSmsNotification;
 use App\Models\Schedule;
-use App\Notifications\Channels\SmsChannel;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
@@ -37,10 +36,6 @@ class ScheduleCreatedNotification extends Notification implements SendsSmsNotifi
 
         if ($notifiable->email_notifications ?? true) {
             $channels[] = 'mail';
-        }
-
-        if ($notifiable->sms_notifications ?? false) {
-            $channels[] = SmsChannel::class;
         }
 
         return $channels;

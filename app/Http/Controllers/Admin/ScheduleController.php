@@ -103,6 +103,7 @@ class ScheduleController extends Controller
     {
         $schedule = Schedule::findOrFail($id);
         $oldArea = (string) $schedule->area;
+        $oldStatus = (string) $schedule->status;
         $usesInterval = $request->schedule_type === 'recurring' && $request->recurrence_mode === 'interval';
         $schedule->fill([
             'area' => $request->area,
@@ -139,7 +140,12 @@ class ScheduleController extends Controller
         });
 
         if ($changedFields !== []) {
-            $this->notifyUsersAboutScheduleUpdate($schedule, $oldArea, $changedFields);
+            $this->notifyUsersAboutScheduleUpdate(
+                $schedule,
+                $oldArea,
+                $changedFields,
+                $oldStatus !== 'inactive' && $schedule->status === 'inactive'
+            );
         }
 
         return redirect()->route('admin.schedule')
@@ -152,7 +158,16 @@ class ScheduleController extends Controller
     public function destroy(string $id): RedirectResponse
     {
         $schedule = Schedule::findOrFail($id);
-        $schedule->delete();
+        $wasActive = $schedule->status === 'active';
+        $area = (string) $schedule->area;
+
+        DB::transaction(function () use ($schedule): void {
+            $schedule->delete();
+        });
+
+        if ($wasActive) {
+            $this->notifyUsersAboutScheduleUpdate($schedule, $area, ['status'], true);
+        }
 
         return redirect()->route('admin.schedule')
             ->with('success', 'Schedule deleted successfully!');
@@ -191,11 +206,14 @@ class ScheduleController extends Controller
     protected function notifyUsersAboutScheduleUpdate(
         Schedule $schedule,
         string $oldArea,
-        array $changedFields
+        array $changedFields,
+        bool $cancelled = false
     ): void {
         $newArea = (string) $schedule->area;
         $areaChanged = $oldArea !== $newArea;
-        $areas = $areaChanged ? [$oldArea, $newArea] : [$newArea];
+        $areas = $cancelled
+            ? [$oldArea]
+            : ($areaChanged ? [$oldArea, $newArea] : [$newArea]);
 
         $users = User::query()
             ->whereIn('service_area', array_values(array_unique($areas)))
@@ -210,6 +228,7 @@ class ScheduleController extends Controller
             }
 
             $changeKind = match (true) {
+                $cancelled => ScheduleUpdatedNotification::CHANGE_CANCELLED,
                 ! $areaChanged => ScheduleUpdatedNotification::CHANGE_UPDATED,
                 $user->service_area === $oldArea => ScheduleUpdatedNotification::CHANGE_REMOVED_FROM_AREA,
                 default => ScheduleUpdatedNotification::CHANGE_ASSIGNED_TO_AREA,

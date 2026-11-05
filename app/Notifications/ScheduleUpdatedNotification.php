@@ -19,6 +19,21 @@ class ScheduleUpdatedNotification extends Notification implements SendsSmsNotifi
 
     public const CHANGE_ASSIGNED_TO_AREA = 'assigned_to_area';
 
+    public const CHANGE_CANCELLED = 'cancelled';
+
+    /** @var array<int, string> */
+    private const SMS_RELEVANT_FIELDS = [
+        'area',
+        'schedule_type',
+        'specific_date',
+        'recurrence_start_date',
+        'recurrence_interval_days',
+        'days',
+        'time_start',
+        'time_end',
+        'status',
+    ];
+
     /**
      * @param  array<int, string>  $changedFields
      */
@@ -42,12 +57,12 @@ class ScheduleUpdatedNotification extends Notification implements SendsSmsNotifi
 
         $channels = ['database'];
 
-        if ($notifiable->email_notifications ?? true) {
-            $channels[] = 'mail';
+        if (($notifiable->sms_notifications ?? false) && $this->shouldSendSms()) {
+            $channels[] = SmsChannel::class;
         }
 
-        if ($notifiable->sms_notifications ?? false) {
-            $channels[] = SmsChannel::class;
+        if ($notifiable->email_notifications ?? true) {
+            $channels[] = 'mail';
         }
 
         return $channels;
@@ -84,6 +99,7 @@ class ScheduleUpdatedNotification extends Notification implements SendsSmsNotifi
     public function toSms(object $notifiable): string
     {
         return match ($this->changeKind) {
+            self::CHANGE_CANCELLED => 'Cleanify: The collection schedule for '.$this->displayArea().' has been cancelled. Check Cleanify for the latest schedule.',
             self::CHANGE_REMOVED_FROM_AREA => 'Cleanify: A collection schedule no longer applies to '.$this->displayArea().'. Check Cleanify for the latest schedule.',
             self::CHANGE_ASSIGNED_TO_AREA => 'Cleanify: A collection schedule is now assigned to '.$this->schedule->area.': '.$this->collectionSummary().'. Check Cleanify for details.',
             default => 'Cleanify: Your garbage collection schedule for '.$this->schedule->area.' was updated: '.$this->collectionSummary().'. Check Cleanify for details.',
@@ -131,7 +147,7 @@ class ScheduleUpdatedNotification extends Notification implements SendsSmsNotifi
 
     private function displayArea(): string
     {
-        return $this->changeKind === self::CHANGE_REMOVED_FROM_AREA
+        return in_array($this->changeKind, [self::CHANGE_REMOVED_FROM_AREA, self::CHANGE_CANCELLED], true)
             ? ($this->previousArea ?: $this->schedule->area)
             : $this->schedule->area;
     }
@@ -139,6 +155,7 @@ class ScheduleUpdatedNotification extends Notification implements SendsSmsNotifi
     private function title(): string
     {
         return match ($this->changeKind) {
+            self::CHANGE_CANCELLED => 'Collection Schedule Cancelled',
             self::CHANGE_REMOVED_FROM_AREA => 'Collection Schedule Changed for Your Area',
             self::CHANGE_ASSIGNED_TO_AREA => 'Collection Schedule Assigned to Your Area',
             default => 'Collection Schedule Updated',
@@ -148,6 +165,7 @@ class ScheduleUpdatedNotification extends Notification implements SendsSmsNotifi
     private function message(): string
     {
         return match ($this->changeKind) {
+            self::CHANGE_CANCELLED => 'The collection schedule for '.$this->displayArea().' has been cancelled.',
             self::CHANGE_REMOVED_FROM_AREA => 'The collection schedule for '.$this->displayArea().' has changed and no longer applies to your service area.',
             self::CHANGE_ASSIGNED_TO_AREA => 'A collection schedule is now assigned to '.$this->schedule->area.': '.$this->collectionSummary().'.',
             default => 'Your garbage collection schedule for '.$this->schedule->area.' has been updated: '.$this->collectionSummary().'.',
@@ -157,6 +175,7 @@ class ScheduleUpdatedNotification extends Notification implements SendsSmsNotifi
     private function mailIntroduction(): string
     {
         return match ($this->changeKind) {
+            self::CHANGE_CANCELLED => 'The collection schedule for your service area has been cancelled.',
             self::CHANGE_REMOVED_FROM_AREA => 'A collection schedule has changed and no longer applies to your service area.',
             self::CHANGE_ASSIGNED_TO_AREA => 'A collection schedule is now assigned to your service area.',
             default => 'Your collection schedule has been updated.',
@@ -166,5 +185,14 @@ class ScheduleUpdatedNotification extends Notification implements SendsSmsNotifi
     private function collectionSummary(): string
     {
         return $this->collectionLabel().' at '.$this->schedule->time_range;
+    }
+
+    private function shouldSendSms(): bool
+    {
+        if ($this->changeKind === self::CHANGE_CANCELLED) {
+            return true;
+        }
+
+        return array_intersect($this->changedFields, self::SMS_RELEVANT_FIELDS) !== [];
     }
 }

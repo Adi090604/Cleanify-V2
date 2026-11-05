@@ -36,12 +36,12 @@ class ReportResolvedNotification extends Notification implements SendsSmsNotific
 
         $channels = ['database'];
 
-        if ($notifiable->email_notifications ?? true) {
-            $channels[] = 'mail';
+        if (! $this->isFollower && ($notifiable->sms_notifications ?? false)) {
+            $channels[] = SmsChannel::class;
         }
 
-        if ($notifiable->sms_notifications ?? false) {
-            $channels[] = SmsChannel::class;
+        if ($notifiable->email_notifications ?? true) {
+            $channels[] = 'mail';
         }
 
         return $channels;
