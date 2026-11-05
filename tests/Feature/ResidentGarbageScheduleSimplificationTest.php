@@ -171,6 +171,7 @@ test('notification preferences remain on resident settings', function () {
         ->assertOk()
         ->assertSee('Notification Preferences')
         ->assertSee('name="email_notifications"', false)
+        ->assertDontSee('Email Notifications')
         ->assertSee('name="sms_notifications"', false)
         ->assertSee('name="preferences[report_updates]"', false)
         ->assertSee('name="preferences[schedule_reminders]"', false);
@@ -178,7 +179,6 @@ test('notification preferences remain on resident settings', function () {
 
 test('schedule reminder reference reflects the resident saved preferences', function (
     bool $scheduleReminders,
-    bool $emailNotifications,
     string $expectedMessage,
     ?string $secondaryMessage,
 ) {
@@ -189,7 +189,6 @@ test('schedule reminder reference reflects the resident saved preferences', func
     ]);
     $user = User::factory()->create([
         'service_area' => $zone->display_name,
-        'email_notifications' => $emailNotifications,
         'notification_preferences' => ['schedule_reminders' => $scheduleReminders],
     ]);
 
@@ -203,27 +202,17 @@ test('schedule reminder reference reflects the resident saved preferences', func
         $response->assertSee($secondaryMessage);
     }
 
-    if (! $scheduleReminders || ! $emailNotifications) {
-        $response->assertDontSee("We'll remind you by email 1 day before your scheduled collection.");
-    }
+    $response->assertDontSee("We'll remind you by email 1 day before your scheduled collection.");
 })->with([
-    'reminders and email enabled' => [
+    'schedule reminders enabled' => [
         true,
-        true,
-        "We'll remind you by email 1 day before your scheduled collection.",
-        'Manage reminder options in Settings',
+        'Schedule reminders are enabled.',
+        'Manage your reminder options in Settings.',
     ],
     'schedule reminders disabled' => [
         false,
-        true,
         'Schedule reminders are currently turned off.',
         'Manage reminder options in Settings',
-    ],
-    'reminders enabled but email disabled' => [
-        true,
-        false,
-        'Schedule reminders are enabled.',
-        'Manage your reminder options in Settings.',
     ],
 ]);
 

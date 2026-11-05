@@ -24,12 +24,12 @@ function preferenceNotification(User $user, string $title, string $category): Da
 
 test('resident settings show supported notification controls without fake options', function () {
     config()->set('sms.driver', 'log');
-    $user = User::factory()->create();
+    $user = User::factory()->create(['email_notifications' => true]);
 
     $response = $this->actingAs($user)->get(route('settings'));
 
     $response->assertOk()
-        ->assertSee('Email Notifications')
+        ->assertDontSee('Email Notifications')
         ->assertSee('SMS Notifications')
         ->assertSee('Receive enabled Cleanify updates via SMS')
         ->assertSee('Report Updates')
@@ -44,7 +44,6 @@ test('resident settings show supported notification controls without fake option
 
     $html = $response->getContent();
     $supportedControls = [
-        'email_notifications' => 'email_notifications',
         'sms_notifications' => 'sms_notifications',
         'pref_report_updates' => 'preferences[report_updates]',
         'pref_schedule_reminders' => 'preferences[schedule_reminders]',
@@ -59,6 +58,10 @@ test('resident settings show supported notification controls without fake option
             ->and($html)->toMatch('/<label[^>]*for="'.preg_quote($id, '/').'"[^>]*cursor-pointer[^>]*>.*?peer-checked:bg-green-600.*?<\/label>/s')
             ->and(substr_count($html, 'name="'.$name.'"'))->toBe(2);
     }
+
+    expect($html)
+        ->toContain('type="hidden" name="email_notifications" value="1"')
+        ->not->toContain('id="email_notifications"');
 });
 
 test('resident can save supported notification preferences and reload their state', function () {
@@ -96,7 +99,6 @@ test('resident can save supported notification preferences and reload their stat
 
     $html = $this->get(route('settings'))->assertOk()->getContent();
     expect($html)
-        ->not->toMatch('/id="email_notifications"[^>]*checked/')
         ->not->toMatch('/id="sms_notifications"[^>]*checked/')
         ->not->toMatch('/id="pref_report_updates"[^>]*checked/')
         ->not->toMatch('/id="pref_schedule_reminders"[^>]*checked/')
@@ -114,12 +116,38 @@ test('resident can save supported notification preferences and reload their stat
 
     $html = $this->get(route('settings'))->assertOk()->getContent();
     expect($html)
-        ->toMatch('/id="email_notifications"[^>]*checked/')
         ->toMatch('/id="sms_notifications"[^>]*checked/')
         ->toMatch('/id="pref_report_updates"[^>]*checked/')
         ->toMatch('/id="pref_schedule_reminders"[^>]*checked/')
         ->toMatch('/id="pref_system"[^>]*checked/');
 });
+
+test('hidden email preference is preserved when the resident saves visible preferences', function (bool $emailEnabled) {
+    $user = User::factory()->create([
+        'email_notifications' => $emailEnabled,
+        'sms_notifications' => false,
+    ]);
+
+    $html = $this->actingAs($user)->get(route('settings'))->assertOk()->getContent();
+    preg_match('/type="hidden" name="email_notifications" value="([01])"/', $html, $emailInput);
+
+    $this->patch(route('settings.notifications'), [
+        'email_notifications' => (bool) ((int) $emailInput[1]),
+        'sms_notifications' => true,
+        'preferences' => [
+            'report_updates' => true,
+            'schedule_reminders' => true,
+            'system' => true,
+        ],
+    ])->assertRedirect(route('settings'));
+
+    expect($user->fresh())
+        ->email_notifications->toBe($emailEnabled)
+        ->sms_notifications->toBeTrue();
+})->with([
+    'enabled value' => true,
+    'disabled value' => false,
+]);
 
 test('master sms preference changes without erasing category preferences', function () {
     $user = User::factory()->create([

@@ -62,10 +62,7 @@
           <div class="resident-schedule-reminder">
             <i class="fas fa-bell" aria-hidden="true"></i>
             <div>
-              @if($scheduleRemindersEnabled && $emailNotificationsEnabled)
-                <p>We'll remind you by email 1 day before your scheduled collection.</p>
-                <a href="{{ route('settings') }}">Manage reminder options in Settings</a>
-              @elseif(!$scheduleRemindersEnabled)
+              @if(!$scheduleRemindersEnabled)
                 <p>Schedule reminders are currently turned off.</p>
                 <a href="{{ route('settings') }}">Manage reminder options in Settings</a>
               @else

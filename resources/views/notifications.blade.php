@@ -158,7 +158,7 @@
       </h5>
       <ul class="space-y-3 text-sm text-gray-600">
         <li class="flex items-start gap-2"><i class="fas fa-bell text-green-600 mt-1"></i>Mark important alerts with the “View” button to jump right to the related page.</li>
-        <li class="flex items-start gap-2"><i class="fas fa-envelope text-green-600 mt-1"></i>Keep email reminders enabled in Settings to receive critical updates even when logged out.</li>
+        <li class="flex items-start gap-2"><i class="fas fa-mobile-alt text-green-600 mt-1"></i>Review SMS and notification categories in Settings to control the updates you receive.</li>
         <li class="flex items-start gap-2"><i class="fas fa-sliders-h text-green-600 mt-1"></i>Mute categories you don’t need to cut down on noise.</li>
       </ul>
     </div>
