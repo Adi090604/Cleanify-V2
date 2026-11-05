@@ -64,10 +64,13 @@
             type="password"
             id="password"
             name="password"
-            class="w-full bg-white border {{ $errors->has('password') ? 'border-red-500' : 'border-gray-300' }} text-gray-800 rounded-lg pl-10 py-2.5 focus:outline-none focus:border-green-600 transition-colors duration-300"
+            class="w-full bg-white border {{ $errors->has('password') ? 'border-red-500' : 'border-gray-300' }} text-gray-800 rounded-lg pl-10 pr-11 py-2.5 focus:outline-none focus:border-green-600 transition-colors duration-300"
             required
             autocomplete="current-password"
           >
+          <button type="button" data-password-toggle aria-controls="password" aria-label="Show password" aria-pressed="false" class="absolute right-3 top-1/2 -translate-y-1/2 rounded p-1 text-gray-500 transition-colors hover:text-green-700 focus:outline-none focus:ring-2 focus:ring-green-500">
+            <i class="fas fa-eye" data-password-toggle-icon aria-hidden="true"></i>
+          </button>
         </div>
         @error('password')
           <p class="mt-1.5 text-xs text-red-600 font-semibold flex items-center">

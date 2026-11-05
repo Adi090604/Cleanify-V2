@@ -8,6 +8,25 @@ window.Alpine = Alpine;
 
 Alpine.start();
 
+document.addEventListener('click', function(event) {
+  const toggle = event.target.closest('[data-password-toggle]');
+  if (!toggle) return;
+
+  const input = document.getElementById(toggle.getAttribute('aria-controls'));
+  if (!input || !['password', 'text'].includes(input.type)) return;
+
+  event.preventDefault();
+
+  const shouldShow = input.type === 'password';
+  input.type = shouldShow ? 'text' : 'password';
+  toggle.setAttribute('aria-pressed', String(shouldShow));
+  toggle.setAttribute('aria-label', shouldShow ? 'Hide password' : 'Show password');
+
+  const icon = toggle.querySelector('[data-password-toggle-icon]');
+  icon?.classList.toggle('fa-eye', !shouldShow);
+  icon?.classList.toggle('fa-eye-slash', shouldShow);
+});
+
 const residentAlertTitles = {
   success: 'Success',
   error: 'Something went wrong',

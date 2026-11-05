@@ -85,10 +85,13 @@
             type="password"
             id="password"
             name="password"
-            class="w-full bg-transparent border-0 border-b {{ $errors->has('password') ? 'border-red-500' : 'border-gray-400' }} text-white pl-10 pb-2 focus:outline-none focus:border-green-500 transition-colors duration-300"
+            class="w-full bg-transparent border-0 border-b {{ $errors->has('password') ? 'border-red-500' : 'border-gray-400' }} text-white pl-10 pr-10 pb-2 focus:outline-none focus:border-green-500 transition-colors duration-300"
             required
             autocomplete="new-password"
           >
+          <button type="button" data-password-toggle aria-controls="password" aria-label="Show password" aria-pressed="false" class="absolute right-1 top-1/2 -translate-y-1/2 rounded p-1 text-gray-300 transition-colors hover:text-green-400 focus:outline-none focus:ring-2 focus:ring-green-500">
+            <i class="fas fa-eye" data-password-toggle-icon aria-hidden="true"></i>
+          </button>
         </div>
         @error('password')
           <p class="mt-2 text-sm text-red-400 font-semibold flex items-center">
@@ -105,10 +108,13 @@
             type="password"
             id="password_confirmation"
             name="password_confirmation"
-            class="w-full bg-transparent border-0 border-b {{ $errors->has('password_confirmation') ? 'border-red-500' : 'border-gray-400' }} text-white pl-10 pb-2 focus:outline-none focus:border-green-500 transition-colors duration-300"
+            class="w-full bg-transparent border-0 border-b {{ $errors->has('password_confirmation') ? 'border-red-500' : 'border-gray-400' }} text-white pl-10 pr-10 pb-2 focus:outline-none focus:border-green-500 transition-colors duration-300"
             required
             autocomplete="new-password"
           >
+          <button type="button" data-password-toggle aria-controls="password_confirmation" aria-label="Show password" aria-pressed="false" class="absolute right-1 top-1/2 -translate-y-1/2 rounded p-1 text-gray-300 transition-colors hover:text-green-400 focus:outline-none focus:ring-2 focus:ring-green-500">
+            <i class="fas fa-eye" data-password-toggle-icon aria-hidden="true"></i>
+          </button>
         </div>
         @error('password_confirmation')
           <p class="mt-2 text-sm text-red-400 font-semibold flex items-center">
