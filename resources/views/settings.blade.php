@@ -292,8 +292,8 @@
       <div>
         <div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <p class="text-sm font-medium text-gray-700">Location <span class="font-normal text-gray-400">(optional)</span></p>
-            <p class="text-xs text-gray-500">Share your position or choose a point on the map.</p>
+            <p class="text-sm font-medium text-gray-700">Requested Service Location <span class="text-red-600">*</span></p>
+            <p class="text-xs text-gray-500">Use your current position or choose and review a point on the map.</p>
           </div>
           <div class="flex flex-wrap gap-2">
             <button type="button" id="useServiceAreaCurrentLocation" class="inline-flex items-center gap-2 rounded-lg border border-green-600 px-3 py-2 text-xs font-medium text-green-700 hover:bg-green-50">
@@ -392,7 +392,8 @@
     const latitude = Number(lat);
     const longitude = Number(lng);
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude)
-      || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) return false;
+      || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180
+      || (latitude === 0 && longitude === 0)) return false;
 
     document.getElementById('serviceAreaRequestLatitude').value = latitude.toFixed(8);
     document.getElementById('serviceAreaRequestLongitude').value = longitude.toFixed(8);
@@ -461,8 +462,11 @@
         button.disabled = false;
         button.classList.remove('cursor-wait', 'opacity-60');
       },
-      () => {
-        showServiceAreaLocationStatus('We could not access your location. You can still select a point on the map.', true);
+      error => {
+        const message = error.code === error.PERMISSION_DENIED
+          ? 'Location access was denied. You can select the location manually on the map.'
+          : "We couldn't determine your location. Please try again or select it manually.";
+        showServiceAreaLocationStatus(message, true);
         button.disabled = false;
         button.classList.remove('cursor-wait', 'opacity-60');
       },
@@ -474,6 +478,14 @@
     const areaInput = document.getElementById('serviceAreaRequestName');
     const barangayInput = document.getElementById('serviceAreaRequestBarangay');
     const duplicateError = document.getElementById('serviceAreaRequestDuplicateError');
+    const latitudeInput = document.getElementById('serviceAreaRequestLatitude');
+    const longitudeInput = document.getElementById('serviceAreaRequestLongitude');
+    const latitude = Number(latitudeInput.value);
+    const longitude = Number(longitudeInput.value);
+    const hasValidLocation = latitudeInput.value !== '' && longitudeInput.value !== ''
+      && Number.isFinite(latitude) && Number.isFinite(longitude)
+      && latitude >= -90 && latitude <= 90 && longitude >= -180 && longitude <= 180
+      && !(latitude === 0 && longitude === 0);
     const isDuplicate = pendingServiceAreaName && pendingServiceAreaBarangay
       && normalizeServiceAreaName(areaInput.value) === normalizeServiceAreaName(pendingServiceAreaName)
       && normalizeServiceAreaName(barangayInput.value) === normalizeServiceAreaName(pendingServiceAreaBarangay);
@@ -482,6 +494,12 @@
     if (isDuplicate) {
       event.preventDefault();
       areaInput.focus();
+    }
+
+    if (!hasValidLocation) {
+      event.preventDefault();
+      showServiceAreaRequestMap();
+      showServiceAreaLocationStatus('Please select the requested service location.', true);
     }
   });
 

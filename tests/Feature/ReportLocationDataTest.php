@@ -54,21 +54,61 @@ test('api report creation rejects missing readable location even when GPS is sup
     expect(Report::query()->count())->toBe(0);
 });
 
-test('a web report with readable location and no GPS succeeds', function () {
+test('a web report with readable location but no coordinates is rejected', function () {
     $user = User::factory()->create(['service_area' => 'A different service area']);
 
     $this->actingAs($user)->post(route('reports.store'), [
         'barangay' => '  Nabago  ',
         'location' => '  In front of Nabago Fire Station  ',
         'description' => 'Garbage bags are blocking the sidewalk.',
+    ])->assertSessionHasErrors(['latitude', 'longitude']);
+
+    expect(Report::query()->count())->toBe(0);
+});
+
+test('a web report with readable location and valid coordinates succeeds', function () {
+    $user = User::factory()->create(['service_area' => 'A different service area']);
+
+    $this->actingAs($user)->post(route('reports.store'), [
+        'barangay' => '  Nabago  ',
+        'location' => '  In front of Nabago Fire Station  ',
+        'latitude' => 9.78701234,
+        'longitude' => 125.49281234,
+        'description' => 'Garbage bags are blocking the sidewalk.',
     ])->assertSessionHasNoErrors()->assertRedirect(route('dashboard'));
 
     $report = Report::query()->sole();
     expect($report->barangay)->toBe('Nabago')
         ->and($report->location)->toBe('In front of Nabago Fire Station')
-        ->and($report->latitude)->toBeNull()
-        ->and($report->longitude)->toBeNull();
+        ->and((float) $report->latitude)->toBe(9.78701234)
+        ->and((float) $report->longitude)->toBe(125.49281234);
 });
+
+test('new web and API reports reject invalid coordinate pairs', function (array $coordinates, array $errors) {
+    $user = User::factory()->create();
+    $payload = [
+        'barangay' => 'Nabago',
+        'location' => 'Near the covered court',
+        'description' => 'Coordinate validation report.',
+        ...$coordinates,
+    ];
+
+    $this->actingAs($user)->post(route('reports.store'), $payload)
+        ->assertSessionHasErrors($errors);
+
+    $this->actingAs($user, 'sanctum')->postJson('/api/v1/reports', $payload)
+        ->assertUnprocessable()
+        ->assertJsonValidationErrors($errors);
+
+    expect(Report::query()->count())->toBe(0);
+})->with([
+    'missing coordinates' => [[], ['latitude', 'longitude']],
+    'latitude only' => [['latitude' => 9.78701234], ['longitude']],
+    'longitude only' => [['longitude' => 125.49281234], ['latitude']],
+    'non-numeric' => [['latitude' => 'north', 'longitude' => 'east'], ['latitude', 'longitude']],
+    'out of range' => [['latitude' => 91, 'longitude' => 181], ['latitude', 'longitude']],
+    'null island placeholder' => [['latitude' => 0, 'longitude' => 0], ['latitude', 'longitude']],
+]);
 
 test('an API report with readable location and GPS succeeds and serializes every location field', function () {
     $user = User::factory()->create();

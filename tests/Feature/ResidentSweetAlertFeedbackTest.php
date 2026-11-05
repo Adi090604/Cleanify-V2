@@ -59,6 +59,8 @@ test('major resident form submissions retain their specific success flash messag
         'area_name' => 'Sitio SweetAlert',
         'barangay' => 'Barangay Washington',
         'address' => '123 Test Street',
+        'latitude' => 9.78701234,
+        'longitude' => 125.49281234,
         'details' => 'Coverage request feedback test.',
     ])->assertRedirect(route('settings'))
         ->assertSessionHas('success', 'Service area request submitted successfully.');
@@ -66,6 +68,8 @@ test('major resident form submissions retain their specific success flash messag
     $this->post(route('reports.store'), [
         'barangay' => 'Barangay Washington',
         'location' => 'Near the covered court',
+        'latitude' => 9.78701234,
+        'longitude' => 125.49281234,
         'description' => 'Resident report feedback test.',
     ])->assertRedirect(route('dashboard'))
         ->assertSessionHas('success', 'Your update has been shared! Our team will take a look soon.');

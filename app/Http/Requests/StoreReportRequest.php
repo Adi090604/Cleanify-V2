@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Validation\RequiredCoordinates;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 class StoreReportRequest extends FormRequest
 {
@@ -24,8 +26,7 @@ class StoreReportRequest extends FormRequest
         return [
             'barangay' => ['required', 'string', 'max:255'],
             'location' => ['required', 'string', 'max:255'],
-            'latitude' => ['nullable', 'numeric', 'between:-90,90', 'required_with:longitude'],
-            'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
+            ...RequiredCoordinates::rules(),
             'description' => ['required', 'string', 'max:1000'],
             'image' => ['nullable', 'image', 'mimes:jpeg,jpg,png,gif,webp', 'max:4096'],
         ];
@@ -36,6 +37,20 @@ class StoreReportRequest extends FormRequest
         return [
             'barangay.required' => 'Barangay is required.',
             'location.required' => 'Please enter the specific location or a nearby landmark.',
+            ...RequiredCoordinates::messages('Please select the report location before submitting.'),
+        ];
+    }
+
+    /**
+     * @return array<int, callable(Validator): void>
+     */
+    public function after(): array
+    {
+        return [
+            fn (Validator $validator) => RequiredCoordinates::rejectNullIsland(
+                $validator,
+                'Please select a valid report location.'
+            ),
         ];
     }
 }

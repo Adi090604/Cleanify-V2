@@ -88,6 +88,8 @@ test('a warning is recorded and leaves all resident capabilities available', fun
         ->post(route('reports.store'), [
             'barangay' => 'Barangay Washington',
             'location' => 'Public market',
+            'latitude' => 9.78701234,
+            'longitude' => 125.49281234,
             'description' => 'Valid waste concern after a warning.',
         ])->assertRedirect(route('dashboard'));
 
@@ -157,6 +159,8 @@ test('report submission restriction blocks only new web and API reports and expi
     $payload = [
         'barangay' => 'Barangay Washington',
         'location' => 'Riverside',
+        'latitude' => 9.78701234,
+        'longitude' => 125.49281234,
         'description' => 'This new report should be blocked.',
     ];
     $this->actingAs($resident)->from(route('dashboard'))->post(route('reports.store'), $payload)

@@ -86,6 +86,9 @@ test('service area request coordinates must be valid and complete', function (ar
     'longitude below range' => [['longitude' => '-180.00000001'], ['longitude']],
     'latitude without longitude' => [['longitude' => null], ['longitude']],
     'longitude without latitude' => [['latitude' => null], ['latitude']],
+    'missing coordinates' => [['latitude' => null, 'longitude' => null], ['latitude', 'longitude']],
+    'non numeric coordinates' => [['latitude' => 'north', 'longitude' => 'east'], ['latitude', 'longitude']],
+    'null island placeholder' => [['latitude' => '0', 'longitude' => '0'], ['latitude', 'longitude']],
 ]);
 
 test('a resident cannot submit duplicate pending requests for the same normalized area', function () {

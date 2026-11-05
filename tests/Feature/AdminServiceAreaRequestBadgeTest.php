@@ -69,6 +69,8 @@ test('service area request submission does not create an admin notification', fu
     $this->actingAs($resident)->post(route('settings.service-area-requests.store'), [
         'area_name' => 'Submission Without Admin Notification',
         'barangay' => 'Badge Barangay',
+        'latitude' => 9.78701234,
+        'longitude' => 125.49281234,
     ])->assertSessionHasNoErrors();
 
     expect($admin->fresh()->notifications()->count())->toBe(0)

@@ -2,7 +2,9 @@
 
 namespace App\Http\Requests;
 
+use App\Validation\RequiredCoordinates;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Validator;
 
 class StoreServiceAreaRequest extends FormRequest
 {
@@ -37,8 +39,7 @@ class StoreServiceAreaRequest extends FormRequest
             'area_name' => ['required', 'string', 'max:255'],
             'barangay' => ['required', 'string', 'max:255'],
             'address' => ['nullable', 'string', 'max:255'],
-            'latitude' => ['nullable', 'numeric', 'between:-90,90', 'required_with:longitude'],
-            'longitude' => ['nullable', 'numeric', 'between:-180,180', 'required_with:latitude'],
+            ...RequiredCoordinates::rules(),
             'details' => ['nullable', 'string', 'max:2000'],
         ];
     }
@@ -48,6 +49,20 @@ class StoreServiceAreaRequest extends FormRequest
         return [
             'area_name.required' => 'Area / Purok / Sitio is required.',
             'barangay.required' => 'Barangay is required.',
+            ...RequiredCoordinates::messages('Please select the requested service location.'),
+        ];
+    }
+
+    /**
+     * @return array<int, callable(Validator): void>
+     */
+    public function after(): array
+    {
+        return [
+            fn (Validator $validator) => RequiredCoordinates::rejectNullIsland(
+                $validator,
+                'Please select a valid requested service location.'
+            ),
         ];
     }
 }

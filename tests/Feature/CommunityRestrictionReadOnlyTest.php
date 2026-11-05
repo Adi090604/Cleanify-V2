@@ -34,6 +34,8 @@ function validCommunityReportPayload(string $description): array
     return [
         'barangay' => 'Barangay Washington',
         'location' => 'Public market',
+        'latitude' => 9.78701234,
+        'longitude' => 125.49281234,
         'description' => $description,
     ];
 }

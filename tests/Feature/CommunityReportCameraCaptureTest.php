@@ -33,6 +33,8 @@ test('web report submission stores either selected image through the unchanged i
     $this->actingAs($user)->post(route('reports.store'), [
         'barangay' => 'Nabago',
         'location' => 'In front of Nabago Fire Station',
+        'latitude' => 9.78701234,
+        'longitude' => 125.49281234,
         'description' => 'Report submitted with a browser-selected image.',
         'image' => UploadedFile::fake()->image('camera-capture.jpg'),
     ])->assertSessionHasNoErrors()
@@ -50,6 +52,8 @@ test('existing backend report image validation still rejects invalid files', fun
     $this->actingAs($user)->post(route('reports.store'), [
         'barangay' => 'Nabago',
         'location' => 'In front of Nabago Fire Station',
+        'latitude' => 9.78701234,
+        'longitude' => 125.49281234,
         'description' => 'Invalid attachment report.',
         'image' => UploadedFile::fake()->create('not-an-image.pdf', 10, 'application/pdf'),
     ])->assertSessionHasErrors(['image']);

@@ -97,7 +97,7 @@ test('mobile service area requests require both local area and Barangay', functi
     $resident = User::factory()->create();
 
     $this->actingAs($resident, 'sanctum')
-        ->postJson('/api/v1/service-area-requests', $payload)
+        ->postJson('/api/v1/service-area-requests', validApiServiceAreaRequestData($payload))
         ->assertUnprocessable()
         ->assertJsonPath("errors.{$field}.0", $message);
 })->with([
@@ -156,6 +156,9 @@ test('coordinate validation matches the web request rules', function (array $coo
     'longitude without latitude' => [['latitude' => null], ['latitude']],
     'latitude above range' => [['latitude' => '90.00000001'], ['latitude']],
     'longitude below range' => [['longitude' => '-180.00000001'], ['longitude']],
+    'missing coordinates' => [['latitude' => null, 'longitude' => null], ['latitude', 'longitude']],
+    'non numeric coordinates' => [['latitude' => 'north', 'longitude' => 'east'], ['latitude', 'longitude']],
+    'null island placeholder' => [['latitude' => '0', 'longitude' => '0'], ['latitude', 'longitude']],
 ]);
 
 test('normalized duplicate pending request is rejected', function () {

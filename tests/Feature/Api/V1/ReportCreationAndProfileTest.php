@@ -52,6 +52,8 @@ test('report photo is stored on the public reports disk and serialized in the fe
     $response = $this->actingAs($user, 'sanctum')->post('/api/v1/reports', [
         'barangay' => 'Nabago',
         'location' => 'Purok 3, beside Barangay Hall',
+        'latitude' => 9.78701234,
+        'longitude' => 125.49281234,
         'description' => 'Photo report.',
         'image' => UploadedFile::fake()->image('waste.jpg'),
     ], ['Accept' => 'application/json'])->assertCreated();
