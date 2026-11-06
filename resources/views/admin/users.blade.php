@@ -66,7 +66,7 @@
       <table class="w-full" id="userTable">
         <thead>
           <tr class="admin-table-header">
-            @foreach (['#','Avatar','Name','Email','Role','Status','Date Joined','Actions'] as $heading)
+            @foreach (['#','Avatar','Name','Email','Mobile','Role','Status','Date Joined','Actions'] as $heading)
               <th class="px-4 py-3 text-left text-sm font-semibold">{{ $heading }}</th>
             @endforeach
           </tr>
@@ -77,6 +77,7 @@
               'id' => $user->id,
               'name' => $user->name,
               'email' => $user->email,
+              'phone' => $user->phone,
               'is_admin' => $user->is_admin,
               'created_at' => $user->created_at->format('M d, Y'),
               'updated_at' => $user->updated_at->format('M d, Y'),
@@ -90,6 +91,13 @@
               </td>
               <td class="px-4 py-3 font-medium text-gray-900">{{ $user->name }}</td>
               <td class="px-4 py-3 text-gray-600">{{ $user->email }}</td>
+              <td class="px-4 py-3 text-gray-600 whitespace-nowrap">
+                @if(filled($user->phone))
+                  {{ $user->phone }}
+                @else
+                  <span class="text-gray-400 italic">Not provided</span>
+                @endif
+              </td>
               <td class="px-4 py-3">
                 <span class="admin-status-badge {{ $user->is_admin ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800' }}">
                   <i class="fas {{ $user->is_admin ? 'fa-user-shield' : 'fa-user' }} mr-1"></i>{{ $user->is_admin ? 'Admin' : 'User' }}
@@ -140,7 +148,7 @@
             </tr>
           @empty
             <tr>
-              <td colspan="8" class="px-4 py-8 text-center text-gray-500">
+              <td colspan="9" class="px-4 py-8 text-center text-gray-500">
                 <i class="fas fa-users text-4xl mb-2 block"></i>
                 No users found
               </td>
@@ -176,6 +184,7 @@
         <h3 id="viewUserName" class="text-2xl font-bold text-gray-800 mb-2"></h3>
         <div id="viewUserBadges" class="flex flex-wrap gap-2 justify-center md:justify-start mb-4"></div>
         <p class="text-gray-600"><i class="fas fa-envelope mr-2 text-purple-600"></i><span id="viewUserEmail"></span></p>
+        <p class="text-gray-600 mt-1"><i class="fas fa-phone mr-2 text-purple-600"></i><span id="viewUserPhone"></span></p>
       </div>
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
@@ -354,6 +363,7 @@
       avatarElement.textContent = firstLetter;
       document.getElementById('viewUserName').textContent = user.name;
       document.getElementById('viewUserEmail').textContent = user.email;
+      document.getElementById('viewUserPhone').textContent = user.phone || 'Not provided';
       document.getElementById('viewUserBadges').innerHTML = `
         <span class="${user.is_admin ? 'bg-green-100 text-green-800' : 'bg-blue-100 text-blue-800'} text-sm font-medium px-3 py-1 rounded-full">
           <i class="fas ${user.is_admin ? 'fa-user-shield' : 'fa-user'} mr-1"></i>${user.is_admin ? 'Admin' : 'User'}

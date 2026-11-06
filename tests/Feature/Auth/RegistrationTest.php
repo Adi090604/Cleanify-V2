@@ -5,6 +5,7 @@ test('registration screen can be rendered', function () {
 
     $response->assertStatus(200)
         ->assertSee('Mobile Number')
+        ->assertDontSee('Mobile Number <span', false)
         ->assertSee('Enter your mobile number')
         ->assertSee('Accepted formats: 09XXXXXXXXX or +639XXXXXXXXX');
 });
