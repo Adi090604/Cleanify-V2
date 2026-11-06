@@ -5,7 +5,8 @@ test('registration screen can be rendered', function () {
 
     $response->assertStatus(200)
         ->assertSee('Mobile Number')
-        ->assertSee('09171234567 or +639171234567');
+        ->assertSee('Enter your mobile number')
+        ->assertSee('Accepted formats: 09XXXXXXXXX or +639XXXXXXXXX');
 });
 
 test('new users can register with a local mobile number that is normalized', function () {

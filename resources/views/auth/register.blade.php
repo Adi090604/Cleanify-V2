@@ -55,7 +55,7 @@
       </div>
 
       <div>
-        <label for="phone" class="block text-white mb-2">Mobile Number</label>
+        <label for="phone" class="block text-white mb-2">Mobile Number <span class="text-red-400" aria-hidden="true">*</span></label>
         <div class="relative">
           <i class="fas fa-phone absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
           <input
@@ -63,13 +63,14 @@
             id="phone"
             name="phone"
             value="{{ old('phone') }}"
-            placeholder="09171234567 or +639171234567"
+            placeholder="Enter your mobile number"
             class="w-full bg-transparent border-0 border-b {{ $errors->has('phone') ? 'border-red-500' : 'border-gray-400' }} text-white pl-10 pb-2 focus:outline-none focus:border-green-500 transition-colors duration-300"
             required
             inputmode="tel"
             autocomplete="tel"
           >
         </div>
+        <p class="mt-2 text-xs text-gray-400">Accepted formats: 09XXXXXXXXX or +639XXXXXXXXX</p>
         @error('phone')
           <p class="mt-2 text-sm text-red-400 font-semibold flex items-center">
             <i class="fas fa-exclamation-circle mr-2"></i>{{ $message }}
