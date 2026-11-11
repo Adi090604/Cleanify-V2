@@ -37,7 +37,36 @@ class ServiceZoneController extends Controller
 
     public function update(UpdateServiceZoneRequest $request, string $id): RedirectResponse
     {
-        ServiceZone::findOrFail($id)->update($request->validated());
+        $updated = DB::transaction(function () use ($id, $request): bool {
+            $zone = ServiceZone::query()->lockForUpdate()->findOrFail($id);
+            $oldDisplayName = $zone->display_name;
+
+            $zone->fill($request->validated());
+            $newDisplayName = $zone->display_name;
+
+            if ($oldDisplayName !== $newDisplayName
+                && ServiceZone::query()
+                    ->whereKeyNot($zone->getKey())
+                    ->get(['name', 'barangay'])
+                    ->contains(fn (ServiceZone $otherZone): bool => $otherZone->display_name === $oldDisplayName)) {
+                return false;
+            }
+
+            $zone->save();
+
+            if ($oldDisplayName !== $newDisplayName) {
+                Truck::where('route', $oldDisplayName)->update(['route' => $newDisplayName]);
+                Schedule::where('area', $oldDisplayName)->update(['area' => $newDisplayName]);
+                User::where('service_area', $oldDisplayName)->update(['service_area' => $newDisplayName]);
+            }
+
+            return true;
+        });
+
+        if (! $updated) {
+            return to_route('admin.service-zones')
+                ->with('error', 'This Service Zone name is ambiguous. Its existing assignments were not changed.');
+        }
 
         return to_route('admin.service-zones')->with('success', 'Service zone updated successfully.');
     }
