@@ -179,8 +179,8 @@ class ReportsController extends Controller
         $query = $analytics->barangayInsightsQuery();
 
         if ($search) {
-            $normalizedSearch = $analytics->normalize($search);
-            $query->whereRaw($analytics->normalizedSql('barangay').' LIKE ?', ["%{$normalizedSearch}%"]);
+            $normalizedSearch = $analytics->normalizeBarangay($search);
+            $query->whereRaw($analytics->normalizedBarangaySql().' LIKE ?', ["%{$normalizedSearch}%"]);
         }
 
         $barangays = $query->paginate(20)->withQueryString();
@@ -194,11 +194,11 @@ class ReportsController extends Controller
 
     public function hotspots(Request $request, ReportGeographyAnalytics $analytics): View
     {
-        $barangayKey = $analytics->normalize($request->query('barangay'));
+        $barangayKey = $analytics->normalizeBarangay($request->query('barangay'));
         abort_if(! $barangayKey, 404);
 
         $barangay = $analytics->barangayInsightsQuery()
-            ->whereRaw($analytics->normalizedSql('barangay').' = ?', [$barangayKey])
+            ->whereRaw($analytics->normalizedBarangaySql().' = ?', [$barangayKey])
             ->first();
         abort_if(! $barangay, 404);
 
@@ -218,12 +218,12 @@ class ReportsController extends Controller
 
     public function hotspotReports(Request $request, ReportGeographyAnalytics $analytics): View
     {
-        $barangayKey = $analytics->normalize($request->query('barangay'));
+        $barangayKey = $analytics->normalizeBarangay($request->query('barangay'));
         $hotspotId = $request->query('hotspot');
         abort_if(! $barangayKey || ! is_string($hotspotId) || ! preg_match('/\A(?:gps-\d+|landmark-[a-f0-9]{64})\z/', $hotspotId), 404);
 
         $barangay = $analytics->barangayInsightsQuery()
-            ->whereRaw($analytics->normalizedSql('barangay').' = ?', [$barangayKey])
+            ->whereRaw($analytics->normalizedBarangaySql().' = ?', [$barangayKey])
             ->first();
         abort_if(! $barangay, 404);
 

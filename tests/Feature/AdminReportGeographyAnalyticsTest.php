@@ -73,6 +73,167 @@ test('barangays normalize conservatively and expose accurate ordered status metr
     expect(Report::where('barangay', ' Nabago ')->exists())->toBeTrue();
 });
 
+test('brgy dotted prefix and unprefixed barangay share a gps hotspot within 100 meters without changing stored values', function () {
+    $admin = User::factory()->create(['is_admin' => true]);
+    $reporter = User::factory()->create();
+    $prefixed = geographyReport($reporter, [
+        'barangay' => 'Brgy. Nabago',
+        'latitude' => 9.7800,
+        'longitude' => 125.4900,
+    ]);
+    $unprefixed = geographyReport($reporter, [
+        'barangay' => 'Nabago',
+        'latitude' => 9.78045,
+        'longitude' => 125.4900,
+    ]);
+
+    $service = app(ReportGeographyAnalytics::class);
+    $reports = $service->reportsForBarangay('nabago');
+    $hotspot = $service->hotspots($reports)->sole();
+
+    expect($reports)->toHaveCount(2)
+        ->and($hotspot->basis)->toBe('gps')
+        ->and($hotspot->report_ids)->toBe([$prefixed->id, $unprefixed->id])
+        ->and($prefixed->fresh()->barangay)->toBe('Brgy. Nabago')
+        ->and($unprefixed->fresh()->barangay)->toBe('Nabago');
+
+    $this->actingAs($admin)
+        ->get(route('admin.reports.hotspots', ['barangay' => 'Brgy. Nabago']))
+        ->assertOk()
+        ->assertViewHas('barangayKey', 'nabago')
+        ->assertViewHas('hotspots', fn ($hotspots) => $hotspots->count() === 1
+            && $hotspots->sole()->report_ids === [$prefixed->id, $unprefixed->id]);
+});
+
+test('barangay word and brgy word prefixes share a gps hotspot', function () {
+    $reporter = User::factory()->create();
+    $barangay = geographyReport($reporter, [
+        'barangay' => 'Barangay Nabago',
+        'latitude' => 9.7800,
+        'longitude' => 125.4900,
+    ]);
+    $brgy = geographyReport($reporter, [
+        'barangay' => 'Brgy Nabago',
+        'latitude' => 9.78045,
+        'longitude' => 125.4900,
+    ]);
+
+    $hotspot = app(ReportGeographyAnalytics::class)
+        ->hotspots(app(ReportGeographyAnalytics::class)->reportsForBarangay('nabago'))
+        ->sole();
+
+    expect($hotspot->report_ids)->toBe([$barangay->id, $brgy->id]);
+});
+
+test('barangay normalization ignores capitalization and repeated whitespace', function () {
+    $reporter = User::factory()->create();
+    geographyReport($reporter, ['barangay' => 'NABAGO']);
+    geographyReport($reporter, ['barangay' => 'nabago']);
+    geographyReport($reporter, ['barangay' => 'Nabago']);
+    geographyReport($reporter, ['barangay' => "  BRGY.\t  NABAGO  "]);
+
+    $service = app(ReportGeographyAnalytics::class);
+    $barangays = $service->barangayInsightsQuery()->get();
+
+    expect($barangays)->toHaveCount(1)
+        ->and($barangays->sole()->barangay_key)->toBe('nabago')
+        ->and((int) $barangays->sole()->total_reports)->toBe(4)
+        ->and($service->reportsForBarangay('nabago'))->toHaveCount(4);
+});
+
+test('equivalent barangays farther than 100 meters remain separate gps hotspots', function () {
+    $reporter = User::factory()->create();
+    $first = geographyReport($reporter, [
+        'barangay' => 'Brgy. Nabago',
+        'latitude' => 9.7800,
+        'longitude' => 125.4900,
+    ]);
+    $far = geographyReport($reporter, [
+        'barangay' => 'Barangay Nabago',
+        'latitude' => 9.7820,
+        'longitude' => 125.4900,
+    ]);
+
+    $hotspots = app(ReportGeographyAnalytics::class)->hotspots(collect([$first, $far]));
+
+    expect($hotspots)->toHaveCount(2)
+        ->and($hotspots->map->report_ids->sort()->values()->all())->toBe([[$first->id], [$far->id]]);
+});
+
+test('different barangays never merge even at identical gps coordinates', function () {
+    $reporter = User::factory()->create();
+    $nabago = geographyReport($reporter, [
+        'barangay' => 'Nabago',
+        'latitude' => 9.7800,
+        'longitude' => 125.4900,
+    ]);
+    $sanJuan = geographyReport($reporter, [
+        'barangay' => 'San Juan',
+        'latitude' => 9.7800,
+        'longitude' => 125.4900,
+    ]);
+
+    $hotspots = app(ReportGeographyAnalytics::class)->hotspots(collect([$nabago, $sanJuan]));
+
+    expect($hotspots)->toHaveCount(2)
+        ->and($hotspots->map->report_ids->sort()->values()->all())->toBe([[$nabago->id], [$sanJuan->id]]);
+});
+
+test('purok text is not inferred as a barangay or stripped as a prefix', function () {
+    $reporter = User::factory()->create();
+    geographyReport($reporter, ['barangay' => 'Purok 1 - Nabago']);
+    geographyReport($reporter, ['barangay' => 'Nabago']);
+
+    $service = app(ReportGeographyAnalytics::class);
+
+    expect($service->barangayInsightsQuery()->pluck('barangay_key')->sort()->values()->all())
+        ->toBe(['nabago', 'purok 1 - nabago'])
+        ->and($service->reportsForBarangay('nabago'))->toHaveCount(1);
+});
+
+test('equivalent barangays without gps retain exact normalized landmark fallback grouping', function () {
+    $reporter = User::factory()->create();
+    $first = geographyReport($reporter, [
+        'barangay' => 'Barangay Nabago',
+        'location' => ' Near  Fire Station ',
+    ]);
+    $second = geographyReport($reporter, [
+        'barangay' => 'Brgy Nabago',
+        'location' => 'NEAR FIRE STATION',
+    ]);
+
+    $hotspot = app(ReportGeographyAnalytics::class)
+        ->hotspots(app(ReportGeographyAnalytics::class)->reportsForBarangay('nabago'))
+        ->sole();
+
+    expect($hotspot->basis)->toBe('landmark')
+        ->and($hotspot->label_key)->toBe('near fire station')
+        ->and($hotspot->report_ids)->toBe([$first->id, $second->id]);
+});
+
+test('rejected prefix variant does not qualify a normalized barangay hotspot as frequent', function () {
+    $reporter = User::factory()->create();
+    geographyReport($reporter, [
+        'barangay' => 'Nabago',
+        'location' => 'Shared Site',
+        'status' => Report::STATUS_PENDING,
+    ]);
+    geographyReport($reporter, [
+        'barangay' => 'Brgy. Nabago',
+        'location' => 'Shared Site',
+        'status' => Report::STATUS_REJECTED,
+    ]);
+
+    $hotspot = app(ReportGeographyAnalytics::class)
+        ->hotspots(app(ReportGeographyAnalytics::class)->reportsForBarangay('nabago'))
+        ->sole();
+
+    expect($hotspot->total_reports)->toBe(2)
+        ->and($hotspot->qualifying_reports)->toBe(1)
+        ->and($hotspot->rejected_reports)->toBe(1)
+        ->and($hotspot->is_frequent)->toBeFalse();
+});
+
 test('main reports shows five barangays while preserving both existing analytics links', function () {
     $admin = User::factory()->create(['is_admin' => true]);
     $reporter = User::factory()->create();

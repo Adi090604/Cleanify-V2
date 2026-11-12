@@ -16,7 +16,7 @@ class ReportGeographyAnalytics
 
     public function barangayInsightsQuery(): Builder
     {
-        $barangaySql = $this->normalizedSql('barangay');
+        $barangaySql = $this->normalizedBarangaySql();
 
         return Report::query()
             ->whereNotNull('barangay')
@@ -40,7 +40,7 @@ class ReportGeographyAnalytics
     public function reportsForBarangay(string $barangayKey): Collection
     {
         return Report::query()
-            ->whereRaw($this->normalizedSql('barangay').' = ?', [$barangayKey])
+            ->whereRaw($this->normalizedBarangaySql().' = ?', [$barangayKey])
             ->get([
                 'id',
                 'user_id',
@@ -54,13 +54,54 @@ class ReportGeographyAnalytics
     }
 
     /**
-     * Derive deterministic connected components for valid GPS reports, then
-     * exact normalized-landmark groups for every report without valid GPS.
-     * Each input report is assigned to exactly one returned hotspot.
+     * Partition reports by normalized barangay, derive deterministic connected
+     * components for valid GPS reports, then exact normalized-landmark groups
+     * for every report without valid GPS. Each report belongs to one hotspot.
      */
     public function hotspots(Collection $reports): Collection
     {
         $ordered = $reports->sortBy('id')->values();
+
+        $hotspots = $ordered
+            ->groupBy(fn (Report $report) => $this->normalizeBarangay($report->barangay) ?? '')
+            ->flatMap(fn (Collection $barangayReports) => $this->hotspotsForBarangay($barangayReports));
+
+        return $hotspots->sort(function (object $left, object $right): int {
+            return ($right->is_frequent <=> $left->is_frequent)
+                ?: ($right->qualifying_reports <=> $left->qualifying_reports)
+                ?: ($right->latest_report_at->getTimestamp() <=> $left->latest_report_at->getTimestamp())
+                ?: strcmp($left->label_key, $right->label_key)
+                ?: strcmp($left->id, $right->id);
+        })->values();
+    }
+
+    public function normalizeBarangay(mixed $value, int $maximumLength = 255): ?string
+    {
+        if (! is_string($value)) {
+            return null;
+        }
+
+        $normalized = mb_strtolower(preg_replace('/\s+/u', ' ', trim($value)));
+        $normalized = preg_replace('/\A(?:brgy\.?|barangay)\s+/u', '', $normalized);
+
+        return filled($normalized) ? mb_substr($normalized, 0, $maximumLength) : null;
+    }
+
+    public function normalizedBarangaySql(): string
+    {
+        $whitespaceNormalized = "REPLACE(REPLACE(REPLACE(barangay, CHAR(9), ' '), CHAR(10), ' '), CHAR(13), ' ')";
+        $normalized = $this->normalizedSqlExpression($whitespaceNormalized);
+
+        return "CASE
+            WHEN {$normalized} LIKE 'brgy. %' THEN SUBSTR({$normalized}, 7)
+            WHEN {$normalized} LIKE 'brgy %' THEN SUBSTR({$normalized}, 6)
+            WHEN {$normalized} LIKE 'barangay %' THEN SUBSTR({$normalized}, 10)
+            ELSE {$normalized}
+        END";
+    }
+
+    private function hotspotsForBarangay(Collection $ordered): Collection
+    {
         [$gpsReports, $fallbackReports] = $ordered->partition(fn (Report $report) => $this->hasValidCoordinates($report));
         $gpsReports = $gpsReports->values();
         $hotspots = collect();
@@ -93,13 +134,7 @@ class ReportGeographyAnalytics
             ->sortKeys()
             ->each(fn (Collection $members) => $hotspots->push($this->makeHotspot('landmark', $members)));
 
-        return $hotspots->sort(function (object $left, object $right): int {
-            return ($right->is_frequent <=> $left->is_frequent)
-                ?: ($right->qualifying_reports <=> $left->qualifying_reports)
-                ?: ($right->latest_report_at->getTimestamp() <=> $left->latest_report_at->getTimestamp())
-                ?: strcmp($left->label_key, $right->label_key)
-                ?: strcmp($left->id, $right->id);
-        })->values();
+        return $hotspots;
     }
 
     public function normalize(mixed $value, int $maximumLength = 255): ?string
@@ -119,7 +154,11 @@ class ReportGeographyAnalytics
             throw new \InvalidArgumentException('Unsupported report geography column.');
         }
 
-        $expression = $column;
+        return $this->normalizedSqlExpression($column);
+    }
+
+    private function normalizedSqlExpression(string $expression): string
+    {
         for ($pass = 0; $pass < 8; $pass++) {
             $expression = "REPLACE({$expression}, '  ', ' ')";
         }
